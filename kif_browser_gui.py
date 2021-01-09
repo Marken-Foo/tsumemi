@@ -137,8 +137,15 @@ class MainWindow:
     
     def display_problem(self):
         # parses current_file and draws problem to canvas.
-        with open(self.current_file, "r") as kif:
-            self.kif_reader.parse_kif(kif)
+        encodings = ["cp932", "utf-8"]
+        for e in encodings:
+            try:
+                with open(self.current_file, "r", encoding=e) as kif:
+                    self.kif_reader.parse_kif(kif)
+            except UnicodeDecodeError:
+                pass
+            else:
+                break
         self.canvas.delete("all")
         self.draw_board()
         self.hide_solution()
