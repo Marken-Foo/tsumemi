@@ -1,0 +1,155 @@
+from collections import Counter
+import os
+import tkinter as tk
+from tkinter import ttk, font, filedialog
+
+import kif_parser
+
+
+class MainWindow:
+    # Class encapsulating the window to display the kif.
+    
+    # member variables that deal with the file system
+    directory = None
+    kif_files = []
+    current_file = None
+    # other member variables
+    kif_reader = kif_parser.TsumeKifReader()
+    is_solution_shown = False
+    
+    #TODO: clean up this class and see if it can be refactored.
+    def __init__(self):
+        # tkinter stuff, set up the main window
+        self.root = tk.Tk()
+        self.root.title("KIF folder browser")
+        self.root.option_add("*tearOff", False)
+        
+        self.mainframe = ttk.Frame(self.root)
+        self.mainframe.grid(column=0, row=0, sticky="NSEW")
+        self.root.columnconfigure(0, weight=1)
+        self.root.rowconfigure(0, weight=1)
+        
+        # make menubar
+        menubar = tk.Menu(self.root)
+        menu_file = tk.Menu(menubar)
+        menubar.add_cascade(menu=menu_file, label="File")
+        menu_file.add_command(label="Open folder...", command=self.open_folder)
+        self.root["menu"] = menubar
+        
+        # Create canvas for board, determine the available drawing area
+        self.boardWrapper = tk.Frame(self.mainframe)
+        self.boardWrapper.grid(column=0, row=0, columnspan=3, sticky="NSEW")
+        self.canvas = tk.Canvas(self.boardWrapper, width=530, height=440, bg="white")
+        self.canvas.grid(column=0, row=0, sticky="NSEW")
+        
+        # initialise solution text
+        self.solution = tk.StringVar(value="Open a folder of problems to display.")
+        ttk.Label(self.mainframe, textvariable=self.solution).grid(column=0, row=1, columnspan=3, sticky="W")
+        
+        # Buttons to navigate and show/hide solution
+        ttk.Button(self.mainframe, text="< Prev", command=self.prev_file).grid(column=0, row=2, sticky="ES")
+        self.btn_show_hide = ttk.Button(self.mainframe, text="Show/hide solution", command=self.toggle_solution).grid(column=1, row=2, sticky="S")
+        #TODO: keyboard shortcut not working: root.bind("<h>", lambda e: btn_show_hide.invoke()))
+        #root.bind("<Key-KP_Left>", do_stuff_on_pressing_left)
+        ttk.Button(self.mainframe, text="Next >", command=self.next_file).grid(column=2, row=2, sticky="SW")
+        
+        for child in self.mainframe.winfo_children():
+            child.grid_configure(padx=5, pady=5)
+        
+        # make some elements scalable with window size
+        self.root.columnconfigure(0, weight=1)
+        self.root.rowconfigure(0, weight=1)
+        self.mainframe.columnconfigure(0, weight=1)
+        self.mainframe.columnconfigure(1, weight=1)
+        self.mainframe.columnconfigure(2, weight=1)
+        self.mainframe.rowconfigure(0, weight=1)
+        self.boardWrapper.columnconfigure(0, weight=1)
+        self.boardWrapper.rowconfigure(0, weight=1)
+        
+        self.root.mainloop()
+        return
+        
+    def draw_board(self):
+        sq_w = 44
+        sq_h = 48
+        w_pad = 3
+        h_pad = 4
+        komadai_w = sq_w*1.5
+        
+        # draw board
+        for i in range(10):
+            self.canvas.create_line(w_pad+komadai_w+sq_w*i, h_pad, w_pad+komadai_w+sq_w*i, h_pad+9*sq_h, fill="black", width=2)
+            self.canvas.create_line(w_pad+komadai_w, h_pad+sq_h*i, w_pad+komadai_w+sq_w*9, h_pad+sq_h*i, fill="black", width=2)
+        # draw board pieces
+        for row_num, row in enumerate(self.kif_reader.board.sente):
+            for col_num, piece in enumerate(row):
+                self.canvas.create_text(w_pad+komadai_w+sq_w*col_num+sq_w/2, h_pad+sq_h*row_num+sq_h/2, text=str(piece), font=(font.nametofont("TkDefaultFont"), int(sq_w/2)))
+                
+        for row_num, row in enumerate(self.kif_reader.board.gote):
+            for col_num, piece in enumerate(row):
+                self.canvas.create_text(w_pad+komadai_w+sq_w*col_num+sq_w/2, h_pad+sq_h*row_num+sq_h/2, text=str(piece), font=(font.nametofont("TkDefaultFont"), int(sq_w/2)), angle=180)
+        # draw sente hand pieces
+        sente_hand = []
+        c = Counter(self.kif_reader.board.sente_hand)
+        for piece in c:
+            sente_hand.append(str(piece) + str(c[piece]))
+        if len(sente_hand) == 0:
+            sente_hand.append("な\nし")
+        self.canvas.create_text(w_pad+komadai_w+sq_w*9+sq_w*0.7, h_pad+sq_h*8, text="\n".join(sente_hand), font=(font.nametofont("TkDefaultFont"), int(sq_w*2/5)))
+        return
+    
+    def hide_solution(self):
+        self.solution.set("[solution hidden]")
+        self.is_solution_shown = False
+        return
+    
+    def toggle_solution(self):
+        if self.is_solution_shown:
+            self.hide_solution()
+        else:
+            solution = "　".join(self.kif_reader.moves)
+            self.solution.set(solution)
+            self.is_solution_shown = True
+        return
+    
+    def set_directory(self, directory):
+        # updates filesystem-related variables, does not update kif reader.
+        self.directory = directory
+        self.kif_files = [os.path.join(self.directory, filename) for filename in os.listdir(self.directory) if filename.endswith(".kif") or filename.endswith(".kifu")]
+        self.current_file = self.kif_files[0]
+        return
+    
+    def next_file(self):
+        current_idx = self.kif_files.index(self.current_file)
+        if current_idx + 1 >= len(self.kif_files):
+            return
+        self.current_file = self.kif_files[current_idx + 1]
+        self.display_problem()
+        return
+    
+    def prev_file(self):
+        current_idx = self.kif_files.index(self.current_file)
+        if current_idx - 1 < 0:
+            return
+        self.current_file = self.kif_files[current_idx - 1]
+        self.display_problem()
+        return
+    
+    def display_problem(self):
+        # parses current_file and draws problem to canvas.
+        with open(self.current_file, "r") as kif:
+            self.kif_reader.parse_kif(kif)
+        self.canvas.delete("all")
+        self.draw_board()
+        self.hide_solution()
+        self.root.title("KIF folder browser - " + str(self.current_file))
+        return
+    
+    def open_folder(self):
+        self.set_directory(filedialog.askdirectory())
+        self.display_problem()
+        return
+
+
+if __name__ == "__main__":
+    MainWindow()
