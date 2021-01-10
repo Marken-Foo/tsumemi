@@ -1,4 +1,5 @@
 from enum import Enum, IntEnum
+import re
 
 class Piece(Enum):
     NONE = 0
@@ -67,7 +68,7 @@ class TsumeKifReader:
         hand_str = hand_line.split("：", maxsplit=1)[1] # full-width colon
         if hand_str == "なし":
             return hand_pieces
-        hand = hand_str.split("　") # full-width space
+        hand = re.split("　| ", hand_str) # full-width or half-width space
         for entry in hand:
             piece_type = Piece[entry[0]]
             if len(entry) == 1:
