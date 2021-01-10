@@ -79,19 +79,23 @@ class MainWindow:
         w_pad = 3
         h_pad = 4
         komadai_w = sq_w*1.5
+        def x_sq(i):
+            return w_pad + komadai_w + sq_w * i
+        def y_sq(j):
+            return h_pad + sq_h * j
         
         # draw board
         for i in range(10):
-            self.canvas.create_line(w_pad+komadai_w+sq_w*i, h_pad, w_pad+komadai_w+sq_w*i, h_pad+9*sq_h, fill="black", width=2)
-            self.canvas.create_line(w_pad+komadai_w, h_pad+sq_h*i, w_pad+komadai_w+sq_w*9, h_pad+sq_h*i, fill="black", width=2)
+            self.canvas.create_line(x_sq(i), y_sq(0), x_sq(i), y_sq(9), fill="black", width=2)
+            self.canvas.create_line(x_sq(0), y_sq(i), x_sq(9), y_sq(i), fill="black", width=2)
         # draw board pieces
         for row_num, row in enumerate(self.kif_reader.board.sente):
             for col_num, piece in enumerate(row):
-                self.canvas.create_text(w_pad+komadai_w+sq_w*col_num+sq_w/2, h_pad+sq_h*row_num+sq_h/2, text=str(piece), font=(font.nametofont("TkDefaultFont"), int(sq_w/2)))
+                self.canvas.create_text(x_sq(col_num+0.5), y_sq(row_num+0.5), text=str(piece), font=(font.nametofont("TkDefaultFont"), int(sq_w/2)))
                 
         for row_num, row in enumerate(self.kif_reader.board.gote):
             for col_num, piece in enumerate(row):
-                self.canvas.create_text(w_pad+komadai_w+sq_w*col_num+sq_w/2, h_pad+sq_h*row_num+sq_h/2, text=str(piece), font=(font.nametofont("TkDefaultFont"), int(sq_w/2)), angle=180)
+                self.canvas.create_text(x_sq(col_num+0.5), y_sq(row_num+0.5), text=str(piece), font=(font.nametofont("TkDefaultFont"), int(sq_w/2)), angle=180)
         # draw sente hand pieces
         sente_hand = []
         c = Counter(self.kif_reader.board.sente_hand)
@@ -99,7 +103,7 @@ class MainWindow:
             sente_hand.append(str(piece) + str(c[piece]))
         if len(sente_hand) == 0:
             sente_hand.append("な\nし")
-        self.canvas.create_text(w_pad+komadai_w+sq_w*9+sq_w*0.7, h_pad+sq_h*8, text="\n".join(sente_hand), font=(font.nametofont("TkDefaultFont"), int(sq_w*2/5)))
+        self.canvas.create_text(x_sq(9.7), y_sq(8), text="\n".join(sente_hand), font=(font.nametofont("TkDefaultFont"), int(sq_w*2/5)))
         return
         
     def display_problem(self):
