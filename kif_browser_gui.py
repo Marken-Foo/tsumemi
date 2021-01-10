@@ -33,7 +33,7 @@ class MainWindow:
         menubar = tk.Menu(self.root)
         menu_file = tk.Menu(menubar)
         menubar.add_cascade(menu=menu_file, label="File")
-        menu_file.add_command(label="Open folder...", command=self.open_folder)
+        menu_file.add_command(label="Open folder...", command=self.open_folder, accelerator="Ctrl+O")
         self.root["menu"] = menubar
         
         # Create canvas for board, determine the available drawing area
@@ -49,9 +49,13 @@ class MainWindow:
         # Buttons to navigate and show/hide solution
         ttk.Button(self.mainframe, text="< Prev", command=self.prev_file).grid(column=0, row=2, sticky="ES")
         self.btn_show_hide = ttk.Button(self.mainframe, text="Show/hide solution", command=self.toggle_solution).grid(column=1, row=2, sticky="S")
-        #TODO: keyboard shortcut not working: root.bind("<h>", lambda e: btn_show_hide.invoke()))
-        #root.bind("<Key-KP_Left>", do_stuff_on_pressing_left)
         ttk.Button(self.mainframe, text="Next >", command=self.next_file).grid(column=2, row=2, sticky="SW")
+        
+        # keyboard shortcuts
+        self.root.bind("<Key-h>", self.toggle_solution)
+        self.root.bind("<Left>", self.prev_file)
+        self.root.bind("<Right>", self.next_file)
+        self.root.bind("<Control_L><Key-o>", self.open_folder)
         
         for child in self.mainframe.winfo_children():
             child.grid_configure(padx=5, pady=5)
@@ -97,44 +101,7 @@ class MainWindow:
             sente_hand.append("な\nし")
         self.canvas.create_text(w_pad+komadai_w+sq_w*9+sq_w*0.7, h_pad+sq_h*8, text="\n".join(sente_hand), font=(font.nametofont("TkDefaultFont"), int(sq_w*2/5)))
         return
-    
-    def hide_solution(self):
-        self.solution.set("[solution hidden]")
-        self.is_solution_shown = False
-        return
-    
-    def toggle_solution(self):
-        if self.is_solution_shown:
-            self.hide_solution()
-        else:
-            solution = "　".join(self.kif_reader.moves)
-            self.solution.set(solution)
-            self.is_solution_shown = True
-        return
-    
-    def set_directory(self, directory):
-        # updates filesystem-related variables, does not update kif reader.
-        self.directory = directory
-        self.kif_files = [os.path.join(self.directory, filename) for filename in os.listdir(self.directory) if filename.endswith(".kif") or filename.endswith(".kifu")]
-        self.current_file = self.kif_files[0]
-        return
-    
-    def next_file(self):
-        current_idx = self.kif_files.index(self.current_file)
-        if current_idx + 1 >= len(self.kif_files):
-            return
-        self.current_file = self.kif_files[current_idx + 1]
-        self.display_problem()
-        return
-    
-    def prev_file(self):
-        current_idx = self.kif_files.index(self.current_file)
-        if current_idx - 1 < 0:
-            return
-        self.current_file = self.kif_files[current_idx - 1]
-        self.display_problem()
-        return
-    
+        
     def display_problem(self):
         # parses current_file and draws problem to canvas.
         encodings = ["cp932", "utf-8"]
@@ -152,7 +119,44 @@ class MainWindow:
         self.root.title("KIF folder browser - " + str(self.current_file))
         return
     
-    def open_folder(self):
+    def hide_solution(self):
+        self.solution.set("[solution hidden]")
+        self.is_solution_shown = False
+        return
+    
+    def toggle_solution(self, event=None):
+        if self.is_solution_shown:
+            self.hide_solution()
+        else:
+            solution = "　".join(self.kif_reader.moves)
+            self.solution.set(solution)
+            self.is_solution_shown = True
+        return
+    
+    def set_directory(self, directory):
+        # updates filesystem-related variables, does not update kif reader.
+        self.directory = directory
+        self.kif_files = [os.path.join(self.directory, filename) for filename in os.listdir(self.directory) if filename.endswith(".kif") or filename.endswith(".kifu")]
+        self.current_file = self.kif_files[0]
+        return
+    
+    def next_file(self, event=None):
+        current_idx = self.kif_files.index(self.current_file)
+        if current_idx + 1 >= len(self.kif_files):
+            return
+        self.current_file = self.kif_files[current_idx + 1]
+        self.display_problem()
+        return
+    
+    def prev_file(self, event=None):
+        current_idx = self.kif_files.index(self.current_file)
+        if current_idx - 1 < 0:
+            return
+        self.current_file = self.kif_files[current_idx - 1]
+        self.display_problem()
+        return
+    
+    def open_folder(self, event=None):
         self.set_directory(filedialog.askdirectory())
         self.display_problem()
         return
