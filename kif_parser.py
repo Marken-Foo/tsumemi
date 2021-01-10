@@ -23,7 +23,10 @@ class Piece(Enum):
     def __str__(self):
         return self.one_kanji[self.value]
 
-Piece.one_kanji = {0:"", 1:"玉", 2:"飛", 3:"龍", 4:"角", 5:"馬", 6:"金", 7:"銀", 8:"全", 9:"桂", 10:"圭", 11:"香", 12:"杏", 13:"歩", 14:"と"}
+Piece.one_kanji = {
+    0:"", 1:"玉", 2:"飛", 3:"龍", 4:"角", 5:"馬", 6:"金", 7:"銀",
+    8:"全", 9:"桂", 10:"圭", 11:"香", 12:"杏", 13:"歩", 14:"と"
+}
 
 class KanjiNumber(IntEnum):
     一 = 1
@@ -72,13 +75,13 @@ class TsumeKifReader:
             elif len(entry) == 2:
                 num_piece = KanjiNumber[entry[1]]
             elif len(entry) == 3:
-                # e.g. 十八 = 18; maximum for a shogi position should be 18 (pawns)
+                # e.g. 十八 = 18; max for a shogi position should be 18 (pawns)
                 num_piece = KanjiNumber[entry[1]] + KanjiNumber[entry[2]]
             hand_pieces.extend([piece_type] * num_piece)
         return hand_pieces
     
     def parse_board(self, handle):
-        # Parses the BOD board representation and stores it, not including pieces in hand.
+        # Parses and stores BOD board representation, without pieces in hand.
         sente_board = [[Piece.NONE] * 9 for i in range(9)]
         gote_board = [[Piece.NONE] * 9 for i in range(9)]
         line = handle.readline() # "  ９ ８ ７ ６ ５ ４ ３ ２ １"
@@ -97,9 +100,9 @@ class TsumeKifReader:
         return (sente_board, gote_board)
     
     def parse_kif(self, handle):
-        # takes in text, spits out board and moves, ignores metadata.
+        # takes in text, extracts board and moves, ignores metadata.
         # assumes file has no extraneous blank lines/whitespace lines
-        self.moves = [] # clear existing state; should do the same for the Position
+        self.moves = [] # clear state; I should do the same for the Position
         line = " "
         while line != "":
             line = handle.readline()
