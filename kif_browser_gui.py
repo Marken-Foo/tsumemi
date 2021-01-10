@@ -161,7 +161,7 @@ class MainWindow:
         return
     
     def open_folder(self, event=None):
-        self.set_directory(filedialog.askdirectory())
+        self.set_directory(os.path.normpath(filedialog.askdirectory()))
         self.display_problem()
         return
 
