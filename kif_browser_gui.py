@@ -126,15 +126,26 @@ class MainWindow:
                     angle=180
                 )
         # draw sente hand pieces
-        sente_hand = []
+        sente_hand = ["▲\n持\n駒\n"]
         c = Counter(self.kif_reader.board.sente_hand)
         for piece in c:
             sente_hand.append(str(piece) + str(c[piece]))
-        if len(sente_hand) == 0:
+        if len(sente_hand) == 1:
             sente_hand.append("な\nし")
         self.canvas.create_text(
-            x_sq(9.7), y_sq(8), text="\n".join(sente_hand),
-            font=(font.nametofont("TkDefaultFont"), int(sq_w*2/5))
+            530-w_pad, 440-h_pad, text="\n".join(sente_hand),
+            font=(font.nametofont("TkDefaultFont"), int(sq_w*2/5)), anchor="se"
+        )
+        # draw gote hand pieces
+        gote_hand = ["△\n持\n駒\n"]
+        c = Counter(self.kif_reader.board.gote_hand)
+        for piece in c:
+            gote_hand.append(str(piece) + str(c[piece]))
+        if len(gote_hand) == 1:
+            gote_hand.append("な\nし")
+        self.canvas.create_text(
+            w_pad, h_pad, text="\n".join(gote_hand),
+            font=(font.nametofont("TkDefaultFont"), int(sq_w*2/5)), anchor="nw"
         )
         return
         
