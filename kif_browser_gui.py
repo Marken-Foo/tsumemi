@@ -8,17 +8,18 @@ import kif_parser
 
 
 class MainWindow:
-    # Class encapsulating the window to display the kif.
-    
-    # member variables that deal with the file system
+    '''Class encapsulating the window to display the kif.'''
+    # Member variables that deal with the file system
     directory = None
     kif_files = []
     current_file = None
-    # other member variables
+    # Current canvas size for board
+    canvas_width = 530
+    canvas_height = 440
+    # Other member variables
     kif_reader = kif_parser.TsumeKifReader()
     is_solution_shown = False
     
-    #TODO: clean up this class and see if some parts can be refactored out.
     def __init__(self):
         # tkinter stuff, set up the main window
         self.root = tk.Tk()
@@ -30,7 +31,7 @@ class MainWindow:
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
         
-        # make menubar
+        # Make menubar
         menubar = tk.Menu(self.root)
         menu_file = tk.Menu(menubar)
         menubar.add_cascade(menu=menu_file, label="File")
@@ -38,26 +39,23 @@ class MainWindow:
                               accelerator="Ctrl+O")
         self.root["menu"] = menubar
         
-        # Create canvas for board, determine the available drawing area
+        # Make canvas for board
         self.boardWrapper = tk.Frame(self.mainframe)
         self.boardWrapper.grid(column=0, row=0, columnspan=3, sticky="NSEW")
-        self.canvas_width = 530
-        self.canvas_height = 440
         self.canvas = tk.Canvas(self.boardWrapper, width=self.canvas_width,
                                 height=self.canvas_height,
                                 bg="white")
         self.canvas.grid(column=0, row=0, sticky="NSEW")
         self.canvas.bind("<Configure>", self.on_resize)
         
-        # initialise solution text
+        # Initialise solution text
         self.solution = tk.StringVar(value="Open a folder of problems to display.")
         ttk.Label(
             self.mainframe, textvariable=self.solution
         ).grid(
             column=0, row=1, columnspan=3, sticky="W"
         )
-        
-        # Buttons to navigate and show/hide solution
+        # Make buttons to navigate and show/hide solution
         ttk.Button(
             self.mainframe, text="< Prev", command=self.prev_file
         ).grid(
@@ -73,8 +71,7 @@ class MainWindow:
         ).grid(
             column=2, row=2, sticky="SW"
         )
-        
-        # keyboard shortcuts
+        # Keyboard shortcuts
         self.root.bind("<Key-h>", self.toggle_solution)
         self.root.bind("<Left>", self.prev_file)
         self.root.bind("<Right>", self.next_file)
@@ -84,7 +81,7 @@ class MainWindow:
         for child in self.mainframe.winfo_children():
             child.grid_configure(padx=5, pady=5)
         
-        # make some elements scalable with window size
+        # Make some elements scalable with window size
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
         self.mainframe.columnconfigure(0, weight=1)
@@ -100,54 +97,55 @@ class MainWindow:
     def on_resize(self, event):
         self.canvas_width = event.width
         self.canvas_height = event.height
-        # redraw board, passing it the new parameters
+        # Redraw board after setting new dimensions
         self.canvas.delete("all")
         self.draw_board()
     
     def draw_board(self):
-        # calculate the appropriate dimensions from the width and height given
-        # 9x9 board, 1.5*[square width] komadai, so 12*sq_w and 9*sq_h needed
-        sq_aspect_ratio = 11 / 12
-        komadai_ratio = 1.5
-        w_pad = 3
-        h_pad = 4
-        
-        max_sq_w = (self.canvas_width - 2 * w_pad) / (9 + 2 * komadai_ratio)
-        max_sq_h = (self.canvas_height - 2 * h_pad) / 9
-        
-        sq_w = min(max_sq_w, max_sq_h * sq_aspect_ratio)
-        sq_h = sq_w / sq_aspect_ratio
-        komadai_w = sq_w * komadai_ratio
+        # First calculate appropriate dimensions from self.width and height.
+        # Constant proportions:
+        SQ_ASPECT_RATIO = 11 / 12
+        KOMADAI_W_IN_SQ = 1.5
+        W_PAD = 3
+        H_PAD = 4
+        # Geometry: 9x9 shogi board, flanked by komadai area on either side
+        max_sq_w = (self.canvas_width - 2 * W_PAD) / (9 + 2 * KOMADAI_W_IN_SQ)
+        max_sq_h = (self.canvas_height - 2 * H_PAD) / 9
+        # Determine whether the width or the height is the limiting factor
+        sq_w = min(max_sq_w, max_sq_h * SQ_ASPECT_RATIO)
+        # Propagate other measurements
+        sq_h = sq_w / SQ_ASPECT_RATIO
+        komadai_w = sq_w * KOMADAI_W_IN_SQ
         sq_text_size = int(sq_w / 2)
         komadai_text_size = int(sq_w * 2 / 5)
-        
         def x_sq(i):
-            return w_pad + komadai_w + sq_w * i
+            return W_PAD + komadai_w + sq_w * i
         def y_sq(j):
-            return h_pad + sq_h * j
+            return H_PAD + sq_h * j
         
-        # draw board
+        # Draw board
         for i in range(10):
             self.canvas.create_line(x_sq(i), y_sq(0), x_sq(i), y_sq(9),
                                     fill="black", width=2)
             self.canvas.create_line(x_sq(0), y_sq(i), x_sq(9), y_sq(i),
                                     fill="black", width=2)
-        # draw board pieces
+        # Draw board pieces
         for row_num, row in enumerate(self.kif_reader.board.sente):
             for col_num, piece in enumerate(row):
                 self.canvas.create_text(
-                    x_sq(col_num+0.5), y_sq(row_num+0.5), text=str(piece),
+                    x_sq(col_num+0.5), y_sq(row_num+0.5),
+                    text=str(piece),
                     font=(font.nametofont("TkDefaultFont"), sq_text_size)
                 )
-                
         for row_num, row in enumerate(self.kif_reader.board.gote):
             for col_num, piece in enumerate(row):
                 self.canvas.create_text(
-                    x_sq(col_num+0.5), y_sq(row_num+0.5), text=str(piece),
+                    x_sq(col_num+0.5), y_sq(row_num+0.5),
+                    text=str(piece),
                     font=(font.nametofont("TkDefaultFont"), sq_text_size),
                     angle=180
                 )
-        # draw sente hand pieces
+        # Draw sente hand pieces
         sente_hand = ["▲\n持\n駒\n"]
         c = Counter(self.kif_reader.board.sente_hand)
         for piece in c:
@@ -155,10 +153,12 @@ class MainWindow:
         if len(sente_hand) == 1:
             sente_hand.append("な\nし")
         self.canvas.create_text(
-            x_sq(9) + komadai_w, y_sq(9), text="\n".join(sente_hand),
-            font=(font.nametofont("TkDefaultFont"), komadai_text_size), anchor="se"
+            x_sq(9) + komadai_w, y_sq(9),
+            text="\n".join(sente_hand),
+            font=(font.nametofont("TkDefaultFont"), komadai_text_size),
+            anchor="se"
         )
-        # draw gote hand pieces
+        # Draw gote hand pieces
         gote_hand = ["△\n持\n駒\n"]
         c = Counter(self.kif_reader.board.gote_hand)
         for piece in c:
@@ -166,13 +166,16 @@ class MainWindow:
         if len(gote_hand) == 1:
             gote_hand.append("な\nし")
         self.canvas.create_text(
-            w_pad, h_pad, text="\n".join(gote_hand),
-            font=(font.nametofont("TkDefaultFont"), komadai_text_size), anchor="nw"
+            W_PAD, H_PAD,
+            text="\n".join(gote_hand),
+            font=(font.nametofont("TkDefaultFont"), komadai_text_size),
+            anchor="nw"
         )
         return
         
     def display_problem(self):
-        # parses current_file and draws problem to canvas.
+        # Parse current_file and draw problem to canvas
+        # Try any likely encodings for the KIF files
         encodings = ["cp932", "utf-8"]
         for e in encodings:
             try:
@@ -203,7 +206,7 @@ class MainWindow:
         return
     
     def set_directory(self, directory):
-        # updates filesystem-related variables, does not update kif reader.
+        # Update filesystem-related variables. Kif reader not updated.
         self.directory = directory
         self.kif_files = [
             os.path.join(self.directory, filename)
@@ -231,6 +234,7 @@ class MainWindow:
         return
     
     def open_folder(self, event=None):
+        # Display first problem in folder as well
         self.set_directory(os.path.normpath(filedialog.askdirectory()))
         self.display_problem()
         return
