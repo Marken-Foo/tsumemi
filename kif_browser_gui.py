@@ -41,9 +41,13 @@ class MainWindow:
         # Create canvas for board, determine the available drawing area
         self.boardWrapper = tk.Frame(self.mainframe)
         self.boardWrapper.grid(column=0, row=0, columnspan=3, sticky="NSEW")
-        self.canvas = tk.Canvas(self.boardWrapper, width=530, height=440,
+        self.canvas_width = 530
+        self.canvas_height = 440
+        self.canvas = tk.Canvas(self.boardWrapper, width=self.canvas_width,
+                                height=self.canvas_height,
                                 bg="white")
         self.canvas.grid(column=0, row=0, sticky="NSEW")
+        self.canvas.bind("<Configure>", self.on_resize)
         
         # initialise solution text
         self.solution = tk.StringVar(value="Open a folder of problems to display.")
@@ -93,12 +97,30 @@ class MainWindow:
         self.root.mainloop()
         return
         
+    def on_resize(self, event):
+        self.canvas_width = event.width
+        self.canvas_height = event.height
+        # redraw board, passing it the new parameters
+        self.canvas.delete("all")
+        self.draw_board()
+    
     def draw_board(self):
-        sq_w = 44
-        sq_h = 48
+        # calculate the appropriate dimensions from the width and height given
+        # 9x9 board, 1.5*[square width] komadai, so 12*sq_w and 9*sq_h needed
+        sq_aspect_ratio = 11 / 12
+        komadai_ratio = 1.5
         w_pad = 3
         h_pad = 4
-        komadai_w = sq_w*1.5
+        
+        max_sq_w = (self.canvas_width - 2 * w_pad) / (9 + 2 * komadai_ratio)
+        max_sq_h = (self.canvas_height - 2 * h_pad) / 9
+        
+        sq_w = min(max_sq_w, max_sq_h * sq_aspect_ratio)
+        sq_h = sq_w / sq_aspect_ratio
+        komadai_w = sq_w * komadai_ratio
+        sq_text_size = int(sq_w / 2)
+        komadai_text_size = int(sq_w * 2 / 5)
+        
         def x_sq(i):
             return w_pad + komadai_w + sq_w * i
         def y_sq(j):
@@ -115,14 +137,14 @@ class MainWindow:
             for col_num, piece in enumerate(row):
                 self.canvas.create_text(
                     x_sq(col_num+0.5), y_sq(row_num+0.5), text=str(piece),
-                    font=(font.nametofont("TkDefaultFont"), int(sq_w/2))
+                    font=(font.nametofont("TkDefaultFont"), sq_text_size)
                 )
                 
         for row_num, row in enumerate(self.kif_reader.board.gote):
             for col_num, piece in enumerate(row):
                 self.canvas.create_text(
                     x_sq(col_num+0.5), y_sq(row_num+0.5), text=str(piece),
-                    font=(font.nametofont("TkDefaultFont"), int(sq_w/2)),
+                    font=(font.nametofont("TkDefaultFont"), sq_text_size),
                     angle=180
                 )
         # draw sente hand pieces
@@ -133,8 +155,8 @@ class MainWindow:
         if len(sente_hand) == 1:
             sente_hand.append("な\nし")
         self.canvas.create_text(
-            530-w_pad, 440-h_pad, text="\n".join(sente_hand),
-            font=(font.nametofont("TkDefaultFont"), int(sq_w*2/5)), anchor="se"
+            x_sq(9) + komadai_w, y_sq(9), text="\n".join(sente_hand),
+            font=(font.nametofont("TkDefaultFont"), komadai_text_size), anchor="se"
         )
         # draw gote hand pieces
         gote_hand = ["△\n持\n駒\n"]
@@ -145,7 +167,7 @@ class MainWindow:
             gote_hand.append("な\nし")
         self.canvas.create_text(
             w_pad, h_pad, text="\n".join(gote_hand),
-            font=(font.nametofont("TkDefaultFont"), int(sq_w*2/5)), anchor="nw"
+            font=(font.nametofont("TkDefaultFont"), komadai_text_size), anchor="nw"
         )
         return
         
