@@ -1,4 +1,6 @@
 import time
+
+from itertools import accumulate
 from math import fsum
 
 class SplitTimer:
@@ -29,19 +31,24 @@ class SplitTimer:
     def stop(self):
         if self.is_running:
             self.is_running = False
-            # this "is not None" if statement should be unnecessary - start_time should never be None once the timer starts running.
             if self.start_time is not None:
                 self.curr_lap_time += time.perf_counter() - self.start_time
         return
     
     def split(self):
+        if self.start_time is None:
+            # ill-defined operation
+            return
         if self.is_running:
             self.lap_times.append(self.curr_lap_time + time.perf_counter() - self.start_time)
             self.start_time = time.perf_counter()
             self.curr_lap_time = 0
         else:
-            # why would you take a split when the timer is stopped? what meaning does that have?
-            print("why would you do this?")
+            # Taking a split while the timer is paused "has no meaning".
+            # But we implement it anyway.
+            self.lap_times.append(self.curr_lap_time)
+            self.start_time = None
+            self.curr_lap_time = 0
         return
     
     def reset(self):
@@ -53,24 +60,17 @@ class SplitTimer:
     
     def read(self):
         if self.is_running:
-            return fsum(self.lap_times) + self.curr_lap_time + time.perf_counter() - self.start_time
+            res = fsum(self.lap_times) + self.curr_lap_time + time.perf_counter() - self.start_time
         else:
-            return fsum(self.lap_times) + self.curr_lap_time
+            res = fsum(self.lap_times) + self.curr_lap_time
+        return SplitTimer.sec_to_hms(res)
     
-
-if __name__ == "__main__":
-    print("Hellomoto")
-    timer = SplitTimer()
-    timer.start()
-    print(timer.read())
-    print(timer.read())
-    time.sleep(1)
-    print(timer.read())
-    timer.split()
-    time.sleep(1)
-    timer.split()
-    time.sleep(1)
-    timer.stop()
-    timer.split()
-    print(timer.lap_times)
-    print(timer.read())
+    def get_split_times(self):
+        # Return a list of split times instead of lap times.
+        return accumulate(self.lap_times)
+    
+    @staticmethod
+    def sec_to_hms(seconds):
+        # Take time in seconds, return tuple of (hours, minutes, seconds).
+        return (seconds // 3600, (seconds % 3600) // 60, seconds % 60)
+    
