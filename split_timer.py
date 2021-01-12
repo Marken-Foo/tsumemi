@@ -63,7 +63,7 @@ class SplitTimer:
             res = fsum(self.lap_times) + self.curr_lap_time + time.perf_counter() - self.start_time
         else:
             res = fsum(self.lap_times) + self.curr_lap_time
-        return SplitTimer.sec_to_hms(res)
+        return res
     
     def get_split_times(self):
         # Return a list of split times instead of lap times.
@@ -72,5 +72,21 @@ class SplitTimer:
     @staticmethod
     def sec_to_hms(seconds):
         # Take time in seconds, return tuple of (hours, minutes, seconds).
-        return (seconds // 3600, (seconds % 3600) // 60, seconds % 60)
+        return (int(seconds // 3600), int((seconds % 3600) // 60), seconds % 60)
     
+    def sec_to_str(seconds):
+        # TODO: fix odd wobble if rounding seconds to 2 d.p., and also clean up this if/else mess
+        hms = SplitTimer.sec_to_hms(seconds)
+        if hms[0] < 10:
+            h = "0" + str(hms[0])
+        else:   
+            h = str(hms[0])
+        if hms[1] < 10:
+            m = "0" + str(hms[1])
+        else:
+            m = str(hms[1])
+        if hms[2] < 10:
+            s = "0" + str(round(hms[2], 1))
+        else:
+            s = str(round(hms[2], 1))
+        return ":".join((h, m, s))

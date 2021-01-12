@@ -1,10 +1,12 @@
-from collections import Counter
 import os
 import re
 import tkinter as tk
+
+from collections import Counter
 from tkinter import ttk, filedialog, font, messagebox
 
 import kif_parser
+from split_timer import SplitTimer
 
 
 class BoardCanvas(tk.Canvas):
@@ -233,7 +235,7 @@ class MainWindow:
         ).grid(
             column=2, row=2, sticky="SW"
         )
-        
+        # Upside-down mode
         is_upside_down = tk.BooleanVar(value=False)
         ttk.Checkbutton(
             self.mainframe, text="Upside-down mode",
@@ -241,6 +243,22 @@ class MainWindow:
             variable=is_upside_down, onvalue=True, offvalue=False
         ).grid(
             column=0, row=3
+        )
+        # Basic timer
+        self.timer = SplitTimer()
+        self.str_timer = tk.StringVar(value="00:00:00")
+        self.timer_display = ttk.Label(
+            self.mainframe, textvariable=self.str_timer
+        )
+        self.timer_display.grid(
+            column=0, row=4
+        )
+        self.timer_display.after(40, self.refresh_timer)
+        ttk.Button(
+            self.mainframe, text="Start/stop timer",
+            command=self.toggle_timer
+        ).grid(
+            column=1, row=4
         )
         # Keyboard shortcuts
         self.master.bind("<Key-h>", self.toggle_solution)
@@ -323,6 +341,18 @@ class MainWindow:
         if self.board.is_upside_down != is_upside_down:
             self.board.is_upside_down = is_upside_down
             self.board.draw()
+        return
+    
+    def toggle_timer(self):
+        if self.timer.is_running:
+            self.timer.stop()
+        else:
+            self.timer.start()
+        return
+    
+    def refresh_timer(self):
+        self.str_timer.set(SplitTimer.sec_to_str(self.timer.read()))
+        self.timer_display.after(40, self.refresh_timer)
         return
     
     @staticmethod
