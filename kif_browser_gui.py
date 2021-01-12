@@ -2,7 +2,7 @@ from collections import Counter
 import os
 import re
 import tkinter as tk
-from tkinter import ttk, font, filedialog
+from tkinter import ttk, filedialog, font, messagebox
 
 import kif_parser
 
@@ -14,12 +14,13 @@ class MainWindow:
     kif_files = []
     current_file = None
     # Current canvas size for board
-    canvas_width = 530
-    canvas_height = 440
+    canvas_width = 570
+    canvas_height = 460
     # Other member variables
     kif_reader = kif_parser.TsumeKifReader()
     is_solution_shown = False
     
+    # eventually, refactor menu labels and dialog out into a consant namespace
     def __init__(self):
         # tkinter stuff, set up the main window
         self.root = tk.Tk()
@@ -36,8 +37,14 @@ class MainWindow:
         menu_file = tk.Menu(menubar)
         menubar.add_cascade(menu=menu_file, label="File")
         menu_file.add_command(label="Open folder...", command=self.open_folder,
-                              accelerator="Ctrl+O")
+                              accelerator="Ctrl+O", underline=0)
         self.root["menu"] = menubar
+        
+        menu_help = tk.Menu(menubar)
+        menubar.add_cascade(menu=menu_help, label="Help")
+        
+        #menu_help.add_command(label="Help", command=None)
+        menu_help.add_command(label="About kif-browser", command=lambda: messagebox.showinfo(title="About kif-browser", message="Written in Python 3 for the shogi community. KIF files sold separately."))
         
         # Make canvas for board
         self.boardWrapper = tk.Frame(self.mainframe)
@@ -100,28 +107,37 @@ class MainWindow:
         # Redraw board after setting new dimensions
         self.canvas.delete("all")
         self.draw_board()
+        return
     
+    # can refactor and pass the Canvas as an argument to separate dependencies?
+    # or wrap canvas and put this method in the wrapper class
     def draw_board(self):
         # First calculate appropriate dimensions from self.width and height.
         # Constant proportions:
         SQ_ASPECT_RATIO = 11 / 12
         KOMADAI_W_IN_SQ = 1.5
-        W_PAD = 3
-        H_PAD = 4
+        INNER_H_PAD = 30
         # Geometry: 9x9 shogi board, flanked by komadai area on either side
-        max_sq_w = (self.canvas_width - 2 * W_PAD) / (9 + 2 * KOMADAI_W_IN_SQ)
-        max_sq_h = (self.canvas_height - 2 * H_PAD) / 9
+        max_sq_w = self.canvas_width / (9 + 2*KOMADAI_W_IN_SQ)
+        max_sq_h = (self.canvas_height - 2*INNER_H_PAD) / 9
         # Determine whether the width or the height is the limiting factor
-        sq_w = min(max_sq_w, max_sq_h * SQ_ASPECT_RATIO)
+        sq_w = min(max_sq_w, max_sq_h*SQ_ASPECT_RATIO)
         # Propagate other measurements
         sq_h = sq_w / SQ_ASPECT_RATIO
         komadai_w = sq_w * KOMADAI_W_IN_SQ
+        if sq_w == max_sq_w:
+            w_pad = 0
+            h_pad = INNER_H_PAD + (self.canvas_height - 9*sq_h) / 2
+        else:
+            w_pad = (self.canvas_width - 2*komadai_w - 9*sq_w) / 2
+            h_pad = INNER_H_PAD
         sq_text_size = int(sq_w / 2)
-        komadai_text_size = int(sq_w * 2 / 5)
+        komadai_text_size = int(sq_w * 2/5)
+        coords_text_size = int(sq_w * 2/9)
         def x_sq(i):
-            return W_PAD + komadai_w + sq_w * i
+            return w_pad + komadai_w + sq_w * i
         def y_sq(j):
-            return H_PAD + sq_h * j
+            return h_pad + sq_h * j
         
         # Draw board
         for i in range(10):
@@ -145,6 +161,21 @@ class MainWindow:
                     font=(font.nametofont("TkDefaultFont"), sq_text_size),
                     angle=180
                 )
+        # Draw board coordinates
+        for row_num in range(1, 10, 1):
+            self.canvas.create_text(
+                x_sq(9), y_sq(row_num-1+0.5),
+                text=" " + kif_parser.KanjiNumber(row_num).name,
+                font=(font.nametofont("TkDefaultFont"), coords_text_size),
+                anchor="w"
+            )
+        for col_num in range(9, 0, -1):
+            self.canvas.create_text(
+                x_sq(9-col_num+0.5), y_sq(0),
+                text=str(col_num),
+                font=(font.nametofont("TkDefaultFont"), coords_text_size),
+                anchor="s"
+            )
         # Draw sente hand pieces
         sente_hand = ["▲\n持\n駒\n"]
         c = Counter(self.kif_reader.board.sente_hand)
@@ -166,7 +197,7 @@ class MainWindow:
         if len(gote_hand) == 1:
             gote_hand.append("な\nし")
         self.canvas.create_text(
-            W_PAD, H_PAD,
+            w_pad, h_pad,
             text="\n".join(gote_hand),
             font=(font.nametofont("TkDefaultFont"), komadai_text_size),
             anchor="nw"
@@ -219,7 +250,7 @@ class MainWindow:
     
     def next_file(self, event=None):
         current_idx = self.kif_files.index(self.current_file)
-        if current_idx + 1 >= len(self.kif_files):
+        if current_idx+1 >= len(self.kif_files):
             return
         self.current_file = self.kif_files[current_idx + 1]
         self.display_problem()
@@ -227,7 +258,7 @@ class MainWindow:
     
     def prev_file(self, event=None):
         current_idx = self.kif_files.index(self.current_file)
-        if current_idx - 1 < 0:
+        if current_idx-1 < 0:
             return
         self.current_file = self.kif_files[current_idx - 1]
         self.display_problem()
