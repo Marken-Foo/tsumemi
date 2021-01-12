@@ -18,6 +18,8 @@ class BoardCanvas(tk.Canvas):
     KOMADAI_W_IN_SQ = 1.5
     INNER_H_PAD = 30
     
+    is_upside_down = False
+    
     def __init__(self, parent, controller, *args, **kwargs):
         self.controller = controller
         super().__init__(parent, *args, **kwargs)
@@ -35,6 +37,31 @@ class BoardCanvas(tk.Canvas):
         def y_sq(j):
             return h_pad + sq_h * j
         
+        # Note: if is_upside_down, essentially performs a deep copy,
+        # but just "passes by reference" the reader's board if not.
+        if self.is_upside_down:
+            north_hand = reader.board.gote_hand
+            south_hand = reader.board.sente_hand
+            north_board = reader.board.gote[::-1]
+            south_board = reader.board.sente[::-1]
+            for i, row in enumerate(north_board):
+                north_board[i] = row[::-1]
+            for i, row in enumerate(south_board):
+                south_board[i] = row[::-1]
+            north_hand_strings = ["△\n持\n駒\n"]
+            south_hand_strings = ["▲\n持\n駒\n"]
+            row_coords = [" " + kif_parser.KanjiNumber(i).name for i in range(9, 0, -1)]
+            col_coords = [str(i) for i in range(1, 10, 1)]
+        else:
+            north_hand = reader.board.sente_hand
+            south_hand = reader.board.gote_hand
+            north_board = reader.board.sente
+            south_board = reader.board.gote
+            north_hand_strings = ["▲\n持\n駒\n"]
+            south_hand_strings = ["△\n持\n駒\n"]
+            row_coords = [" " + kif_parser.KanjiNumber(i).name for i in range(1, 10, 1)]
+            col_coords = [str(i) for i in range(9, 0, -1)]
+        
         # Draw board
         for i in range(10):
             self.create_line(x_sq(i), y_sq(0), x_sq(i), y_sq(9),
@@ -42,14 +69,14 @@ class BoardCanvas(tk.Canvas):
             self.create_line(x_sq(0), y_sq(i), x_sq(9), y_sq(i),
                                     fill="black", width=2)
         # Draw board pieces
-        for row_num, row in enumerate(reader.board.sente):
+        for row_num, row in enumerate(north_board):
             for col_num, piece in enumerate(row):
                 self.create_text(
                     x_sq(col_num+0.5), y_sq(row_num+0.5),
                     text=str(piece),
                     font=(font.nametofont("TkDefaultFont"), sq_text_size)
                 )
-        for row_num, row in enumerate(reader.board.gote):
+        for row_num, row in enumerate(south_board):
             for col_num, piece in enumerate(row):
                 self.create_text(
                     x_sq(col_num+0.5), y_sq(row_num+0.5),
@@ -58,43 +85,41 @@ class BoardCanvas(tk.Canvas):
                     angle=180
                 )
         # Draw board coordinates
-        for row_num in range(1, 10, 1):
+        for row_num in range(9):
             self.create_text(
-                x_sq(9), y_sq(row_num-1+0.5),
-                text=" " + kif_parser.KanjiNumber(row_num).name,
+                x_sq(9), y_sq(row_num+0.5),
+                text=" " + row_coords[row_num],
                 font=(font.nametofont("TkDefaultFont"), coords_text_size),
                 anchor="w"
             )
-        for col_num in range(9, 0, -1):
+        for col_num in range(9):
             self.create_text(
-                x_sq(9-col_num+0.5), y_sq(0),
-                text=str(col_num),
+                x_sq(col_num+0.5), y_sq(0),
+                text=col_coords[col_num],
                 font=(font.nametofont("TkDefaultFont"), coords_text_size),
                 anchor="s"
             )
         # Draw sente hand pieces
-        sente_hand = ["▲\n持\n駒\n"]
-        c = Counter(reader.board.sente_hand)
+        c = Counter(north_hand)
         for piece in c:
-            sente_hand.append(str(piece) + str(c[piece]))
-        if len(sente_hand) == 1:
-            sente_hand.append("な\nし")
+            north_hand_strings.append(str(piece) + str(c[piece]))
+        if len(north_hand_strings) == 1:
+            north_hand_strings.append("な\nし")
         self.create_text(
             x_sq(9) + komadai_w, y_sq(9),
-            text="\n".join(sente_hand),
+            text="\n".join(north_hand_strings),
             font=(font.nametofont("TkDefaultFont"), komadai_text_size),
             anchor="se"
         )
         # Draw gote hand pieces
-        gote_hand = ["△\n持\n駒\n"]
-        c = Counter(reader.board.gote_hand)
+        c = Counter(south_hand)
         for piece in c:
-            gote_hand.append(str(piece) + str(c[piece]))
-        if len(gote_hand) == 1:
-            gote_hand.append("な\nし")
+            south_hand_strings.append(str(piece) + str(c[piece]))
+        if len(south_hand_strings) == 1:
+            south_hand_strings.append("な\nし")
         self.create_text(
             w_pad, h_pad,
-            text="\n".join(gote_hand),
+            text="\n".join(south_hand_strings),
             font=(font.nametofont("TkDefaultFont"), komadai_text_size),
             anchor="nw"
         )
@@ -208,6 +233,15 @@ class MainWindow:
         ).grid(
             column=2, row=2, sticky="SW"
         )
+        
+        is_upside_down = tk.BooleanVar(value=False)
+        ttk.Checkbutton(
+            self.mainframe, text="Upside-down mode",
+            command=lambda: self.flip_board(is_upside_down.get()),
+            variable=is_upside_down, onvalue=True, offvalue=False
+        ).grid(
+            column=0, row=3
+        )
         # Keyboard shortcuts
         self.master.bind("<Key-h>", self.toggle_solution)
         self.master.bind("<Left>", self.prev_file)
@@ -283,6 +317,12 @@ class MainWindow:
         # Display first problem in folder as well
         self.set_directory(os.path.normpath(filedialog.askdirectory()))
         self.display_problem()
+        return
+    
+    def flip_board(self, is_upside_down):
+        if self.board.is_upside_down != is_upside_down:
+            self.board.is_upside_down = is_upside_down
+            self.board.draw()
         return
     
     @staticmethod
