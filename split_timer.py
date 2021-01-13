@@ -74,19 +74,16 @@ class SplitTimer:
         # Take time in seconds, return tuple of (hours, minutes, seconds).
         return (int(seconds // 3600), int((seconds % 3600) // 60), seconds % 60)
     
+    @staticmethod
+    def _two_digits(num):
+        # Take num, make integer part two chars (clock display), return string
+        if num < 10:
+            return "0" + str(num)
+        else:
+            return str(num)
+    
+    @staticmethod
     def sec_to_str(seconds):
-        # TODO: fix odd wobble if rounding seconds to 2 d.p., and also clean up this if/else mess
-        hms = SplitTimer.sec_to_hms(seconds)
-        if hms[0] < 10:
-            h = "0" + str(hms[0])
-        else:   
-            h = str(hms[0])
-        if hms[1] < 10:
-            m = "0" + str(hms[1])
-        else:
-            m = str(hms[1])
-        if hms[2] < 10:
-            s = "0" + str(round(hms[2], 1))
-        else:
-            s = str(round(hms[2], 1))
-        return ":".join((h, m, s))
+        hms = list(SplitTimer.sec_to_hms(seconds))
+        hms[2] = round(hms[2], 1)
+        return ":".join([SplitTimer._two_digits(i) for i in hms])

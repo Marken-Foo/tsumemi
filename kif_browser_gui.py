@@ -251,7 +251,7 @@ class MainWindow:
             self.mainframe, textvariable=self.str_timer
         )
         self.timer_display.grid(
-            column=0, row=4
+            column=0, row=4, sticky="W"
         )
         self.timer_display.after(40, self.refresh_timer)
         ttk.Button(
@@ -259,6 +259,12 @@ class MainWindow:
             command=self.toggle_timer
         ).grid(
             column=1, row=4
+        )
+        ttk.Button(
+            self.mainframe, text="Reset timer",
+            command=self.reset_timer
+        ).grid(
+            column=2, row=4, sticky="W"
         )
         # Keyboard shortcuts
         self.master.bind("<Key-h>", self.toggle_solution)
@@ -348,6 +354,12 @@ class MainWindow:
             self.timer.stop()
         else:
             self.timer.start()
+        return
+    
+    def reset_timer(self):
+        self.timer.stop()
+        self.timer.reset()
+        self.refresh_timer()
         return
     
     def refresh_timer(self):
