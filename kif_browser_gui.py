@@ -8,6 +8,25 @@ import kif_parser
 from board_canvas import BoardCanvas
 from split_timer import SplitTimer
 
+class Menubar(tk.Menu):
+    controller = None
+    
+    def __init__(self, parent, controller, *args, **kwargs):
+        self.controller = controller
+        super().__init__(parent, *args, **kwargs)
+        
+        menu_file = tk.Menu(self)
+        self.add_cascade(menu=menu_file, label="File")
+        menu_file.add_command(label="Open folder...", command=self.controller.open_folder,
+                              accelerator="Ctrl+O", underline=0)
+        parent["menu"] = self
+        
+        menu_help = tk.Menu(self)
+        self.add_cascade(menu=menu_help, label="Help")
+        #menu_help.add_command(label="Help", command=None)
+        menu_help.add_command(label="About kif-browser", command=lambda: messagebox.showinfo(title="About kif-browser", message="Written in Python 3 for the shogi community. KIF files sold separately."))
+        return
+
 
 class MainWindow:
     '''Class encapsulating the window to display the kif.'''
@@ -38,22 +57,11 @@ class MainWindow:
         self.mainframe.rowconfigure(0, weight=1)
         
         # Make menubar
-        menubar = tk.Menu(self.master)
-        menu_file = tk.Menu(menubar)
-        menubar.add_cascade(menu=menu_file, label="File")
-        menu_file.add_command(label="Open folder...", command=self.open_folder,
-                              accelerator="Ctrl+O", underline=0)
-        self.master["menu"] = menubar
-        
-        menu_help = tk.Menu(menubar)
-        menubar.add_cascade(menu=menu_help, label="Help")
-        
-        #menu_help.add_command(label="Help", command=None)
-        menu_help.add_command(label="About kif-browser", command=lambda: messagebox.showinfo(title="About kif-browser", message="Written in Python 3 for the shogi community. KIF files sold separately."))
+        self.menubar = Menubar(parent=self.master, controller=self)
         
         # Make canvas for board
-        self.boardWrapper = tk.Frame(self.mainframe)
-        self.boardWrapper.grid(column=0, row=0, columnspan=3, sticky="NSEW")
+        self.boardWrapper = ttk.Frame(self.mainframe)
+        self.boardWrapper.grid(column=0, row=0, sticky="NSEW")
         self.boardWrapper.columnconfigure(0, weight=1)
         self.boardWrapper.rowconfigure(0, weight=1)
         
@@ -70,55 +78,74 @@ class MainWindow:
         ttk.Label(
             self.mainframe, textvariable=self.solution
         ).grid(
-            column=0, row=1, columnspan=3, sticky="W"
+            column=0, row=1, sticky="W"
         )
-        # Make buttons to navigate and show/hide solution
+        # Make buttons to navigate, show/hide solution, upside-down mode
+        self.nav_controls = ttk.Frame(self.mainframe)
+        self.nav_controls.grid(column=0, row=2)
         ttk.Button(
-            self.mainframe, text="< Prev", command=self.prev_file
+            self.nav_controls, text="< Prev", command=self.prev_file
         ).grid(
-            column=0, row=2, sticky="ES"
+            column=0, row=0, sticky="E"
         )
         self.btn_show_hide = ttk.Button(
-            self.mainframe, text="Show/hide solution", command=self.toggle_solution
+            self.nav_controls, text="Show/hide solution", command=self.toggle_solution
         ).grid(
-            column=1, row=2, sticky="S"
+            column=1, row=0, sticky="S"
         )
         ttk.Button(
-            self.mainframe, text="Next >", command=self.next_file
+            self.nav_controls, text="Next >", command=self.next_file
         ).grid(
-            column=2, row=2, sticky="SW"
+            column=2, row=0, sticky="W"
         )
-        # Upside-down mode
         is_upside_down = tk.BooleanVar(value=False)
         ttk.Checkbutton(
-            self.mainframe, text="Upside-down mode",
+            self.nav_controls, text="Upside-down mode",
             command=lambda: self.flip_board(is_upside_down.get()),
             variable=is_upside_down, onvalue=True, offvalue=False
         ).grid(
-            column=0, row=3
+            column=0, row=1, columnspan=3
         )
         # Basic timer
+        self.timer_controls = ttk.Frame(self.mainframe)
+        self.timer_controls.grid(column=1, row=1)
+        self.timer_controls.columnconfigure(0, weight=0)
+        self.timer_controls.rowconfigure(0, weight=0)
+        
         self.timer = SplitTimer()
         self.str_timer = tk.StringVar(value="00:00:00")
         self.timer_display = ttk.Label(
-            self.mainframe, textvariable=self.str_timer
+            self.timer_controls, textvariable=self.str_timer
         )
         self.timer_display.grid(
-            column=0, row=4, sticky="W"
+            column=0, row=0, columnspan=3
         )
-        self.timer_display.after(40, self.refresh_timer)
         ttk.Button(
-            self.mainframe, text="Start/stop timer",
+            self.timer_controls, text="Start/stop timer",
             command=self.toggle_timer
         ).grid(
-            column=1, row=4
+            column=0, row=1
         )
         ttk.Button(
-            self.mainframe, text="Reset timer",
+            self.timer_controls, text="Reset timer",
             command=self.reset_timer
         ).grid(
-            column=2, row=4, sticky="W"
+            column=1, row=1
         )
+        ttk.Button(
+            self.timer_controls, text="Split",
+            command=self.split_timer()
+        ).grid(
+            column=2, row=1
+        )
+        
+        # Problem list
+        self.problem_tree = ttk.Treeview(self.mainframe, columns=("filename", "time"), show="headings")
+        self.problem_tree.column("filename")
+        self.problem_tree.heading("filename", text="Problem")
+        self.problem_tree.heading("time", text="Time")
+        self.problem_tree.grid(column=1, row=0)
+        
         # Keyboard shortcuts
         self.master.bind("<Key-h>", self.toggle_solution)
         self.master.bind("<Left>", self.prev_file)
@@ -128,7 +155,8 @@ class MainWindow:
         
         for child in self.mainframe.winfo_children():
             child.grid_configure(padx=5, pady=5)
-        
+        for child in self.nav_controls.winfo_children():
+            child.grid_configure(padx=5, pady=5)
         return
         
     def display_problem(self):
@@ -191,8 +219,12 @@ class MainWindow:
         return
     
     def open_folder(self, event=None):
-        # Display first problem in folder as well
-        self.set_directory(os.path.normpath(filedialog.askdirectory()))
+        directory = filedialog.askdirectory()
+        if directory == "":
+            return
+        self.set_directory(os.path.normpath(directory))
+        for file_num, filename in enumerate(self.kif_files):
+            self.problem_tree.insert("", "end", values=(os.path.basename(filename), "-"))
         self.display_problem()
         return
     
@@ -207,17 +239,24 @@ class MainWindow:
             self.timer.stop()
         else:
             self.timer.start()
+            self.refresh_timer()
         return
     
     def reset_timer(self):
         self.timer.stop()
         self.timer.reset()
-        self.refresh_timer()
+        return
+    
+    def split_timer(self):
+        self.timer.split()
         return
     
     def refresh_timer(self):
+        # Maybe I can encapsulate this one in a timer display class, to only run
+        # while the timer is therefore running. Else it stops.
         self.str_timer.set(SplitTimer.sec_to_str(self.timer.read()))
-        self.timer_display.after(40, self.refresh_timer)
+        if self.timer.is_running:
+            self.timer_display.after(40, self.refresh_timer)
         return
     
     @staticmethod
