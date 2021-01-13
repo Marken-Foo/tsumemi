@@ -1,0 +1,154 @@
+import tkinter as tk
+
+from collections import Counter
+from tkinter import font
+
+import kif_parser
+
+class BoardCanvas(tk.Canvas):
+    '''Class encapsulating the canvas where the board is drawn.'''
+    # Default/current canvas size for board
+    canvas_width = 570
+    canvas_height = 460
+    
+    # Constant proportions
+    SQ_ASPECT_RATIO = 11 / 12
+    KOMADAI_W_IN_SQ = 1.5
+    INNER_H_PAD = 30
+    
+    is_upside_down = False
+    
+    def __init__(self, parent, controller, *args, **kwargs):
+        self.controller = controller
+        super().__init__(parent, *args, **kwargs)
+        return
+    
+    def draw(self):
+        reader = self.controller.kif_reader
+        # Clear board first - could also keep board and just redraw pieces
+        self.delete("all")
+        
+        (sq_w, sq_h, komadai_w, w_pad, h_pad, sq_text_size,
+         komadai_text_size, coords_text_size) = self.calculate_sizes()
+        def x_sq(i):
+            return w_pad + komadai_w + sq_w * i
+        def y_sq(j):
+            return h_pad + sq_h * j
+        
+        # Note: if is_upside_down, essentially performs a deep copy,
+        # but just "passes by reference" the reader's board if not.
+        if self.is_upside_down:
+            north_hand = reader.board.gote_hand
+            south_hand = reader.board.sente_hand
+            north_board = reader.board.gote[::-1]
+            south_board = reader.board.sente[::-1]
+            for i, row in enumerate(north_board):
+                north_board[i] = row[::-1]
+            for i, row in enumerate(south_board):
+                south_board[i] = row[::-1]
+            north_hand_strings = ["△\n持\n駒\n"]
+            south_hand_strings = ["▲\n持\n駒\n"]
+            row_coords = [" " + kif_parser.KanjiNumber(i).name
+                          for i in range(9, 0, -1)]
+            col_coords = [str(i) for i in range(1, 10, 1)]
+        else:
+            north_hand = reader.board.sente_hand
+            south_hand = reader.board.gote_hand
+            north_board = reader.board.sente
+            south_board = reader.board.gote
+            north_hand_strings = ["▲\n持\n駒\n"]
+            south_hand_strings = ["△\n持\n駒\n"]
+            row_coords = [" " + kif_parser.KanjiNumber(i).name
+                          for i in range(1, 10, 1)]
+            col_coords = [str(i) for i in range(9, 0, -1)]
+        
+        # Draw board
+        for i in range(10):
+            self.create_line(x_sq(i), y_sq(0), x_sq(i), y_sq(9),
+                                    fill="black", width=2)
+            self.create_line(x_sq(0), y_sq(i), x_sq(9), y_sq(i),
+                                    fill="black", width=2)
+        # Draw board pieces
+        for row_num, row in enumerate(north_board):
+            for col_num, piece in enumerate(row):
+                self.create_text(
+                    x_sq(col_num+0.5), y_sq(row_num+0.5),
+                    text=str(piece),
+                    font=(font.nametofont("TkDefaultFont"), sq_text_size)
+                )
+        for row_num, row in enumerate(south_board):
+            for col_num, piece in enumerate(row):
+                self.create_text(
+                    x_sq(col_num+0.5), y_sq(row_num+0.5),
+                    text=str(piece),
+                    font=(font.nametofont("TkDefaultFont"), sq_text_size),
+                    angle=180
+                )
+        # Draw board coordinates
+        for row_num in range(9):
+            self.create_text(
+                x_sq(9), y_sq(row_num+0.5),
+                text=" " + row_coords[row_num],
+                font=(font.nametofont("TkDefaultFont"), coords_text_size),
+                anchor="w"
+            )
+        for col_num in range(9):
+            self.create_text(
+                x_sq(col_num+0.5), y_sq(0),
+                text=col_coords[col_num],
+                font=(font.nametofont("TkDefaultFont"), coords_text_size),
+                anchor="s"
+            )
+        # Draw sente hand pieces
+        c = Counter(north_hand)
+        for piece in c:
+            north_hand_strings.append(str(piece) + str(c[piece]))
+        if len(north_hand_strings) == 1:
+            north_hand_strings.append("な\nし")
+        self.create_text(
+            x_sq(9) + komadai_w, y_sq(9),
+            text="\n".join(north_hand_strings),
+            font=(font.nametofont("TkDefaultFont"), komadai_text_size),
+            anchor="se"
+        )
+        # Draw gote hand pieces
+        c = Counter(south_hand)
+        for piece in c:
+            south_hand_strings.append(str(piece) + str(c[piece]))
+        if len(south_hand_strings) == 1:
+            south_hand_strings.append("な\nし")
+        self.create_text(
+            w_pad, h_pad,
+            text="\n".join(south_hand_strings),
+            font=(font.nametofont("TkDefaultFont"), komadai_text_size),
+            anchor="nw"
+        )
+        return
+    
+    def on_resize(self, event):
+        self.canvas_width = event.width
+        self.canvas_height = event.height
+        # Redraw board after setting new dimensions
+        self.draw()
+        return
+    
+    def calculate_sizes(self):
+        # Geometry: 9x9 shogi board, flanked by komadai area on either side
+        max_sq_w = self.canvas_width / (9 + 2*self.KOMADAI_W_IN_SQ)
+        max_sq_h = (self.canvas_height - 2*self.INNER_H_PAD) / 9
+        # Determine whether the width or the height is the limiting factor
+        sq_w = min(max_sq_w, max_sq_h*self.SQ_ASPECT_RATIO)
+        # Propagate other measurements
+        sq_h = sq_w / self.SQ_ASPECT_RATIO
+        komadai_w = sq_w * self.KOMADAI_W_IN_SQ
+        if sq_w == max_sq_w:
+            w_pad = 0
+            h_pad = self.INNER_H_PAD + (self.canvas_height - 9*sq_h) / 2
+        else:
+            w_pad = (self.canvas_width - 2*komadai_w - 9*sq_w) / 2
+            h_pad = self.INNER_H_PAD
+        sq_text_size = int(sq_w / 2)
+        komadai_text_size = int(sq_w * 2/5)
+        coords_text_size = int(sq_w * 2/9)
+        return (sq_w, sq_h, komadai_w, w_pad, h_pad,
+                sq_text_size, komadai_text_size, coords_text_size)
