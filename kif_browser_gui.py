@@ -76,7 +76,8 @@ class MainWindow:
         # Initialise solution text
         self.solution = tk.StringVar(value="Open a folder of problems to display.")
         ttk.Label(
-            self.mainframe, textvariable=self.solution
+            self.mainframe, textvariable=self.solution,
+            justify="left", wraplength=self.board.canvas_width
         ).grid(
             column=0, row=1, sticky="W"
         )
