@@ -16,14 +16,24 @@ class Menubar(tk.Menu):
         
         menu_file = tk.Menu(self)
         self.add_cascade(menu=menu_file, label="File")
-        menu_file.add_command(label="Open folder...", command=self.controller.open_folder,
-                              accelerator="Ctrl+O", underline=0)
+        menu_file.add_command(
+            label="Open folder...",
+            command=self.controller.open_folder,
+            accelerator="Ctrl+O",
+            underline=0
+        )
         parent["menu"] = self
         
         menu_help = tk.Menu(self)
         self.add_cascade(menu=menu_help, label="Help")
         #menu_help.add_command(label="Help", command=None)
-        menu_help.add_command(label="About kif-browser", command=lambda: messagebox.showinfo(title="About kif-browser", message="Written in Python 3 for the shogi community. KIF files sold separately."))
+        menu_help.add_command(
+            label="About kif-browser",
+            command=lambda: messagebox.showinfo(
+                title="About kif-browser",
+                message="Written in Python 3 for the shogi community. KIF files sold separately."
+            )
+        )
         return
 
 
@@ -112,6 +122,29 @@ class TimerModule(ttk.Frame):
         return
 
 
+class ProblemListView(ttk.Frame):
+    def __init__(self, parent, controller, *args, **kwargs):
+        self.controller = controller
+        super().__init__(parent, *args, **kwargs)
+        
+        # Display problem list as Treeview
+        self.tree = ttk.Treeview(
+            self, columns=("filename", "time"), show="headings"
+        )
+        self.tree.column("filename")
+        self.tree.heading("filename", text="Problem")
+        self.tree.heading("time", text="Time")
+        self.tree.grid(column=0, row=0, sticky="NSEW")
+        
+        # Make scrollbar
+        self.scrollbar_tree = ttk.Scrollbar(
+            self, orient=tk.VERTICAL,
+            command=self.tree.yview
+        )
+        self.scrollbar_tree.grid(column=1, row=0, sticky="NS")
+        self.tree["yscrollcommand"] = self.scrollbar_tree.set
+
+
 class MainWindow:
     '''Class encapsulating the window to display the kif.'''
     # Reference to tk.Tk() root object
@@ -178,11 +211,8 @@ class MainWindow:
         self.timer_controls.rowconfigure(0, weight=0)
         
         # Problem list
-        self.problem_tree = ttk.Treeview(self.mainframe, columns=("filename", "time"), show="headings")
-        self.problem_tree.column("filename")
-        self.problem_tree.heading("filename", text="Problem")
-        self.problem_tree.heading("time", text="Time")
-        self.problem_tree.grid(column=1, row=0)
+        self.problem_list_view = ProblemListView(parent=self.mainframe, controller=self)
+        self.problem_list_view.grid(column=1, row=0)
         
         # Keyboard shortcuts
         self.master.bind("<Key-h>", self.toggle_solution)
@@ -263,7 +293,9 @@ class MainWindow:
             return
         self.set_directory(os.path.normpath(directory))
         for file_num, filename in enumerate(self.kif_files):
-            self.problem_tree.insert("", "end", values=(os.path.basename(filename), "-"))
+            self.problem_list_view.tree.insert(
+                "", "end", values=(os.path.basename(filename), "-")
+            )
         self.display_problem()
         return
     
@@ -275,11 +307,14 @@ class MainWindow:
         # what am I doing? OK kind of works but many logic issues. NEEDS WORK
         # what if last file in list? what if manually out of order?
         self.timer_controls.timer.split()
-        if self.current_file is not None:
+        if self.current_file is not None and len(self.timer_controls.timer.lap_times) != 0:
             curr_idx = self.kif_files.index(self.current_file)
-            curr_prob = self.problem_tree.get_children()[curr_idx]
             self.lap_times[curr_idx] = self.timer_controls.timer.lap_times[-1]
-            self.problem_tree.set(curr_prob, column="time", value=SplitTimer.sec_to_str(self.lap_times[curr_idx]))
+            curr_prob_item = self.problem_list_view.tree.get_children()[curr_idx]
+            self.problem_list_view.tree.set(
+                curr_prob_item, column="time",
+                value=SplitTimer.sec_to_str(self.lap_times[curr_idx])
+            )
             self.next_file()
         return
     
