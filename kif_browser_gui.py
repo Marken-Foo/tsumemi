@@ -28,6 +28,38 @@ class Menubar(tk.Menu):
         return
 
 
+class NavControls(ttk.Frame):
+    controller = None
+    
+    def __init__(self, parent, controller, *args, **kwargs):
+        self.controller = controller
+        super().__init__(parent, *args, **kwargs)
+        # Make buttons to navigate, show/hide solution, upside-down mode
+        ttk.Button(
+            self, text="< Prev", command=self.controller.prev_file
+        ).grid(
+            column=0, row=0, sticky="E"
+        )
+        self.btn_show_hide = ttk.Button(
+            self, text="Show/hide solution", command=self.controller.toggle_solution
+        ).grid(
+            column=1, row=0, sticky="S"
+        )
+        ttk.Button(
+            self, text="Next >", command=self.controller.next_file
+        ).grid(
+            column=2, row=0, sticky="W"
+        )
+        is_upside_down = tk.BooleanVar(value=False)
+        ttk.Checkbutton(
+            self, text="Upside-down mode",
+            command=lambda: self.controller.flip_board(is_upside_down.get()),
+            variable=is_upside_down, onvalue=True, offvalue=False
+        ).grid(
+            column=0, row=1, columnspan=3
+        )
+
+
 class MainWindow:
     '''Class encapsulating the window to display the kif.'''
     # Reference to tk.Tk() root object
@@ -35,6 +67,7 @@ class MainWindow:
     # Member variables that deal with the file system
     directory = None
     kif_files = []
+    lap_times = []
     current_file = None
     # Other member variables
     kif_reader = kif_parser.TsumeKifReader()
@@ -81,32 +114,11 @@ class MainWindow:
         ).grid(
             column=0, row=1, sticky="W"
         )
+        
         # Make buttons to navigate, show/hide solution, upside-down mode
-        self.nav_controls = ttk.Frame(self.mainframe)
+        self.nav_controls = NavControls(parent=self.mainframe, controller=self)
         self.nav_controls.grid(column=0, row=2)
-        ttk.Button(
-            self.nav_controls, text="< Prev", command=self.prev_file
-        ).grid(
-            column=0, row=0, sticky="E"
-        )
-        self.btn_show_hide = ttk.Button(
-            self.nav_controls, text="Show/hide solution", command=self.toggle_solution
-        ).grid(
-            column=1, row=0, sticky="S"
-        )
-        ttk.Button(
-            self.nav_controls, text="Next >", command=self.next_file
-        ).grid(
-            column=2, row=0, sticky="W"
-        )
-        is_upside_down = tk.BooleanVar(value=False)
-        ttk.Checkbutton(
-            self.nav_controls, text="Upside-down mode",
-            command=lambda: self.flip_board(is_upside_down.get()),
-            variable=is_upside_down, onvalue=True, offvalue=False
-        ).grid(
-            column=0, row=1, columnspan=3
-        )
+        
         # Basic timer
         self.timer_controls = ttk.Frame(self.mainframe)
         self.timer_controls.grid(column=1, row=1)
@@ -135,7 +147,7 @@ class MainWindow:
         )
         ttk.Button(
             self.timer_controls, text="Split",
-            command=self.split_timer()
+            command=self.split_timer
         ).grid(
             column=2, row=1
         )
@@ -192,7 +204,7 @@ class MainWindow:
         return
     
     def set_directory(self, directory):
-        # Update filesystem-related variables. Kif reader not updated.
+        # Update internal variables. Kif reader not updated.
         self.directory = directory
         self.kif_files = [
             os.path.join(self.directory, filename)
@@ -201,6 +213,7 @@ class MainWindow:
         ]
         MainWindow.natural_sort(self.kif_files)
         self.current_file = self.kif_files[0]
+        self.lap_times = [0] * len(self.kif_files)
         return
     
     def next_file(self, event=None):
@@ -249,7 +262,14 @@ class MainWindow:
         return
     
     def split_timer(self):
+        # what am I doing? OK kind of works but many logic issues
         self.timer.split()
+        if self.current_file is not None:
+            curr_idx = self.kif_files.index(self.current_file)
+            curr_prob = self.problem_tree.get_children()[curr_idx]
+            self.lap_times[curr_idx] = self.timer.lap_times[-1]
+            self.problem_tree.set(curr_prob, column="time", value=SplitTimer.sec_to_str(self.lap_times[curr_idx]))
+            self.next_file()
         return
     
     def refresh_timer(self):
