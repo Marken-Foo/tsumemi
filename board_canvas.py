@@ -152,3 +152,9 @@ class BoardCanvas(tk.Canvas):
         coords_text_size = int(sq_w * 2/9)
         return (sq_w, sq_h, komadai_w, w_pad, h_pad,
                 sq_text_size, komadai_text_size, coords_text_size)
+    
+    def flip_board(self, want_upside_down):
+        if self.is_upside_down != want_upside_down:
+            self.is_upside_down = want_upside_down
+            self.draw()
+        return

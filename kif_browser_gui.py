@@ -8,9 +8,8 @@ import kif_parser
 from board_canvas import BoardCanvas
 from split_timer import SplitTimer
 
+
 class Menubar(tk.Menu):
-    controller = None
-    
     def __init__(self, parent, controller, *args, **kwargs):
         self.controller = controller
         super().__init__(parent, *args, **kwargs)
@@ -29,8 +28,6 @@ class Menubar(tk.Menu):
 
 
 class NavControls(ttk.Frame):
-    controller = None
-    
     def __init__(self, parent, controller, *args, **kwargs):
         self.controller = controller
         super().__init__(parent, *args, **kwargs)
@@ -50,14 +47,69 @@ class NavControls(ttk.Frame):
         ).grid(
             column=2, row=0, sticky="W"
         )
-        is_upside_down = tk.BooleanVar(value=False)
+        want_upside_down = tk.BooleanVar(value=False)
         ttk.Checkbutton(
             self, text="Upside-down mode",
-            command=lambda: self.controller.flip_board(is_upside_down.get()),
-            variable=is_upside_down, onvalue=True, offvalue=False
+            command=lambda: self.controller.flip_board(want_upside_down.get()),
+            variable=want_upside_down, onvalue=True, offvalue=False
         ).grid(
             column=0, row=1, columnspan=3
         )
+
+
+class TimerModule(ttk.Frame):
+    def __init__(self, parent, controller, *args, **kwargs):
+        self.controller = controller
+        super().__init__(parent, *args, **kwargs)
+        self.timer = SplitTimer()
+        
+        # Basic timer
+        self.timer = SplitTimer()
+        self.timer_display_str = tk.StringVar(value="00:00:00")
+        self.timer_display = ttk.Label(
+            self, textvariable=self.timer_display_str
+        )
+        self.timer_display.grid(
+            column=0, row=0, columnspan=3
+        )
+        ttk.Button(
+            self, text="Start/stop timer",
+            command=self.toggle_timer
+        ).grid(
+            column=0, row=1
+        )
+        ttk.Button(
+            self, text="Reset timer",
+            command=self.reset_timer
+        ).grid(
+            column=1, row=1
+        )
+        ttk.Button(
+            self, text="Split",
+            command=self.controller.split_timer
+        ).grid(
+            column=2, row=1
+        )
+    
+    def toggle_timer(self):
+        if self.timer.is_running:
+            self.timer.stop()
+        else:
+            self.timer.start()
+            self.refresh_timer()
+        return
+    
+    def reset_timer(self):
+        self.timer.stop()
+        self.timer.reset()
+        self.refresh_timer()
+        return
+    
+    def refresh_timer(self):
+        self.timer_display_str.set(SplitTimer.sec_to_str(self.timer.read()))
+        if self.timer.is_running:
+            self.timer_display.after(40, self.refresh_timer)
+        return
 
 
 class MainWindow:
@@ -119,38 +171,11 @@ class MainWindow:
         self.nav_controls = NavControls(parent=self.mainframe, controller=self)
         self.nav_controls.grid(column=0, row=2)
         
-        # Basic timer
-        self.timer_controls = ttk.Frame(self.mainframe)
+        # Timer controls and display
+        self.timer_controls = TimerModule(parent=self.mainframe, controller=self)
         self.timer_controls.grid(column=1, row=1)
         self.timer_controls.columnconfigure(0, weight=0)
         self.timer_controls.rowconfigure(0, weight=0)
-        
-        self.timer = SplitTimer()
-        self.str_timer = tk.StringVar(value="00:00:00")
-        self.timer_display = ttk.Label(
-            self.timer_controls, textvariable=self.str_timer
-        )
-        self.timer_display.grid(
-            column=0, row=0, columnspan=3
-        )
-        ttk.Button(
-            self.timer_controls, text="Start/stop timer",
-            command=self.toggle_timer
-        ).grid(
-            column=0, row=1
-        )
-        ttk.Button(
-            self.timer_controls, text="Reset timer",
-            command=self.reset_timer
-        ).grid(
-            column=1, row=1
-        )
-        ttk.Button(
-            self.timer_controls, text="Split",
-            command=self.split_timer
-        ).grid(
-            column=2, row=1
-        )
         
         # Problem list
         self.problem_tree = ttk.Treeview(self.mainframe, columns=("filename", "time"), show="headings")
@@ -225,10 +250,10 @@ class MainWindow:
         return
     
     def prev_file(self, event=None):
-        current_idx = self.kif_files.index(self.current_file)
-        if current_idx-1 < 0:
+        curr_idx = self.kif_files.index(self.current_file)
+        if curr_idx-1 < 0:
             return
-        self.current_file = self.kif_files[current_idx - 1]
+        self.current_file = self.kif_files[curr_idx - 1]
         self.display_problem()
         return
     
@@ -242,42 +267,20 @@ class MainWindow:
         self.display_problem()
         return
     
-    def flip_board(self, is_upside_down):
-        if self.board.is_upside_down != is_upside_down:
-            self.board.is_upside_down = is_upside_down
-            self.board.draw()
-        return
-    
-    def toggle_timer(self):
-        if self.timer.is_running:
-            self.timer.stop()
-        else:
-            self.timer.start()
-            self.refresh_timer()
-        return
-    
-    def reset_timer(self):
-        self.timer.stop()
-        self.timer.reset()
+    def flip_board(self, want_upside_down):
+        self.board.flip_board(want_upside_down)
         return
     
     def split_timer(self):
-        # what am I doing? OK kind of works but many logic issues
-        self.timer.split()
+        # what am I doing? OK kind of works but many logic issues. NEEDS WORK
+        # what if last file in list? what if manually out of order?
+        self.timer_controls.timer.split()
         if self.current_file is not None:
             curr_idx = self.kif_files.index(self.current_file)
             curr_prob = self.problem_tree.get_children()[curr_idx]
-            self.lap_times[curr_idx] = self.timer.lap_times[-1]
+            self.lap_times[curr_idx] = self.timer_controls.timer.lap_times[-1]
             self.problem_tree.set(curr_prob, column="time", value=SplitTimer.sec_to_str(self.lap_times[curr_idx]))
             self.next_file()
-        return
-    
-    def refresh_timer(self):
-        # Maybe I can encapsulate this one in a timer display class, to only run
-        # while the timer is therefore running. Else it stops.
-        self.str_timer.set(SplitTimer.sec_to_str(self.timer.read()))
-        if self.timer.is_running:
-            self.timer_display.after(40, self.refresh_timer)
         return
     
     @staticmethod

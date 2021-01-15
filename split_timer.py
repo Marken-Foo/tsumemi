@@ -12,14 +12,14 @@ class SplitTimer:
     I have 4 splits (those four), and 4 lap times (each lap is 30 seconds).
     The logic for this class is vaguely "state-based", if that helps.
     '''
-    is_running = False
-    lap_times = []
-    # Elapsed (active) time since the start of this lap
-    curr_lap_time = 0
-    # Time at instant of last start() or split()
-    start_time = None
     
     def __init__(self):
+        self.is_running = False
+        self.lap_times = []
+        # Elapsed (active) time since the start of this lap
+        self.curr_lap_time = 0
+        # Time at instant of last start() or split()
+        self.start_time = None
         return
     
     def start(self):
