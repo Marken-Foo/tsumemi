@@ -2,6 +2,7 @@ import os
 import re
 import tkinter as tk
 
+from enum import Enum
 from tkinter import filedialog, messagebox, ttk
 
 import kif_parser
@@ -38,34 +39,42 @@ class Menubar(tk.Menu):
 
 
 class NavControls(ttk.Frame):
+    #TODO: Refactoring class to enable subclassing to build different layouts for NavControl frame, accomodating different modes (planned: regular "free" browsing mode, and speedrun mode)
     def __init__(self, parent, controller, *args, **kwargs):
         self.controller = controller
         super().__init__(parent, *args, **kwargs)
         # Make buttons to navigate, show/hide solution, upside-down mode
-        ttk.Button(
-            self, text="< Prev", command=self.controller.prev_file
-        ).grid(
-            column=0, row=0, sticky="E"
+        btn_prev = self._add_btn_prev()
+        btn_prev.grid(column=0, row=0, sticky="E")
+        btn_toggle_solution = self._add_btn_toggle_solution()
+        btn_toggle_solution.grid(column=1, row=0, sticky="S")
+        btn_next = self._add_btn_next()
+        btn_next.grid(column=2, row=0, sticky="W")
+        chk_upside_down = self._add_chk_upside_down()
+        chk_upside_down.grid(column=0, row=1, columnspan=3)
+     
+    def _add_btn_prev(self, text="< Prev"):
+        return ttk.Button(self, text=text, command=self.controller.prev_file)
+    
+    def _add_btn_next(self, text="Next >"):
+        return ttk.Button(self, text=text, command=self.controller.next_file)
+    
+    def _add_btn_toggle_solution(self, text="Show/hide solution"):
+        return ttk.Button(
+            self, text=text, command=self.controller.toggle_solution
         )
-        self.btn_show_hide = ttk.Button(
-            self, text="Show/hide solution", command=self.controller.toggle_solution
-        ).grid(
-            column=1, row=0, sticky="S"
-        )
-        ttk.Button(
-            self, text="Next >", command=self.controller.next_file
-        ).grid(
-            column=2, row=0, sticky="W"
-        )
+    
+    def _add_btn_skip(self, text="Skip"):
+        return ttk.Button(self, text=text, command=self.controller.skip)
+    
+    def _add_chk_upside_down(self, text="Upside-down mode"):
         want_upside_down = tk.BooleanVar(value=False)
-        ttk.Checkbutton(
+        return ttk.Checkbutton(
             self, text="Upside-down mode",
             command=lambda: self.controller.flip_board(want_upside_down.get()),
             variable=want_upside_down, onvalue=True, offvalue=False
-        ).grid(
-            column=0, row=1, columnspan=3
         )
-
+    
 
 class TimerModule(ttk.Frame):
     def __init__(self, parent, controller, *args, **kwargs):
@@ -101,12 +110,20 @@ class TimerModule(ttk.Frame):
             column=2, row=1
         )
     
+    def start_timer(self):
+        self.timer.start()
+        self.refresh_timer()
+        return
+        
+    def stop_timer(self):
+        self.timer.stop()
+        return
+    
     def toggle_timer(self):
         if self.timer.is_running:
-            self.timer.stop()
+            self.stop_timer()
         else:
-            self.timer.start()
-            self.refresh_timer()
+            self.start_timer()
         return
     
     def reset_timer(self):
@@ -128,21 +145,40 @@ class ProblemListView(ttk.Frame):
         super().__init__(parent, *args, **kwargs)
         
         # Display problem list as Treeview
-        self.tree = ttk.Treeview(
+        self.tvw = ttk.Treeview(
             self, columns=("filename", "time"), show="headings"
         )
-        self.tree.column("filename")
-        self.tree.heading("filename", text="Problem")
-        self.tree.heading("time", text="Time")
-        self.tree.grid(column=0, row=0, sticky="NSEW")
+        self.tvw.column("filename")
+        self.tvw.heading("filename", text="Problem")
+        self.tvw.heading("time", text="Time")
+        self.tvw.grid(column=0, row=0, sticky="NSEW")
         
         # Make scrollbar
-        self.scrollbar_tree = ttk.Scrollbar(
+        self.scrollbar_tvw = ttk.Scrollbar(
             self, orient=tk.VERTICAL,
-            command=self.tree.yview
+            command=self.tvw.yview
         )
-        self.scrollbar_tree.grid(column=1, row=0, sticky="NS")
-        self.tree["yscrollcommand"] = self.scrollbar_tree.set
+        self.scrollbar_tvw.grid(column=1, row=0, sticky="NS")
+        self.tvw["yscrollcommand"] = self.scrollbar_tvw.set
+    
+    def set_time(self, idx, time_str):
+        # Set time column for item at given index
+        item = self.tvw.get_children()[idx]
+        self.tvw.set(item, column="time", value=time_str)
+        return
+
+
+class ProblemStatus(Enum):
+    NONE = 0; CORRECT = 1; WRONG = 2
+
+
+class Problem:
+    '''Data class representing one tsume problem.'''
+    def __init__(self, filename):
+        self.filename = filename
+        self.time = None
+        self.status = ProblemStatus.NONE
+        return
 
 
 class MainWindow:
@@ -153,12 +189,14 @@ class MainWindow:
     directory = None
     kif_files = []
     lap_times = []
+    #TODO: remove kif_files and lap_times and replace with problems[]
+    problems = []
     current_file = None
     # Other member variables
     kif_reader = kif_parser.TsumeKifReader()
     is_solution_shown = False
     
-    # eventually, refactor menu labels and dialog out into a consant namespace
+    # eventually, refactor menu labels and dialog out into a constant namespace
     def __init__(self, master):
         # tkinter stuff, set up the main window
         self.master = master
@@ -293,7 +331,7 @@ class MainWindow:
             return
         self.set_directory(os.path.normpath(directory))
         for file_num, filename in enumerate(self.kif_files):
-            self.problem_list_view.tree.insert(
+            self.problem_list_view.tvw.insert(
                 "", "end", values=(os.path.basename(filename), "-")
             )
         self.display_problem()
@@ -306,16 +344,41 @@ class MainWindow:
     def split_timer(self):
         # what am I doing? OK kind of works but many logic issues. NEEDS WORK
         # what if last file in list? what if manually out of order?
+        # also should refactor self.next_file() out of this. One function, one task.
         self.timer_controls.timer.split()
         if self.current_file is not None and len(self.timer_controls.timer.lap_times) != 0:
             curr_idx = self.kif_files.index(self.current_file)
             self.lap_times[curr_idx] = self.timer_controls.timer.lap_times[-1]
-            curr_prob_item = self.problem_list_view.tree.get_children()[curr_idx]
-            self.problem_list_view.tree.set(
-                curr_prob_item, column="time",
-                value=SplitTimer.sec_to_str(self.lap_times[curr_idx])
-            )
+            time_str = SplitTimer.sec_to_str(self.lap_times[curr_idx])
+            self.problem_list_view.set_time(curr_idx, time_str)
             self.next_file()
+        return
+    
+    # Speedrun mode commands
+    def abort(self):
+        # Abort speedrun, go back to free browsing
+        return
+    
+    def skip(self):
+        # split, mark current problem as wrong/skipped, and go next.
+        self.split_timer()
+        return
+    
+    def view_solution(self):
+        # show solution, pause timer, change NavControl
+        self.timer_controls.stop_timer()
+        return
+    
+    def mark_correct(self):
+        # mark correct, unpause timer, go to next problem, change NavControl
+        self.next_file()
+        self.timer_controls.start_timer()
+        return
+    
+    def mark_wrong(self):
+        # mark wrong, unpause timer, go next, change NavControl
+        self.next_file()
+        self.timer_controls.start_timer()
         return
     
     @staticmethod
