@@ -12,7 +12,7 @@ This little bit of Python aims to let shogi players train with their large colle
 
 [Python 3](https://www.python.org/) is required. (Tested with Python 3.8 but should be compatible with some older Python 3 versions.)
 
-Put both `kif_parser.py` and `kif_browser_gui.py` in the same folder. To run, double click `kif_browser_gui.py` or run it from the command line.
+Put all the `.py` files (`board_canvas.py`, `kif_browser_gui.py`, `kif_parser.py` and `split_timer.py` in the same folder. To run, double click `kif_browser_gui.py` or run it from the command line.
 
 ## How to use ##
 
@@ -21,6 +21,10 @@ Put both `kif_parser.py` and `kif_browser_gui.py` in the same folder. To run, do
 The board position should then show. Click "Show/hide solution" or press H to show or hide the solution (it must be entered as the main line in the kifu file).
 
 Press "< Prev" (or the left arrow key) and "Next >" (or the right arrow key) to go to the previous or next .kif files in the selected directory.
+
+Check "Upside-down mode" to display the positions from gote's point of view instead, for a different style of training.
+
+There is a simple stopwatch timer under the problem list. "Split" will record the time since the last split as the time taken to solve the current problem, then automatically go to the next problem.
 
 ## Feedback ##
 
