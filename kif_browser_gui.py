@@ -187,10 +187,9 @@ class MainWindow:
     master = None
     # Member variables that deal with the file system
     directory = None
-    kif_files = []
-    lap_times = []
     #TODO: remove kif_files and lap_times and replace with problems[]
     problems = []
+    current_index = None
     current_file = None
     # Other member variables
     kif_reader = kif_parser.TsumeKifReader()
@@ -299,29 +298,29 @@ class MainWindow:
     def set_directory(self, directory):
         # Update internal variables. Kif reader not updated.
         self.directory = directory
-        self.kif_files = [
-            os.path.join(self.directory, filename)
+        self.problems = [
+            Problem(os.path.join(self.directory, filename))
             for filename in os.listdir(self.directory)
             if filename.endswith(".kif") or filename.endswith(".kifu")
         ]
-        MainWindow.natural_sort(self.kif_files)
-        self.current_file = self.kif_files[0]
-        self.lap_times = [0] * len(self.kif_files)
+        self.problems.sort(key=lambda p: MainWindow.natural_sort_key(p.filename))
+        self.current_index = 0
+        self.current_file = self.problems[self.current_index].filename
         return
     
     def next_file(self, event=None):
-        current_idx = self.kif_files.index(self.current_file)
-        if current_idx+1 >= len(self.kif_files):
+        if self.current_index+1 >= len(self.problems):
             return
-        self.current_file = self.kif_files[current_idx + 1]
+        self.current_file = self.problems[self.current_index + 1].filename
+        self.current_index += 1
         self.display_problem()
         return
     
     def prev_file(self, event=None):
-        curr_idx = self.kif_files.index(self.current_file)
-        if curr_idx-1 < 0:
+        if self.current_index-1 < 0:
             return
-        self.current_file = self.kif_files[curr_idx - 1]
+        self.current_file = self.problems[self.current_index - 1].filename
+        self.current_index -= 1
         self.display_problem()
         return
     
@@ -330,9 +329,9 @@ class MainWindow:
         if directory == "":
             return
         self.set_directory(os.path.normpath(directory))
-        for file_num, filename in enumerate(self.kif_files):
+        for file_num, problem in enumerate(self.problems):
             self.problem_list_view.tvw.insert(
-                "", "end", values=(os.path.basename(filename), "-")
+                "", "end", values=(os.path.basename(problem.filename), "-")
             )
         self.display_problem()
         return
@@ -347,10 +346,9 @@ class MainWindow:
         # also should refactor self.next_file() out of this. One function, one task.
         self.timer_controls.timer.split()
         if self.current_file is not None and len(self.timer_controls.timer.lap_times) != 0:
-            curr_idx = self.kif_files.index(self.current_file)
-            self.lap_times[curr_idx] = self.timer_controls.timer.lap_times[-1]
-            time_str = SplitTimer.sec_to_str(self.lap_times[curr_idx])
-            self.problem_list_view.set_time(curr_idx, time_str)
+            self.problems[self.current_index].time = self.timer_controls.timer.lap_times[-1]
+            time_str = SplitTimer.sec_to_str(self.problems[self.current_index].time)
+            self.problem_list_view.set_time(self.current_index, time_str)
             self.next_file()
         return
     
@@ -382,10 +380,9 @@ class MainWindow:
         return
     
     @staticmethod
-    def natural_sort(it):
-        convert = lambda text: int(text) if text.isdigit() else text.lower()
-        alphanum_key = lambda key: [convert(c) for c in re.split(r'(\d+)', key)]
-        return it.sort(key=alphanum_key)
+    def natural_sort_key(str, _nsre=re.compile(r'(\d+)')):
+        return [int(c) if c.isdigit() else c.lower() for c in _nsre.split(str)]
+    
 
 
 if __name__ == "__main__":
