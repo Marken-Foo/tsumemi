@@ -12,7 +12,11 @@ This little bit of Python aims to let shogi players train with their large colle
 
 [Python 3](https://www.python.org/) is required. (Tested with Python 3.8 but should be compatible with some older Python 3 versions.)
 
+<<<<<<< HEAD
 Put all the `.py` files (`board_canvas.py`, `kif_browser_gui.py`, `kif_parser.py` and `split_timer.py`) in the same folder. To run, double click `kif_browser_gui.py` or run it from the command line.
+=======
+Put all the `.py` files (`board_canvas.py`, `kif_browser_gui.py`, `kif_parser.py` and `split_timer.py` in the same folder. To run, double click `kif_browser_gui.py` or run it from the command line.
+>>>>>>> c851b87ab2a20577d66258cf03ad88afb5f366f4
 
 ## How to use ##
 
