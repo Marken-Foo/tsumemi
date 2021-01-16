@@ -215,7 +215,7 @@ class ProblemListPane(ttk.Frame):
         self.tvw["yscrollcommand"] = self.scrollbar_tvw.set
         
         # Make speedrun mode button
-        self.btn_speedrun = ttk.Button(self, text="Start speedrun...", command=controller.start_speedrun)
+        self.btn_speedrun = ttk.Button(self, text="Start speedrun", command=controller.start_speedrun)
         self.btn_speedrun.grid(column=0, row=1)
         self.btn_speedrun.grid_remove()
         self.btn_abort_speedrun = ttk.Button(self, text="Abort speedrun", command=controller.abort)
@@ -325,9 +325,9 @@ class MainWindow:
         self.problem_list_pane.grid_configure(padx=5, pady=5)
         
         # Keyboard shortcuts - disable until bind to free/speedrun modes.
-        # self.master.bind("<Key-h>", self.toggle_solution)
-        # self.master.bind("<Left>", self.prev_file)
-        # self.master.bind("<Right>", self.next_file)
+        self.master.bind("<Key-h>", self.toggle_solution)
+        self.master.bind("<Left>", self.prev_file)
+        self.master.bind("<Right>", self.next_file)
         self.master.bind("<Control_L><Key-o>", self.open_folder)
         self.master.bind("<Control_R><Key-o>", self.open_folder)
         return
@@ -438,10 +438,17 @@ class MainWindow:
         # Make UI changes
         self.nav_controls.grid_remove()
         self.nav_controls = self._navcons["speedrun"]
+        self.nav_controls.show_sol_skip()
         self.nav_controls.grid()
         self.problem_list_pane.btn_speedrun.grid_remove()
         self.problem_list_pane.btn_abort_speedrun.grid()
         
+        # Unbind keyboard shortcuts
+        self.master.unbind("<Key-h>")
+        self.master.unbind("<Left>")
+        self.master.unbind("<Right>")
+        
+        # Set application state
         self.go_to_file(idx=0)
         self.timer_controls.reset()
         self.timer_controls.start()
@@ -455,6 +462,11 @@ class MainWindow:
         self.nav_controls.grid()
         self.problem_list_pane.btn_speedrun.grid()
         self.problem_list_pane.btn_abort_speedrun.grid_remove()
+        
+        # Rebind keyboard shortcuts
+        self.master.bind("<Key-h>", self.toggle_solution)
+        self.master.bind("<Left>", self.prev_file)
+        self.master.bind("<Right>", self.next_file)
         
         self.timer_controls.stop()
         return

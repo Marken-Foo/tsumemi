@@ -18,13 +18,23 @@ Put all the `.py` files (`board_canvas.py`, `kif_browser_gui.py`, `kif_parser.py
 
 "File -> Open folder..." or Ctrl-O opens the folder selection dialog. Select the folder containing the tsumeshogi kifu files you want to browse.
 
-The board position should then show. Click "Show/hide solution" or press H to show or hide the solution (it must be entered as the main line in the kifu file).
+### Free mode ###
+
+The board position of the first file will be shown once you open a folder containing some tsume kifu files. Click "Show/hide solution" or press H to show or hide the solution (it must be entered as the main line in the kifu file).
 
 Press "< Prev" (or the left arrow key) and "Next >" (or the right arrow key) to go to the previous or next .kif files in the selected directory.
 
 Check "Upside-down mode" to display the positions from gote's point of view instead, for a different style of training.
 
 There is a simple stopwatch timer under the problem list. "Split" will record the time since the last split as the time taken to solve the current problem, then automatically go to the next problem.
+
+### Speedrun mode ###
+
+The "Start speedrun" button will enter **speedrun mode**, where you can go through all the problems in the folder in order while your times for solving each are recorded.
+
+For each problem, once you have solved it you can choose *Show solution* to check your answer and select whether you got it right or wrong (the timer will be paused while doing so). If you cannot solve the problem, you can choose to *Skip* to the next problem instead.
+
+Your time splits for each problem are displayed in the panel on the right.
 
 ## Feedback ##
 
