@@ -169,7 +169,7 @@ class ProblemListView(ttk.Frame):
 
 
 class ProblemStatus(Enum):
-    NONE = 0; CORRECT = 1; WRONG = 2
+    NONE = 0; CORRECT = 1; WRONG = 2; SKIP = 3
 
 
 class Problem:
@@ -186,11 +186,10 @@ class MainWindow:
     # Reference to tk.Tk() root object
     master = None
     # Member variables that deal with the file system
-    directory = None
-    #TODO: remove kif_files and lap_times and replace with problems[]
+    directory = None # not in use
     problems = []
-    current_index = None
-    current_file = None
+    curr_prob_idx = None
+    curr_prob = None
     # Other member variables
     kif_reader = kif_parser.TsumeKifReader()
     is_solution_shown = False
@@ -265,12 +264,12 @@ class MainWindow:
         return
         
     def display_problem(self):
-        # Parse current_file and draw problem to canvas
+        # Parse current problem and draw problem to canvas
         # Try any likely encodings for the KIF files
         encodings = ["cp932", "utf-8"]
         for e in encodings:
             try:
-                with open(self.current_file, "r", encoding=e) as kif:
+                with open(self.curr_prob.filename, "r", encoding=e) as kif:
                     self.kif_reader.parse_kif(kif)
             except UnicodeDecodeError:
                 pass
@@ -278,7 +277,7 @@ class MainWindow:
                 break
         self.board.draw()
         self.hide_solution()
-        self.master.title("KIF folder browser - " + str(self.current_file))
+        self.master.title("KIF folder browser - " + str(self.curr_prob.filename))
         return
     
     def hide_solution(self):
@@ -286,41 +285,46 @@ class MainWindow:
         self.is_solution_shown = False
         return
     
+    def show_solution(self):
+        solution = "　".join(self.kif_reader.moves)
+        self.solution.set(solution)
+        self.is_solution_shown = True
+        return
+    
     def toggle_solution(self, event=None):
         if self.is_solution_shown:
             self.hide_solution()
         else:
-            solution = "　".join(self.kif_reader.moves)
-            self.solution.set(solution)
-            self.is_solution_shown = True
+            self.show_solution()
         return
     
     def set_directory(self, directory):
         # Update internal variables. Kif reader not updated.
         self.directory = directory
-        self.problems = [
-            Problem(os.path.join(self.directory, filename))
-            for filename in os.listdir(self.directory)
-            if filename.endswith(".kif") or filename.endswith(".kifu")
-        ]
+        with os.scandir(directory) as it:
+            self.problems = [
+                Problem(os.path.join(directory, entry.name))
+                for entry in it
+                if entry.name.endswith(".kif") or entry.name.endswith(".kifu")
+            ]
         self.problems.sort(key=lambda p: MainWindow.natural_sort_key(p.filename))
-        self.current_index = 0
-        self.current_file = self.problems[self.current_index].filename
+        self.curr_prob_idx = 0
+        self.curr_prob = self.problems[self.curr_prob_idx]
         return
     
     def next_file(self, event=None):
-        if self.current_index+1 >= len(self.problems):
+        if self.curr_prob_idx+1 >= len(self.problems):
             return
-        self.current_file = self.problems[self.current_index + 1].filename
-        self.current_index += 1
+        self.curr_prob = self.problems[self.curr_prob_idx + 1]
+        self.curr_prob_idx += 1
         self.display_problem()
         return
     
     def prev_file(self, event=None):
-        if self.current_index-1 < 0:
+        if self.curr_prob_idx-1 < 0:
             return
-        self.current_file = self.problems[self.current_index - 1].filename
-        self.current_index -= 1
+        self.curr_prob = self.problems[self.curr_prob_idx - 1]
+        self.curr_prob_idx -= 1
         self.display_problem()
         return
     
@@ -345,10 +349,10 @@ class MainWindow:
         # what if last file in list? what if manually out of order?
         # also should refactor self.next_file() out of this. One function, one task.
         self.timer_controls.timer.split()
-        if self.current_file is not None and len(self.timer_controls.timer.lap_times) != 0:
-            self.problems[self.current_index].time = self.timer_controls.timer.lap_times[-1]
-            time_str = SplitTimer.sec_to_str(self.problems[self.current_index].time)
-            self.problem_list_view.set_time(self.current_index, time_str)
+        if self.curr_prob is not None and len(self.timer_controls.timer.lap_times) != 0:
+            self.curr_prob.time = self.timer_controls.timer.lap_times[-1]
+            time_str = SplitTimer.sec_to_str(self.curr_prob.time)
+            self.problem_list_view.set_time(self.curr_prob_idx, time_str)
             self.next_file()
         return
     
@@ -360,21 +364,26 @@ class MainWindow:
     def skip(self):
         # split, mark current problem as wrong/skipped, and go next.
         self.split_timer()
+        self.curr_prob.status = ProblemStatus.SKIP
+        self.next_file()
         return
     
     def view_solution(self):
         # show solution, pause timer, change NavControl
+        self.show_solution()
         self.timer_controls.stop_timer()
         return
     
     def mark_correct(self):
         # mark correct, unpause timer, go to next problem, change NavControl
+        self.curr_prob.status = ProblemStatus.CORRECT
         self.next_file()
         self.timer_controls.start_timer()
         return
     
     def mark_wrong(self):
         # mark wrong, unpause timer, go next, change NavControl
+        self.curr_prob.status = ProblemStatus.WRONG
         self.next_file()
         self.timer_controls.start_timer()
         return
