@@ -23,7 +23,6 @@ class Menubar(tk.Menu):
             accelerator="Ctrl+O",
             underline=0
         )
-        parent["menu"] = self
         
         menu_help = tk.Menu(self)
         self.add_cascade(menu=menu_help, label="Help")
@@ -35,6 +34,8 @@ class Menubar(tk.Menu):
                 message="Written in Python 3 for the shogi community. KIF files sold separately."
             )
         )
+        
+        parent["menu"] = self
         return
 
 
@@ -151,7 +152,7 @@ class TimerModule(ttk.Frame):
         )
         ttk.Button(
             self, text="Reset timer",
-            command=self.reset_timer
+            command=self.reset
         ).grid(
             column=1, row=1
         )
@@ -162,23 +163,23 @@ class TimerModule(ttk.Frame):
             column=2, row=1
         )
     
-    def start_timer(self):
+    def start(self):
         self.timer.start()
         self.refresh_timer()
         return
         
-    def stop_timer(self):
+    def stop(self):
         self.timer.stop()
         return
     
     def toggle_timer(self):
         if self.timer.is_running:
-            self.stop_timer()
+            self.stop()
         else:
-            self.start_timer()
+            self.start()
         return
     
-    def reset_timer(self):
+    def reset(self):
         self.timer.stop()
         self.timer.reset()
         self.refresh_timer()
@@ -191,7 +192,7 @@ class TimerModule(ttk.Frame):
         return
 
 
-class ProblemListView(ttk.Frame):
+class ProblemListPane(ttk.Frame):
     def __init__(self, parent, controller, *args, **kwargs):
         self.controller = controller
         super().__init__(parent, *args, **kwargs)
@@ -212,6 +213,16 @@ class ProblemListView(ttk.Frame):
         )
         self.scrollbar_tvw.grid(column=1, row=0, sticky="NS")
         self.tvw["yscrollcommand"] = self.scrollbar_tvw.set
+        
+        # Make speedrun mode button
+        self.btn_speedrun = ttk.Button(self, text="Start speedrun...", command=controller.start_speedrun)
+        self.btn_speedrun.grid(column=0, row=1)
+        self.btn_speedrun.grid_remove()
+        self.btn_abort_speedrun = ttk.Button(self, text="Abort speedrun", command=controller.abort)
+        self.btn_abort_speedrun.grid(column=0, row=1)
+        self.btn_abort_speedrun.grid_remove()
+        
+        self.btn_speedrun.grid()
     
     def set_time(self, idx, time_str):
         # Set time column for item at given index
@@ -270,6 +281,7 @@ class MainWindow:
         self.boardWrapper.grid(column=0, row=0, sticky="NSEW")
         self.boardWrapper.columnconfigure(0, weight=1)
         self.boardWrapper.rowconfigure(0, weight=1)
+        self.boardWrapper.grid_configure(padx=5, pady=5)
         
         self.board = BoardCanvas(
             parent=self.boardWrapper, controller=self,
@@ -281,16 +293,25 @@ class MainWindow:
         
         # Initialise solution text
         self.solution = tk.StringVar(value="Open a folder of problems to display.")
-        ttk.Label(
+        self.lbl_solution = ttk.Label(
             self.mainframe, textvariable=self.solution,
             justify="left", wraplength=self.board.canvas_width
-        ).grid(
+        )
+        self.lbl_solution.grid(
             column=0, row=1, sticky="W"
         )
+        self.lbl_solution.grid_configure(padx=5, pady=5)
         
-        # Make buttons to navigate, show/hide solution, upside-down mode
-        self.nav_controls = SpeedrunNavControls(parent=self.mainframe, controller=self)
-        self.nav_controls.grid(column=0, row=2)
+        # Initialise nav controls and select one to begin with
+        self._navcons = {
+            "free" : FreeModeNavControls(parent=self.mainframe, controller=self),
+            "speedrun" : SpeedrunNavControls(parent=self.mainframe, controller=self)
+        }
+        for navcon in self._navcons.values():
+            navcon.grid(column=0, row=2)
+            navcon.grid_remove()
+        self.nav_controls = self._navcons["free"]
+        self.nav_controls.grid()
         
         # Timer controls and display
         self.timer_controls = TimerModule(parent=self.mainframe, controller=self)
@@ -299,13 +320,14 @@ class MainWindow:
         self.timer_controls.rowconfigure(0, weight=0)
         
         # Problem list
-        self.problem_list_view = ProblemListView(parent=self.mainframe, controller=self)
-        self.problem_list_view.grid(column=1, row=0)
+        self.problem_list_pane = ProblemListPane(parent=self.mainframe, controller=self)
+        self.problem_list_pane.grid(column=1, row=0)
+        self.problem_list_pane.grid_configure(padx=5, pady=5)
         
-        # Keyboard shortcuts
-        self.master.bind("<Key-h>", self.toggle_solution)
-        self.master.bind("<Left>", self.prev_file)
-        self.master.bind("<Right>", self.next_file)
+        # Keyboard shortcuts - disable until bind to free/speedrun modes.
+        # self.master.bind("<Key-h>", self.toggle_solution)
+        # self.master.bind("<Left>", self.prev_file)
+        # self.master.bind("<Right>", self.next_file)
         self.master.bind("<Control_L><Key-o>", self.open_folder)
         self.master.bind("<Control_R><Key-o>", self.open_folder)
         return
@@ -375,13 +397,21 @@ class MainWindow:
         self.display_problem()
         return
     
+    def go_to_file(self, idx, event=None):
+        if idx >= len(self.problems) or idx < 0:
+            return
+        self.curr_prob = self.problems[idx]
+        self.curr_prob_idx = idx
+        self.display_problem()
+        return
+    
     def open_folder(self, event=None):
         directory = filedialog.askdirectory()
         if directory == "":
             return
         self.set_directory(os.path.normpath(directory))
         for file_num, problem in enumerate(self.problems):
-            self.problem_list_view.tvw.insert(
+            self.problem_list_pane.tvw.insert(
                 "", "end", values=(os.path.basename(problem.filename), "-")
             )
         self.display_problem()
@@ -399,13 +429,34 @@ class MainWindow:
         if self.curr_prob is not None and len(self.timer_controls.timer.lap_times) != 0:
             self.curr_prob.time = self.timer_controls.timer.lap_times[-1]
             time_str = SplitTimer.sec_to_str(self.curr_prob.time)
-            self.problem_list_view.set_time(self.curr_prob_idx, time_str)
-            self.next_file()
+            self.problem_list_pane.set_time(self.curr_prob_idx, time_str)
+            # self.next_file()
         return
     
     # Speedrun mode commands
+    def start_speedrun(self):
+        # Make UI changes
+        self.nav_controls.grid_remove()
+        self.nav_controls = self._navcons["speedrun"]
+        self.nav_controls.grid()
+        self.problem_list_pane.btn_speedrun.grid_remove()
+        self.problem_list_pane.btn_abort_speedrun.grid()
+        
+        self.go_to_file(idx=0)
+        self.timer_controls.reset()
+        self.timer_controls.start()
+        return
+        
     def abort(self):
         # Abort speedrun, go back to free browsing
+        # Make UI changes
+        self.nav_controls.grid_remove()
+        self.nav_controls = self._navcons["free"]
+        self.nav_controls.grid()
+        self.problem_list_pane.btn_speedrun.grid()
+        self.problem_list_pane.btn_abort_speedrun.grid_remove()
+        
+        self.timer_controls.stop()
         return
     
     def skip(self):
@@ -417,7 +468,8 @@ class MainWindow:
     
     def view_solution(self):
         # show solution, split and pause timer, change NavControl
-        self.timer_controls.stop_timer()
+        self.split_timer()
+        self.timer_controls.stop()
         self.show_solution()
         self.nav_controls.show_correct_wrong()
         return
@@ -427,7 +479,7 @@ class MainWindow:
         self.curr_prob.status = ProblemStatus.CORRECT
         self.next_file()
         self.nav_controls.show_sol_skip()
-        self.timer_controls.start_timer()
+        self.timer_controls.start()
         return
     
     def mark_wrong(self):
@@ -435,7 +487,7 @@ class MainWindow:
         self.curr_prob.status = ProblemStatus.WRONG
         self.next_file()
         self.nav_controls.show_sol_skip()
-        self.timer_controls.start_timer()
+        self.timer_controls.start()
         return
     
     @staticmethod
