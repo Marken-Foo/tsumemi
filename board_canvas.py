@@ -1,11 +1,10 @@
-import tkinter as tk
-
 from collections import Counter
+from tkinter import Canvas
 from tkinter import font
 
-import kif_parser
+from kif_parser import KanjiNumber
 
-class BoardCanvas(tk.Canvas):
+class BoardCanvas(Canvas):
     '''Class encapsulating the canvas where the board is drawn.'''
     # Default/current canvas size for board
     canvas_width = 570
@@ -24,8 +23,10 @@ class BoardCanvas(tk.Canvas):
         return
     
     def draw(self):
-        reader = self.controller.kif_reader
-        # Clear board first - could also keep board and just redraw pieces
+        # Specify source of board data
+        reader = self.controller.model.reader
+        
+        # Clear board display - could also keep board and just redraw pieces
         self.delete("all")
         
         (sq_w, sq_h, komadai_w, w_pad, h_pad, sq_text_size,
@@ -48,8 +49,7 @@ class BoardCanvas(tk.Canvas):
                 south_board[i] = row[::-1]
             north_hand_strings = ["△\n持\n駒\n"]
             south_hand_strings = ["▲\n持\n駒\n"]
-            row_coords = [" " + kif_parser.KanjiNumber(i).name
-                          for i in range(9, 0, -1)]
+            row_coords = [" " + KanjiNumber(i).name for i in range(9, 0, -1)]
             col_coords = [str(i) for i in range(1, 10, 1)]
         else:
             north_hand = reader.board.sente_hand
@@ -58,8 +58,7 @@ class BoardCanvas(tk.Canvas):
             south_board = reader.board.gote
             north_hand_strings = ["▲\n持\n駒\n"]
             south_hand_strings = ["△\n持\n駒\n"]
-            row_coords = [" " + kif_parser.KanjiNumber(i).name
-                          for i in range(1, 10, 1)]
+            row_coords = [" " + KanjiNumber(i).name for i in range(1, 10, 1)]
             col_coords = [str(i) for i in range(9, 0, -1)]
         
         # Draw board

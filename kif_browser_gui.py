@@ -90,6 +90,8 @@ class FreeModeNavControls(NavControls):
         btn_next.grid(column=2, row=0, sticky="W")
         chk_upside_down = self._add_chk_upside_down()
         chk_upside_down.grid(column=0, row=1, columnspan=3)
+        for child in self.winfo_children():
+            child.grid_configure(padx=5, pady=5)
         return
 
 
@@ -243,21 +245,110 @@ class Problem:
         return
 
 
+class Model:
+    # To follow MVC principles, we refactor the business logic of MainWindow out here.
+    problems = []
+    curr_prob_idx = None
+    curr_prob = None
+    
+    directory = None
+    
+    reader = kif_parser.TsumeKifReader()
+    solution = ""
+    
+    @staticmethod
+    def natural_sort_key(str, _nsre=re.compile(r'(\d+)')):
+        return [int(c) if c.isdigit() else c.lower() for c in _nsre.split(str)]
+    
+    def __init__(self):
+        return
+    
+    def read_problem(self):
+        # Read current problem into reader.
+        # Try any likely encodings for the KIF files
+        encodings = ["cp932", "utf-8"]
+        for e in encodings:
+            try:
+                with open(self.curr_prob.filename, "r", encoding=e) as kif:
+                    self.reader.parse_kif(kif)
+                    self.solution = "　".join(self.reader.moves)
+            except UnicodeDecodeError:
+                pass
+            else:
+                break
+        return self.reader
+    
+    def set_directory(self, directory):
+        self.directory = directory
+        with os.scandir(directory) as it:
+            self.problems = [
+                Problem(os.path.join(directory, entry.name))
+                for entry in it
+                if entry.name.endswith(".kif") or entry.name.endswith(".kifu")
+            ]
+        self.problems.sort(key=lambda p: Model.natural_sort_key(p.filename))
+        self.curr_prob_idx = 0
+        self.curr_prob = self.problems[self.curr_prob_idx]
+        self.read_problem()
+        return
+    
+    def open_next_file(self):
+        if self.curr_prob_idx+1 >= len(self.problems):
+            return
+        self.curr_prob = self.problems[self.curr_prob_idx + 1]
+        self.curr_prob_idx += 1
+        self.read_problem()
+        return
+    
+    def open_prev_file(self):
+        if self.curr_prob_idx-1 < 0:
+            return
+        self.curr_prob = self.problems[self.curr_prob_idx - 1]
+        self.curr_prob_idx -= 1
+        self.read_problem()
+        return
+    
+    def open_file(self, idx):
+        if idx >= len(self.problems) or idx < 0:
+            return
+        self.curr_prob = self.problems[idx]
+        self.curr_prob_idx = idx
+        self.read_problem()
+        return
+    
+    def set_correct(self):
+        if self.curr_prob is not None:
+            self.curr_prob.status = ProblemStatus.CORRECT
+        return
+    
+    def set_wrong(self):
+        if self.curr_prob is not None:
+            self.curr_prob.status = ProblemStatus.WRONG
+        return
+    
+    def set_skip(self):
+        if self.curr_prob is not None:
+            self.curr_prob.status = ProblemStatus.SKIP
+        return
+    
+    def set_time(self, time):
+        if self.curr_prob is not None:
+            self.curr_prob.time = time
+        return
+
+
 class MainWindow:
     '''Class encapsulating the window to display the kif.'''
     # Reference to tk.Tk() root object
     master = None
-    # Member variables that deal with the file system
-    directory = None # not in use
-    problems = []
-    curr_prob_idx = None
-    curr_prob = None
-    # Other member variables
-    kif_reader = kif_parser.TsumeKifReader()
+    
+    model = None
     is_solution_shown = False
     
     # eventually, refactor menu labels and dialog out into a constant namespace
     def __init__(self, master):
+        # Set up data model
+        self.model = Model()
         # tkinter stuff, set up the main window
         self.master = master
         self.master.option_add("*tearOff", False)
@@ -332,20 +423,9 @@ class MainWindow:
         return
         
     def display_problem(self):
-        # Parse current problem and draw problem to canvas
-        # Try any likely encodings for the KIF files
-        encodings = ["cp932", "utf-8"]
-        for e in encodings:
-            try:
-                with open(self.curr_prob.filename, "r", encoding=e) as kif:
-                    self.kif_reader.parse_kif(kif)
-            except UnicodeDecodeError:
-                pass
-            else:
-                break
         self.board.draw()
         self.hide_solution()
-        self.master.title("KIF folder browser - " + str(self.curr_prob.filename))
+        self.master.title("KIF folder browser - " + str(self.model.curr_prob.filename))
         return
     
     def hide_solution(self):
@@ -354,8 +434,7 @@ class MainWindow:
         return
     
     def show_solution(self):
-        solution = "　".join(self.kif_reader.moves)
-        self.solution.set(solution)
+        self.solution.set(self.model.solution)
         self.is_solution_shown = True
         return
     
@@ -366,41 +445,18 @@ class MainWindow:
             self.show_solution()
         return
     
-    def set_directory(self, directory):
-        # Update internal variables. Kif reader not updated.
-        self.directory = directory
-        with os.scandir(directory) as it:
-            self.problems = [
-                Problem(os.path.join(directory, entry.name))
-                for entry in it
-                if entry.name.endswith(".kif") or entry.name.endswith(".kifu")
-            ]
-        self.problems.sort(key=lambda p: MainWindow.natural_sort_key(p.filename))
-        self.curr_prob_idx = 0
-        self.curr_prob = self.problems[self.curr_prob_idx]
-        return
-    
     def next_file(self, event=None):
-        if self.curr_prob_idx+1 >= len(self.problems):
-            return
-        self.curr_prob = self.problems[self.curr_prob_idx + 1]
-        self.curr_prob_idx += 1
+        self.model.open_next_file()
         self.display_problem()
         return
     
     def prev_file(self, event=None):
-        if self.curr_prob_idx-1 < 0:
-            return
-        self.curr_prob = self.problems[self.curr_prob_idx - 1]
-        self.curr_prob_idx -= 1
+        self.model.open_prev_file()
         self.display_problem()
         return
     
     def go_to_file(self, idx, event=None):
-        if idx >= len(self.problems) or idx < 0:
-            return
-        self.curr_prob = self.problems[idx]
-        self.curr_prob_idx = idx
+        self.model.open_file(idx)
         self.display_problem()
         return
     
@@ -408,8 +464,8 @@ class MainWindow:
         directory = filedialog.askdirectory()
         if directory == "":
             return
-        self.set_directory(os.path.normpath(directory))
-        for file_num, problem in enumerate(self.problems):
+        self.model.set_directory(os.path.normpath(directory))
+        for file_num, problem in enumerate(self.model.problems):
             self.problem_list_pane.tvw.insert(
                 "", "end", values=(os.path.basename(problem.filename), "-")
             )
@@ -425,10 +481,10 @@ class MainWindow:
         # what if last file in list? what if manually out of order?
         # also should refactor self.next_file() out of this. One function, one task.
         self.timer_controls.timer.split()
-        if self.curr_prob is not None and len(self.timer_controls.timer.lap_times) != 0:
-            self.curr_prob.time = self.timer_controls.timer.lap_times[-1]
-            time_str = SplitTimer.sec_to_str(self.curr_prob.time)
-            self.problem_list_pane.set_time(self.curr_prob_idx, time_str)
+        if self.model.curr_prob is not None and len(self.timer_controls.timer.lap_times) != 0:
+            self.model.curr_prob.time = self.timer_controls.timer.lap_times[-1]
+            time_str = SplitTimer.sec_to_str(self.model.curr_prob.time)
+            self.problem_list_pane.set_time(self.model.curr_prob_idx, time_str)
             # self.next_file()
         return
     
@@ -473,7 +529,7 @@ class MainWindow:
     def skip(self):
         # split, mark current problem as wrong/skipped, and go next.
         self.split_timer()
-        self.curr_prob.status = ProblemStatus.SKIP
+        self.model.set_skip()
         self.next_file()
         return
     
@@ -487,7 +543,7 @@ class MainWindow:
     
     def mark_correct(self):
         # mark correct, unpause timer, go to next problem, change NavControl
-        self.curr_prob.status = ProblemStatus.CORRECT
+        self.model.set_correct()
         self.next_file()
         self.nav_controls.show_sol_skip()
         self.timer_controls.start()
@@ -495,15 +551,11 @@ class MainWindow:
     
     def mark_wrong(self):
         # mark wrong, unpause timer, go next, change NavControl
-        self.curr_prob.status = ProblemStatus.WRONG
+        self.model.set_wrong()
         self.next_file()
         self.nav_controls.show_sol_skip()
         self.timer_controls.start()
         return
-    
-    @staticmethod
-    def natural_sort_key(str, _nsre=re.compile(r'(\d+)')):
-        return [int(c) if c.isdigit() else c.lower() for c in _nsre.split(str)]
 
 
 if __name__ == "__main__":
