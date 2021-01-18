@@ -4,7 +4,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
 from board_canvas import BoardCanvas
-from model import Model
+from model import Event, Model, ProblemStatus
 from split_timer import SplitTimer
 
 
@@ -191,23 +191,54 @@ class TimerPane(ttk.Frame):
         return
 
 
+class ProblemList(ttk.Treeview):
+    '''
+    Displays list of problems in currently open folder.
+    As it is a view of the underlying data model, it uses the Observer pattern
+    to update itself whenever the model updates.
+    '''
+    def __init__(self, parent, controller, *args, **kwargs):
+        self.controller = controller
+        super().__init__(parent, *args, **kwargs)
+        
+        self.notify_actions = dict(zip(Event, [self.set_status, self.set_time, None]))
+        
+        self["columns"] = ("filename", "time", "status")
+        self["show"] = "headings"
+        self.heading("filename", text="Problem")
+        self.heading("time", text="Time")
+        self.heading("status", text="Status")
+        return
+    
+    def set_time(self, idx, time):
+        # Set time column for item at given index
+        item = self.get_children()[idx]
+        time_str = SplitTimer.sec_to_str(time)
+        self.set(item, column="time", value=time_str)
+        return
+    
+    def set_status(self, idx, status):
+        item = self.get_children()[idx]
+        self.set(item, column="status", value=status)
+        return
+    
+    def on_notify(self, event, *args):
+        self.notify_actions[event](*args)
+        return
+
+
 class ProblemListPane(ttk.Frame):
     def __init__(self, parent, controller, *args, **kwargs):
         self.controller = controller
         super().__init__(parent, *args, **kwargs)
         
         # Display problem list as Treeview
-        self.tvw = ttk.Treeview(
-            self, columns=("filename", "time"), show="headings"
-        )
-        self.tvw.column("filename")
-        self.tvw.heading("filename", text="Problem")
-        self.tvw.heading("time", text="Time")
+        self.tvw = ProblemList(parent=self, controller=controller)
         self.tvw.grid(column=0, row=0, sticky="NSEW")
         
         # Make scrollbar
         self.scrollbar_tvw = ttk.Scrollbar(
-            self, orient=tk.VERTICAL,
+            self, orient="vertical",
             command=self.tvw.yview
         )
         self.scrollbar_tvw.grid(column=1, row=0, sticky="NS")
@@ -222,12 +253,6 @@ class ProblemListPane(ttk.Frame):
         self.btn_abort_speedrun.grid_remove()
         
         self.btn_speedrun.grid()
-    
-    def set_time(self, idx, time_str):
-        # Set time column for item at given index
-        item = self.tvw.get_children()[idx]
-        self.tvw.set(item, column="time", value=time_str)
-        return
 
 
 class MainWindow:
@@ -241,7 +266,7 @@ class MainWindow:
     # eventually, refactor menu labels and dialog out into a constant namespace
     def __init__(self, master):
         # Set up data model
-        self.model = Model()
+        self.model = Model(self)
         # tkinter stuff, set up the main window
         self.master = master
         self.master.option_add("*tearOff", False)
@@ -306,6 +331,8 @@ class MainWindow:
         self.problem_list_pane = ProblemListPane(parent=self.mainframe, controller=self)
         self.problem_list_pane.grid(column=1, row=0)
         self.problem_list_pane.grid_configure(padx=5, pady=5)
+        
+        self.model.add_observer(self.problem_list_pane.tvw)
         
         # Keyboard shortcuts
         self.master.bind("<Key-h>", self.toggle_solution)
@@ -379,9 +406,8 @@ class MainWindow:
         # what if last file in list? what if manually out of order?
         self.timer_controls.timer.split()
         if self.model.curr_prob is not None and len(self.timer_controls.timer.lap_times) != 0:
-            self.model.curr_prob.time = self.timer_controls.timer.lap_times[-1]
-            time_str = SplitTimer.sec_to_str(self.model.curr_prob.time)
-            self.problem_list_pane.set_time(self.model.curr_prob_idx, time_str)
+            time = self.timer_controls.timer.lap_times[-1]
+            self.model.set_time(time)
         return
     
     # Speedrun mode commands

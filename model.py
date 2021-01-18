@@ -6,6 +6,10 @@ from enum import Enum
 from kif_parser import KifReader
 
 
+class Event(Enum):
+    UPDATE_STATUS = 0; UPDATE_TIME = 1; UPDATE_DIRECTORY = 2
+
+
 class ProblemStatus(Enum):
     NONE = 0; CORRECT = 1; WRONG = 2; SKIP = 3
 
@@ -24,17 +28,31 @@ class Model:
     problems = []
     curr_prob_idx = None
     curr_prob = None
-    
-    directory = None
-    
+    directory = None # not currently used meaningfully
     reader = KifReader()
     solution = ""
+    
+    controller = None
+    observers = [] # Observer pattern, to sync Views to it
     
     @staticmethod
     def natural_sort_key(str, _nsre=re.compile(r'(\d+)')):
         return [int(c) if c.isdigit() else c.lower() for c in _nsre.split(str)]
     
-    def __init__(self):
+    def __init__(self, controller):
+        self.controller = controller
+        return
+    
+    def add_observer(self, observer):
+        self.observers.append(observer)
+        return
+    
+    def remove_observer(self, observer):
+        try:
+            self.observers.remove(observer)
+        except ValueError:
+            # observer does not exist in list; log
+            pass
         return
     
     def read_problem(self):
@@ -93,19 +111,28 @@ class Model:
     def set_correct(self):
         if self.curr_prob is not None:
             self.curr_prob.status = ProblemStatus.CORRECT
+            self._notify_observers(Event.UPDATE_STATUS, self.curr_prob_idx, ProblemStatus.CORRECT)
         return
     
     def set_wrong(self):
         if self.curr_prob is not None:
             self.curr_prob.status = ProblemStatus.WRONG
+            self._notify_observers(Event.UPDATE_STATUS, self.curr_prob_idx, ProblemStatus.WRONG)
         return
     
     def set_skip(self):
         if self.curr_prob is not None:
             self.curr_prob.status = ProblemStatus.SKIP
+            self._notify_observers(Event.UPDATE_STATUS, self.curr_prob_idx, ProblemStatus.SKIP)
         return
     
     def set_time(self, time):
         if self.curr_prob is not None:
             self.curr_prob.time = time
+            self._notify_observers(Event.UPDATE_TIME, self.curr_prob_idx, time)
+        return
+    
+    def _notify_observers(self, event, *args):
+        for observer in self.observers:
+            observer.on_notify(event, *args)
         return
