@@ -83,7 +83,7 @@ class SplitTimer:
             return str(num)
     
     @staticmethod
-    def sec_to_str(seconds):
+    def sec_to_str(seconds, places=1):
         hms = list(SplitTimer.sec_to_hms(seconds))
-        hms[2] = round(hms[2], 1)
+        hms[2] = round(hms[2], places)
         return ":".join([SplitTimer._two_digits(i) for i in hms])

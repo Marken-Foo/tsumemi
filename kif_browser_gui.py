@@ -40,7 +40,6 @@ class Menubar(tk.Menu):
 
 
 class NavControls(ttk.Frame):
-    #TODO: Refactoring class to enable subclassing to build different layouts for NavControl frame, accomodating different modes (planned: regular "free" browsing mode, and speedrun mode)
     def __init__(self, parent, controller, *args, **kwargs):
         self.controller = controller
         super().__init__(parent, *args, **kwargs)
@@ -324,7 +323,7 @@ class MainWindow:
         self.problem_list_pane.grid(column=1, row=0)
         self.problem_list_pane.grid_configure(padx=5, pady=5)
         
-        # Keyboard shortcuts - disable until bind to free/speedrun modes.
+        # Keyboard shortcuts
         self.master.bind("<Key-h>", self.toggle_solution)
         self.master.bind("<Left>", self.prev_file)
         self.master.bind("<Right>", self.next_file)
