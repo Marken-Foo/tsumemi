@@ -128,7 +128,7 @@ class SpeedrunNavControls(NavControls):
         return
 
 
-class TimerModule(ttk.Frame):
+class TimerPane(ttk.Frame):
     def __init__(self, parent, controller, *args, **kwargs):
         self.controller = controller
         super().__init__(parent, *args, **kwargs)
@@ -313,7 +313,7 @@ class MainWindow:
         self.nav_controls.grid()
         
         # Timer controls and display
-        self.timer_controls = TimerModule(parent=self.mainframe, controller=self)
+        self.timer_controls = TimerPane(parent=self.mainframe, controller=self)
         self.timer_controls.grid(column=1, row=1)
         self.timer_controls.columnconfigure(0, weight=0)
         self.timer_controls.rowconfigure(0, weight=0)

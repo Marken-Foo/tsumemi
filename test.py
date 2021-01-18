@@ -1,8 +1,10 @@
 import unittest
 
 from time import sleep
+# from tkinter.ttk import Frame
 
 from split_timer import SplitTimer
+from kif_browser_gui import TimerPane
 
 
 class TestTimer(unittest.TestCase):
@@ -118,6 +120,24 @@ class TestTimer(unittest.TestCase):
         answers = ["00:00:00.0", "00:00:34.1", "00:01:18.2", "00:23:57.0", "01:00:02.6", "24:00:00.0", "99:59:59.9", "101:00:59.7"]
         for case, answer in zip(cases, answers):
             self.assertEqual(SplitTimer.sec_to_str(case, places=1), answer)
+
+
+class TestTimerPane(unittest.TestCase):
+    def setUp(self):
+        class DummyCtrl():
+            def __init__(self):
+                self.split_timer = None
+        self.ctrl = DummyCtrl()
+        self.timer_pane = TimerPane(parent=None, controller=self.ctrl)
+    
+    def tearDown(self):
+        self.ctrl = None
+        self.timer_pane = None
+    
+    def test_reset(self):
+        tt = TestTimer()
+        tt.timer = self.timer_pane.timer
+        tt.test_default_timer()
 
 
 if __name__ == "__main__":
