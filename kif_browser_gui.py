@@ -294,27 +294,27 @@ class Model:
     
     def open_next_file(self):
         if self.curr_prob_idx+1 >= len(self.problems):
-            return
+            return False
         self.curr_prob = self.problems[self.curr_prob_idx + 1]
         self.curr_prob_idx += 1
         self.read_problem()
-        return
+        return True
     
     def open_prev_file(self):
         if self.curr_prob_idx-1 < 0:
-            return
+            return False
         self.curr_prob = self.problems[self.curr_prob_idx - 1]
         self.curr_prob_idx -= 1
         self.read_problem()
-        return
+        return True
     
     def open_file(self, idx):
         if idx >= len(self.problems) or idx < 0:
-            return
+            return False
         self.curr_prob = self.problems[idx]
         self.curr_prob_idx = idx
         self.read_problem()
-        return
+        return True
     
     def set_correct(self):
         if self.curr_prob is not None:
@@ -446,27 +446,32 @@ class MainWindow:
         return
     
     def next_file(self, event=None):
-        self.model.open_next_file()
-        self.display_problem()
-        return
+        res = self.model.open_next_file()
+        if res:
+            self.display_problem()
+        return res
     
     def prev_file(self, event=None):
-        self.model.open_prev_file()
-        self.display_problem()
-        return
+        res = self.model.open_prev_file()
+        if res:
+            self.display_problem()
+        return res
     
     def go_to_file(self, idx, event=None):
-        self.model.open_file(idx)
-        self.display_problem()
-        return
+        res = self.model.open_file(idx)
+        if res:
+            self.display_problem()
+        return res
     
     def open_folder(self, event=None):
         directory = filedialog.askdirectory()
         if directory == "":
             return
         self.model.set_directory(os.path.normpath(directory))
+        tvw = self.problem_list_pane.tvw # readability
+        tvw.delete(*tvw.get_children())
         for file_num, problem in enumerate(self.model.problems):
-            self.problem_list_pane.tvw.insert(
+            tvw.insert(
                 "", "end", values=(os.path.basename(problem.filename), "-")
             )
         self.display_problem()
@@ -479,13 +484,11 @@ class MainWindow:
     def split_timer(self):
         # what am I doing? OK kind of works but many logic issues. NEEDS WORK
         # what if last file in list? what if manually out of order?
-        # also should refactor self.next_file() out of this. One function, one task.
         self.timer_controls.timer.split()
         if self.model.curr_prob is not None and len(self.timer_controls.timer.lap_times) != 0:
             self.model.curr_prob.time = self.timer_controls.timer.lap_times[-1]
             time_str = SplitTimer.sec_to_str(self.model.curr_prob.time)
             self.problem_list_pane.set_time(self.model.curr_prob_idx, time_str)
-            # self.next_file()
         return
     
     # Speedrun mode commands
@@ -530,7 +533,8 @@ class MainWindow:
         # split, mark current problem as wrong/skipped, and go next.
         self.split_timer()
         self.model.set_skip()
-        self.next_file()
+        if not self.next_file():
+            self.end_of_folder()
         return
     
     def view_solution(self):
@@ -544,7 +548,9 @@ class MainWindow:
     def mark_correct(self):
         # mark correct, unpause timer, go to next problem, change NavControl
         self.model.set_correct()
-        self.next_file()
+        if not self.next_file():
+            self.end_of_folder()
+            return
         self.nav_controls.show_sol_skip()
         self.timer_controls.start()
         return
@@ -552,9 +558,20 @@ class MainWindow:
     def mark_wrong(self):
         # mark wrong, unpause timer, go next, change NavControl
         self.model.set_wrong()
-        self.next_file()
+        if not self.next_file():
+            self.end_of_folder()
+            return
         self.nav_controls.show_sol_skip()
         self.timer_controls.start()
+        return
+    
+    def end_of_folder(self):
+        self.timer_controls.stop()
+        messagebox.showinfo(
+            title="End of folder",
+            message="You have reached the end of the speedrun."
+        )
+        self.abort()
         return
 
 
