@@ -253,7 +253,7 @@ class Model:
     
     directory = None
     
-    reader = kif_parser.TsumeKifReader()
+    reader = kif_parser.KifReader()
     solution = ""
     
     @staticmethod

@@ -1,6 +1,7 @@
 from enum import Enum, IntEnum
 import re
 
+
 class Piece(Enum):
     NONE = 0
     GYOKU, 玉, 王 = 1, 1, 1
@@ -29,6 +30,7 @@ Piece.one_kanji = {
     8:"全", 9:"桂", 10:"圭", 11:"香", 12:"杏", 13:"歩", 14:"と"
 }
 
+
 class KanjiNumber(IntEnum):
     一 = 1
     二 = 2
@@ -41,6 +43,7 @@ class KanjiNumber(IntEnum):
     九 = 9
     十 = 10
 
+
 class Position:
     # sfen square order
     sente = [[Piece.NONE] * 9 for i in range(9)]
@@ -52,7 +55,8 @@ class Position:
     def __init__(self):
         pass
 
-class TsumeKifReader:
+
+class KifReader:
     board = Position()
     moves = []
     
