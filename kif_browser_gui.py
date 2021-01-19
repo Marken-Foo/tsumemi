@@ -143,6 +143,13 @@ class TimerPane(ttk.Frame):
         self.timer_display.grid(
             column=0, row=0, columnspan=3
         )
+        # Format timer appearance
+        self.timer_display.configure(
+            background="black",
+            foreground="light sky blue",
+            font=("TkDefaultFont", 48)
+        )
+        # Timer control widgets
         ttk.Button(
             self, text="Start/stop timer",
             command=self.toggle_timer
@@ -201,27 +208,40 @@ class ProblemsView(ttk.Treeview):
         self.controller = controller
         super().__init__(parent, *args, **kwargs)
         
-        self.notify_actions = dict(zip(Event, [self.set_status, self.set_time, self.refresh_view]))
+        self.notify_actions = {
+            Event.UPDATE_STATUS: self.set_status,
+            Event.UPDATE_TIME: self.set_time,
+            Event.UPDATE_DIRECTORY: self.refresh_view
+        }
+        self.status_strings = {
+            ProblemStatus.SKIP: "-",
+            ProblemStatus.CORRECT: "O",
+            ProblemStatus.WRONG: "X"
+        }
         
-        self["columns"] = ("filename", "time")
+        self["columns"] = ("filename", "time", "status")
         self["show"] = "headings"
         self.heading("filename", text="Problem")
         self.heading("time", text="Time")
-        
-        self.tag_configure("SKIP", background="thistle1")
-        self.tag_configure("CORRECT", background="SeaGreen1")
-        self.tag_configure("WRONG", background="salmon")
+        self.column("time", width=120)
+        self.heading("status", text="Status")
+        self.column("status", anchor="center", width=40)
+        # Colours to be decided (accessibility)
+        self.tag_configure("SKIP", background="snow2")
+        self.tag_configure("CORRECT", background="PaleGreen1")
+        self.tag_configure("WRONG", background="LightPink1")
         return
     
     def set_time(self, idx, time):
         # Set time column for item at given index
-        item = self.get_children()[idx]
+        id = self.get_children()[idx]
         time_str = SplitTimer.sec_to_str(time)
-        self.set(item, column="time", value=time_str)
+        self.set(id, column="time", value=time_str)
         return
     
     def set_status(self, idx, status):
         id = self.get_children()[idx]
+        self.set(id, column="status", value=self.status_strings[status])
         curr_tags = self.item(id)["tags"]
         # tags returns empty string (!) if none, or list of str if at least one
         if not curr_tags:
