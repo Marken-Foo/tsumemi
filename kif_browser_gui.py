@@ -1,12 +1,10 @@
 import os
-import re
 import tkinter as tk
 
-from enum import Enum
 from tkinter import filedialog, messagebox, ttk
 
-import kif_parser
 from board_canvas import BoardCanvas
+from model import Event, Model, ProblemStatus
 from split_timer import SplitTimer
 
 
@@ -145,6 +143,13 @@ class TimerPane(ttk.Frame):
         self.timer_display.grid(
             column=0, row=0, columnspan=3
         )
+        # Format timer appearance
+        self.timer_display.configure(
+            background="black",
+            foreground="light sky blue",
+            font=("TkDefaultFont", 48)
+        )
+        # Timer control widgets
         ttk.Button(
             self, text="Start/stop timer",
             command=self.toggle_timer
@@ -193,23 +198,95 @@ class TimerPane(ttk.Frame):
         return
 
 
+class ProblemsView(ttk.Treeview):
+    '''
+    Displays list of problems in currently open folder.
+    As it is a view of the underlying data model, it uses the Observer pattern
+    to update itself whenever the model updates.
+    '''
+    def __init__(self, parent, controller, *args, **kwargs):
+        self.controller = controller
+        super().__init__(parent, *args, **kwargs)
+        
+        self.notify_actions = {
+            Event.UPDATE_STATUS: self.set_status,
+            Event.UPDATE_TIME: self.set_time,
+            Event.UPDATE_DIRECTORY: self.refresh_view
+        }
+        self.status_strings = {
+            ProblemStatus.SKIP: "-",
+            ProblemStatus.CORRECT: "O",
+            ProblemStatus.WRONG: "X"
+        }
+        
+        self["columns"] = ("filename", "time", "status")
+        self["show"] = "headings"
+        self.heading("filename", text="Problem")
+        self.heading("time", text="Time")
+        self.column("time", width=120)
+        self.heading("status", text="Status")
+        self.column("status", anchor="center", width=40)
+        # Colours to be decided (accessibility)
+        self.tag_configure("SKIP", background="snow2")
+        self.tag_configure("CORRECT", background="PaleGreen1")
+        self.tag_configure("WRONG", background="LightPink1")
+        return
+    
+    def set_time(self, idx, time):
+        # Set time column for item at given index
+        id = self.get_children()[idx]
+        time_str = SplitTimer.sec_to_str(time)
+        self.set(id, column="time", value=time_str)
+        return
+    
+    def set_status(self, idx, status):
+        id = self.get_children()[idx]
+        self.set(id, column="status", value=self.status_strings[status])
+        curr_tags = self.item(id)["tags"]
+        # tags returns empty string (!) if none, or list of str if at least one
+        if not curr_tags:
+            curr_tags = [status.name]
+            self.item(id, tags=curr_tags)
+        elif status.name not in curr_tags:
+            curr_tags.append(status.name)
+            self.item(id, tags=curr_tags)
+        else:
+            pass # no need to update item
+        return
+    
+    def refresh_view(self, problems):
+        # Refresh the entire view as the model changed, e.g. on opening folder
+        self.delete(*self.get_children())
+        for problem in problems:
+            filename = os.path.basename(problem.filename)
+            time_str = "-" if problem.time is None \
+                       else SplitTimer.sec_to_str(problem.time)
+            self.insert(
+                "", "end", values=(filename, time_str)
+            )
+        return
+    
+    def get_selection_idx(self, event):
+        return self.index(self.selection()[0])
+    
+    def on_notify(self, event, *args):
+        # Observer pattern
+        self.notify_actions[event](*args)
+        return
+
+
 class ProblemListPane(ttk.Frame):
     def __init__(self, parent, controller, *args, **kwargs):
         self.controller = controller
         super().__init__(parent, *args, **kwargs)
         
         # Display problem list as Treeview
-        self.tvw = ttk.Treeview(
-            self, columns=("filename", "time"), show="headings"
-        )
-        self.tvw.column("filename")
-        self.tvw.heading("filename", text="Problem")
-        self.tvw.heading("time", text="Time")
+        self.tvw = ProblemsView(parent=self, controller=controller)
         self.tvw.grid(column=0, row=0, sticky="NSEW")
         
         # Make scrollbar
         self.scrollbar_tvw = ttk.Scrollbar(
-            self, orient=tk.VERTICAL,
+            self, orient="vertical",
             command=self.tvw.yview
         )
         self.scrollbar_tvw.grid(column=1, row=0, sticky="NS")
@@ -224,132 +301,16 @@ class ProblemListPane(ttk.Frame):
         self.btn_abort_speedrun.grid_remove()
         
         self.btn_speedrun.grid()
-    
-    def set_time(self, idx, time_str):
-        # Set time column for item at given index
-        item = self.tvw.get_children()[idx]
-        self.tvw.set(item, column="time", value=time_str)
-        return
-
-
-class ProblemStatus(Enum):
-    NONE = 0; CORRECT = 1; WRONG = 2; SKIP = 3
-
-
-class Problem:
-    '''Data class representing one tsume problem.'''
-    def __init__(self, filename):
-        self.filename = filename
-        self.time = None
-        self.status = ProblemStatus.NONE
-        return
-
-
-class Model:
-    # To follow MVC principles, we refactor the business logic of MainWindow out here.
-    problems = []
-    curr_prob_idx = None
-    curr_prob = None
-    
-    directory = None
-    
-    reader = kif_parser.KifReader()
-    solution = ""
-    
-    @staticmethod
-    def natural_sort_key(str, _nsre=re.compile(r'(\d+)')):
-        return [int(c) if c.isdigit() else c.lower() for c in _nsre.split(str)]
-    
-    def __init__(self):
-        return
-    
-    def read_problem(self):
-        # Read current problem into reader.
-        # Try any likely encodings for the KIF files
-        encodings = ["cp932", "utf-8"]
-        for e in encodings:
-            try:
-                with open(self.curr_prob.filename, "r", encoding=e) as kif:
-                    self.reader.parse_kif(kif)
-                    self.solution = "　".join(self.reader.moves)
-            except UnicodeDecodeError:
-                pass
-            else:
-                break
-        return self.reader
-    
-    def set_directory(self, directory):
-        self.directory = directory
-        with os.scandir(directory) as it:
-            self.problems = [
-                Problem(os.path.join(directory, entry.name))
-                for entry in it
-                if entry.name.endswith(".kif") or entry.name.endswith(".kifu")
-            ]
-        self.problems.sort(key=lambda p: Model.natural_sort_key(p.filename))
-        self.curr_prob_idx = 0
-        self.curr_prob = self.problems[self.curr_prob_idx]
-        self.read_problem()
-        return
-    
-    def open_next_file(self):
-        if self.curr_prob_idx+1 >= len(self.problems):
-            return False
-        self.curr_prob = self.problems[self.curr_prob_idx + 1]
-        self.curr_prob_idx += 1
-        self.read_problem()
-        return True
-    
-    def open_prev_file(self):
-        if self.curr_prob_idx-1 < 0:
-            return False
-        self.curr_prob = self.problems[self.curr_prob_idx - 1]
-        self.curr_prob_idx -= 1
-        self.read_problem()
-        return True
-    
-    def open_file(self, idx):
-        if idx >= len(self.problems) or idx < 0:
-            return False
-        self.curr_prob = self.problems[idx]
-        self.curr_prob_idx = idx
-        self.read_problem()
-        return True
-    
-    def set_correct(self):
-        if self.curr_prob is not None:
-            self.curr_prob.status = ProblemStatus.CORRECT
-        return
-    
-    def set_wrong(self):
-        if self.curr_prob is not None:
-            self.curr_prob.status = ProblemStatus.WRONG
-        return
-    
-    def set_skip(self):
-        if self.curr_prob is not None:
-            self.curr_prob.status = ProblemStatus.SKIP
-        return
-    
-    def set_time(self, time):
-        if self.curr_prob is not None:
-            self.curr_prob.time = time
-        return
 
 
 class MainWindow:
     '''Class encapsulating the window to display the kif.'''
-    # Reference to tk.Tk() root object
-    master = None
-    
-    model = None
-    is_solution_shown = False
-    
     # eventually, refactor menu labels and dialog out into a constant namespace
     def __init__(self, master):
         # Set up data model
-        self.model = Model()
+        self.model = Model(self)
         # tkinter stuff, set up the main window
+        # Reference to tk.Tk() root object
         self.master = master
         self.master.option_add("*tearOff", False)
         self.master.columnconfigure(0, weight=1)
@@ -382,6 +343,7 @@ class MainWindow:
         self.board.bind("<Configure>", self.board.on_resize)
         
         # Initialise solution text
+        self.is_solution_shown = False
         self.solution = tk.StringVar(value="Open a folder of problems to display.")
         self.lbl_solution = ttk.Label(
             self.mainframe, textvariable=self.solution,
@@ -413,6 +375,11 @@ class MainWindow:
         self.problem_list_pane = ProblemListPane(parent=self.mainframe, controller=self)
         self.problem_list_pane.grid(column=1, row=0)
         self.problem_list_pane.grid_configure(padx=5, pady=5)
+        # Observer pattern; treeview updates itself when model updates
+        tvw = self.problem_list_pane.tvw
+        self.model.add_observer(tvw)
+        # Double click to go to problem
+        tvw.bind("<Double-1>", lambda e: self.go_to_file(idx=tvw.get_selection_idx(e)))
         
         # Keyboard shortcuts
         self.master.bind("<Key-h>", self.toggle_solution)
@@ -468,12 +435,6 @@ class MainWindow:
         if directory == "":
             return
         self.model.set_directory(os.path.normpath(directory))
-        tvw = self.problem_list_pane.tvw # readability
-        tvw.delete(*tvw.get_children())
-        for file_num, problem in enumerate(self.model.problems):
-            tvw.insert(
-                "", "end", values=(os.path.basename(problem.filename), "-")
-            )
         self.display_problem()
         return
     
@@ -486,9 +447,8 @@ class MainWindow:
         # what if last file in list? what if manually out of order?
         self.timer_controls.timer.split()
         if self.model.curr_prob is not None and len(self.timer_controls.timer.lap_times) != 0:
-            self.model.curr_prob.time = self.timer_controls.timer.lap_times[-1]
-            time_str = SplitTimer.sec_to_str(self.model.curr_prob.time)
-            self.problem_list_pane.set_time(self.model.curr_prob_idx, time_str)
+            time = self.timer_controls.timer.lap_times[-1]
+            self.model.set_time(time)
         return
     
     # Speedrun mode commands
@@ -576,6 +536,20 @@ class MainWindow:
 
 
 if __name__ == "__main__":
+    def apply_theme_fix():
+        # Fix from pyIDM on GitHub:
+        # https://github.com/pyIDM/PyIDM/issues/128#issuecomment-655477524
+        # fix for table colors in tkinter 8.6.9, call style.map twice to work properly
+        style = ttk.Style()
+        def fixed_map(option):
+            return [elm for elm in style.map('Treeview', query_opt=option)
+                    if elm[:2] != ("!disabled", "!selected")]
+        style.map('Treeview', foreground=fixed_map("foreground"),
+                  background=fixed_map("background"))
+        style.map('Treeview', foreground=fixed_map("foreground"),
+                  background=fixed_map("background"))
+
     root = tk.Tk()
     main_window = MainWindow(root)
+    apply_theme_fix()
     root.mainloop()
