@@ -25,22 +25,19 @@ class Problem:
 
 class Model:
     # Following MVC principles, this is the data model of the program.
-    problems = []
-    curr_prob_idx = None
-    curr_prob = None
-    directory = None # not currently used meaningfully
-    reader = KifReader()
-    solution = ""
-    
-    controller = None
-    observers = [] # Observer pattern, to sync Views to it
-    
     @staticmethod
     def natural_sort_key(str, _nsre=re.compile(r'(\d+)')):
         return [int(c) if c.isdigit() else c.lower() for c in _nsre.split(str)]
     
     def __init__(self, controller):
         self.controller = controller
+        self.problems = []
+        self.curr_prob_idx = None
+        self.curr_prob = None
+        self.directory = None # not currently used meaningfully
+        self.reader = KifReader()
+        self.solution = ""
+        self.observers = [] # Observer pattern, to sync Views to it
         return
     
     def add_observer(self, observer):
@@ -82,6 +79,7 @@ class Model:
         self.curr_prob_idx = 0
         self.curr_prob = self.problems[self.curr_prob_idx]
         self.read_problem()
+        self._notify_observers(Event.UPDATE_DIRECTORY, self.problems)
         return
     
     def open_next_file(self):

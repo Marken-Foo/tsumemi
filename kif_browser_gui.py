@@ -191,7 +191,7 @@ class TimerPane(ttk.Frame):
         return
 
 
-class ProblemList(ttk.Treeview):
+class ProblemsView(ttk.Treeview):
     '''
     Displays list of problems in currently open folder.
     As it is a view of the underlying data model, it uses the Observer pattern
@@ -201,13 +201,16 @@ class ProblemList(ttk.Treeview):
         self.controller = controller
         super().__init__(parent, *args, **kwargs)
         
-        self.notify_actions = dict(zip(Event, [self.set_status, self.set_time, None]))
+        self.notify_actions = dict(zip(Event, [self.set_status, self.set_time, self.refresh_view]))
         
-        self["columns"] = ("filename", "time", "status")
+        self["columns"] = ("filename", "time")
         self["show"] = "headings"
         self.heading("filename", text="Problem")
         self.heading("time", text="Time")
-        self.heading("status", text="Status")
+        
+        self.tag_configure("SKIP", background="thistle1")
+        self.tag_configure("CORRECT", background="SeaGreen1")
+        self.tag_configure("WRONG", background="salmon")
         return
     
     def set_time(self, idx, time):
@@ -218,11 +221,36 @@ class ProblemList(ttk.Treeview):
         return
     
     def set_status(self, idx, status):
-        item = self.get_children()[idx]
-        self.set(item, column="status", value=status)
+        id = self.get_children()[idx]
+        curr_tags = self.item(id)["tags"]
+        # tags returns empty string (!) if none, or list of str if at least one
+        if not curr_tags:
+            curr_tags = [status.name]
+            self.item(id, tags=curr_tags)
+        elif status.name not in curr_tags:
+            curr_tags.append(status.name)
+            self.item(id, tags=curr_tags)
+        else:
+            pass # no need to update item
         return
     
+    def refresh_view(self, problems):
+        # Refresh the entire view as the model changed, e.g. on opening folder
+        self.delete(*self.get_children())
+        for problem in problems:
+            filename = os.path.basename(problem.filename)
+            time_str = "-" if problem.time is None \
+                       else SplitTimer.sec_to_str(problem.time)
+            self.insert(
+                "", "end", values=(filename, time_str)
+            )
+        return
+    
+    def get_selection_idx(self, event):
+        return self.index(self.selection()[0])
+    
     def on_notify(self, event, *args):
+        # Observer pattern
         self.notify_actions[event](*args)
         return
 
@@ -233,7 +261,7 @@ class ProblemListPane(ttk.Frame):
         super().__init__(parent, *args, **kwargs)
         
         # Display problem list as Treeview
-        self.tvw = ProblemList(parent=self, controller=controller)
+        self.tvw = ProblemsView(parent=self, controller=controller)
         self.tvw.grid(column=0, row=0, sticky="NSEW")
         
         # Make scrollbar
@@ -257,17 +285,12 @@ class ProblemListPane(ttk.Frame):
 
 class MainWindow:
     '''Class encapsulating the window to display the kif.'''
-    # Reference to tk.Tk() root object
-    master = None
-    
-    model = None
-    is_solution_shown = False
-    
     # eventually, refactor menu labels and dialog out into a constant namespace
     def __init__(self, master):
         # Set up data model
         self.model = Model(self)
         # tkinter stuff, set up the main window
+        # Reference to tk.Tk() root object
         self.master = master
         self.master.option_add("*tearOff", False)
         self.master.columnconfigure(0, weight=1)
@@ -300,6 +323,7 @@ class MainWindow:
         self.board.bind("<Configure>", self.board.on_resize)
         
         # Initialise solution text
+        self.is_solution_shown = False
         self.solution = tk.StringVar(value="Open a folder of problems to display.")
         self.lbl_solution = ttk.Label(
             self.mainframe, textvariable=self.solution,
@@ -331,8 +355,11 @@ class MainWindow:
         self.problem_list_pane = ProblemListPane(parent=self.mainframe, controller=self)
         self.problem_list_pane.grid(column=1, row=0)
         self.problem_list_pane.grid_configure(padx=5, pady=5)
-        
-        self.model.add_observer(self.problem_list_pane.tvw)
+        # Observer pattern; treeview updates itself when model updates
+        tvw = self.problem_list_pane.tvw
+        self.model.add_observer(tvw)
+        # Double click to go to problem
+        tvw.bind("<Double-1>", lambda e: self.go_to_file(idx=tvw.get_selection_idx(e)))
         
         # Keyboard shortcuts
         self.master.bind("<Key-h>", self.toggle_solution)
@@ -388,12 +415,6 @@ class MainWindow:
         if directory == "":
             return
         self.model.set_directory(os.path.normpath(directory))
-        tvw = self.problem_list_pane.tvw # readability
-        tvw.delete(*tvw.get_children())
-        for file_num, problem in enumerate(self.model.problems):
-            tvw.insert(
-                "", "end", values=(os.path.basename(problem.filename), "-")
-            )
         self.display_problem()
         return
     
@@ -495,6 +516,20 @@ class MainWindow:
 
 
 if __name__ == "__main__":
+    def apply_theme_fix():
+        # Fix from pyIDM on GitHub:
+        # https://github.com/pyIDM/PyIDM/issues/128#issuecomment-655477524
+        # fix for table colors in tkinter 8.6.9, call style.map twice to work properly
+        style = ttk.Style()
+        def fixed_map(option):
+            return [elm for elm in style.map('Treeview', query_opt=option)
+                    if elm[:2] != ("!disabled", "!selected")]
+        style.map('Treeview', foreground=fixed_map("foreground"),
+                  background=fixed_map("background"))
+        style.map('Treeview', foreground=fixed_map("foreground"),
+                  background=fixed_map("background"))
+
     root = tk.Tk()
     main_window = MainWindow(root)
+    apply_theme_fix()
     root.mainloop()

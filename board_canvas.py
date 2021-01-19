@@ -15,10 +15,10 @@ class BoardCanvas(Canvas):
     KOMADAI_W_IN_SQ = 1.5
     INNER_H_PAD = 30
     
-    is_upside_down = False
     
     def __init__(self, parent, controller, *args, **kwargs):
         self.controller = controller
+        self.is_upside_down = False
         super().__init__(parent, *args, **kwargs)
         return
     
