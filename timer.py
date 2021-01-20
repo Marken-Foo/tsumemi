@@ -3,6 +3,23 @@ import time
 from itertools import accumulate
 from math import fsum
 
+from event import Emitter, TimerStartEvent, TimerStopEvent, TimerSplitEvent
+
+
+def sec_to_hms(seconds):
+    # Take time in seconds, return tuple of (hours, minutes, seconds).
+    return (int(seconds // 3600), int((seconds % 3600) // 60), seconds % 60)
+
+def _two_digits(num):
+    # Take num, make integer part two chars (clock display), return string
+    return "0" + str(num) if num < 10 else str(num)
+
+def sec_to_str(seconds, places=1):
+    hms = list(sec_to_hms(seconds))
+    hms[2] = round(hms[2], places)
+    return ":".join([_two_digits(i) for i in hms])
+
+
 class SplitTimer:
     '''
     Split timer class. Works like a speedrunning split timer.
@@ -38,18 +55,22 @@ class SplitTimer:
     def split(self):
         if self.start_time is None:
             # ill-defined operation
-            return
+            return None
         if self.is_running:
-            self.lap_times.append(self.curr_lap_time + time.perf_counter() - self.start_time)
+            lap_time = (self.curr_lap_time + time.perf_counter()
+                        - self.start_time)
+            self.lap_times.append(lap_time)
             self.start_time = time.perf_counter()
             self.curr_lap_time = 0
+            return lap_time
         else:
             # Taking a split while the timer is paused "has no meaning".
             # But we implement it anyway.
-            self.lap_times.append(self.curr_lap_time)
+            lap_time = self.curr_lap_time
+            self.lap_times.append(lap_time)
             self.start_time = None
             self.curr_lap_time = 0
-        return
+            return lap_time
     
     def reset(self):
         self.is_running = False
@@ -60,30 +81,41 @@ class SplitTimer:
     
     def read(self):
         if self.is_running:
-            res = fsum(self.lap_times) + self.curr_lap_time + time.perf_counter() - self.start_time
+            res = (fsum(self.lap_times) + self.curr_lap_time
+                   + time.perf_counter() - self.start_time)
         else:
             res = fsum(self.lap_times) + self.curr_lap_time
         return res
     
+    def get_lap(self):
+        if self.lap_times:
+            return self.lap_times[-1]
+        else:
+            return None
+    
     def get_split_times(self):
         # Return a list of split times instead of lap times.
         return accumulate(self.lap_times)
+
+
+class Timer(Emitter):
+    def __init__(self):
+        self.clock = SplitTimer()
+        self.observers = []
+        return
     
-    @staticmethod
-    def sec_to_hms(seconds):
-        # Take time in seconds, return tuple of (hours, minutes, seconds).
-        return (int(seconds // 3600), int((seconds % 3600) // 60), seconds % 60)
+    def start(self):
+        self.clock.start()
+        self._notify_observers(TimerStartEvent())
+        return
     
-    @staticmethod
-    def _two_digits(num):
-        # Take num, make integer part two chars (clock display), return string
-        if num < 10:
-            return "0" + str(num)
-        else:
-            return str(num)
+    def stop(self):
+        self.clock.stop()
+        self._notify_observers(TimerStopEvent())
+        return
     
-    @staticmethod
-    def sec_to_str(seconds, places=1):
-        hms = list(SplitTimer.sec_to_hms(seconds))
-        hms[2] = round(hms[2], places)
-        return ":".join([SplitTimer._two_digits(i) for i in hms])
+    def split(self):
+        time = self.clock.split()
+        if time is not None:
+            self._notify_observers(TimerSplitEvent())
+        return

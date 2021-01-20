@@ -4,10 +4,11 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
 import model
+import timer
 
 from board_canvas import BoardCanvas
+from event import IObserver
 from model import Model, ProblemStatus
-from split_timer import SplitTimer
 
 
 class Menubar(tk.Menu):
@@ -136,9 +137,9 @@ class TimerPane(ttk.Frame):
         super().__init__(parent, *args, **kwargs)
         
         # Basic timer
-        self.timer = SplitTimer()
+        self.timer = timer.SplitTimer()
         # The Label will update itself via Observer pattern when refactored.
-        self.timer_display_str = tk.StringVar(value=SplitTimer.sec_to_str(0.0))
+        self.timer_display_str = tk.StringVar(value=timer.sec_to_str(0.0))
         self.timer_display = ttk.Label(
             self, textvariable=self.timer_display_str
         )
@@ -194,13 +195,13 @@ class TimerPane(ttk.Frame):
         return
     
     def refresh_timer(self):
-        self.timer_display_str.set(SplitTimer.sec_to_str(self.timer.read()))
+        self.timer_display_str.set(timer.sec_to_str(self.timer.read()))
         if self.timer.is_running:
             self.timer_display.after(40, self.refresh_timer)
         return
 
 
-class ProblemsView(ttk.Treeview):
+class ProblemsView(ttk.Treeview, IObserver):
     '''
     Displays list of problems in currently open folder.
     As it is a view of the underlying data model, it uses the Observer pattern
@@ -234,12 +235,16 @@ class ProblemsView(ttk.Treeview):
         self.tag_configure("WRONG", background="LightPink1")
         return
     
+    def on_notify(self, event):
+        self.notify_actions[type(event)](event)
+        return
+    
     def set_time(self, event):
         idx = event.idx
         time = event.time
         # Set time column for item at given index
         id = self.get_children()[idx]
-        time_str = SplitTimer.sec_to_str(time)
+        time_str = timer.sec_to_str(time)
         self.set(id, column="time", value=time_str)
         return
     
@@ -267,7 +272,7 @@ class ProblemsView(ttk.Treeview):
         for problem in problems:
             filename = os.path.basename(problem.filename)
             time_str = "-" if problem.time is None \
-                       else SplitTimer.sec_to_str(problem.time)
+                       else timer.sec_to_str(problem.time)
             self.insert(
                 "", "end", values=(filename, time_str)
             )
@@ -275,11 +280,6 @@ class ProblemsView(ttk.Treeview):
     
     def get_selection_idx(self, event):
         return self.index(self.selection()[0])
-    
-    def on_notify(self, event):
-        # Observer pattern
-        self.notify_actions[type(event)](event)
-        return
 
 
 class ProblemListPane(ttk.Frame):
@@ -315,7 +315,8 @@ class MainWindow:
     # eventually, refactor menu labels and dialog out into a constant namespace
     def __init__(self, master):
         # Set up data model
-        self.model = Model(self)
+        self.model = Model()
+        self.timer = timer.Timer()
         # tkinter stuff, set up the main window
         # Reference to tk.Tk() root object
         self.master = master
@@ -377,6 +378,8 @@ class MainWindow:
         self.timer_controls.grid(column=1, row=1)
         self.timer_controls.columnconfigure(0, weight=0)
         self.timer_controls.rowconfigure(0, weight=0)
+        # Observer pattern; timer panel updates itself alongside timer
+        self.timer.add_observer(self.timer_controls)
         
         # Problem list
         self.problem_list_pane = ProblemListPane(parent=self.mainframe, controller=self)

@@ -3,27 +3,8 @@ import re
 
 from enum import Enum
 
+from event import Emitter, ProbDirEvent, ProbStatusEvent, ProbTimeEvent
 from kif_parser import KifReader
-from split_timer import SplitTimer
-
-
-class Event:
-    def __init__(self):
-        pass
-
-class ProbStatusEvent(Event):
-    def __init__(self, prob_idx, status):
-        self.idx = prob_idx
-        self.status = status
-
-class ProbTimeEvent(Event):
-    def __init__(self, prob_idx, time):
-        self.idx = prob_idx
-        self.time = time
-
-class ProbDirEvent(Event):
-    def __init__(self, prob_list):
-        self.prob_list = prob_list
 
 
 class ProblemStatus(Enum):
@@ -39,14 +20,13 @@ class Problem:
         return
 
 
-class Model:
+class Model(Emitter):
     # Following MVC principles, this is the data model of the program.
     @staticmethod
     def natural_sort_key(str, _nsre=re.compile(r'(\d+)')):
         return [int(c) if c.isdigit() else c.lower() for c in _nsre.split(str)]
     
-    def __init__(self, controller):
-        self.controller = controller
+    def __init__(self):
         self.problems = []
         self.curr_prob_idx = None
         self.curr_prob = None
@@ -54,24 +34,6 @@ class Model:
         self.reader = KifReader()
         self.solution = ""
         self.observers = [] # Observer pattern, to sync Views to it
-        return
-    
-    def add_observer(self, observer):
-        self.observers.append(observer)
-        return
-    
-    def remove_observer(self, observer):
-        try:
-            self.observers.remove(observer)
-        except ValueError:
-            # observer does not exist in list; log
-            pass
-        return
-    
-    def _notify_observers(self, event):
-        for observer in self.observers:
-            observer.on_notify(event)
-        return
     
     def read_problem(self):
         # Read current problem into reader.
