@@ -3,11 +3,8 @@ import re
 
 from enum import Enum
 
+from event import Emitter, ProbDirEvent, ProbStatusEvent, ProbTimeEvent
 from kif_parser import KifReader
-
-
-class Event(Enum):
-    UPDATE_STATUS = 0; UPDATE_TIME = 1; UPDATE_DIRECTORY = 2
 
 
 class ProblemStatus(Enum):
@@ -23,14 +20,13 @@ class Problem:
         return
 
 
-class Model:
+class Model(Emitter):
     # Following MVC principles, this is the data model of the program.
     @staticmethod
     def natural_sort_key(str, _nsre=re.compile(r'(\d+)')):
         return [int(c) if c.isdigit() else c.lower() for c in _nsre.split(str)]
     
-    def __init__(self, controller):
-        self.controller = controller
+    def __init__(self):
         self.problems = []
         self.curr_prob_idx = None
         self.curr_prob = None
@@ -38,19 +34,6 @@ class Model:
         self.reader = KifReader()
         self.solution = ""
         self.observers = [] # Observer pattern, to sync Views to it
-        return
-    
-    def add_observer(self, observer):
-        self.observers.append(observer)
-        return
-    
-    def remove_observer(self, observer):
-        try:
-            self.observers.remove(observer)
-        except ValueError:
-            # observer does not exist in list; log
-            pass
-        return
     
     def read_problem(self):
         # Read current problem into reader.
@@ -79,7 +62,7 @@ class Model:
         self.curr_prob_idx = 0
         self.curr_prob = self.problems[self.curr_prob_idx]
         self.read_problem()
-        self._notify_observers(Event.UPDATE_DIRECTORY, self.problems)
+        self._notify_observers(ProbDirEvent(self.problems))
         return
     
     def open_next_file(self):
@@ -109,28 +92,23 @@ class Model:
     def set_correct(self):
         if self.curr_prob is not None:
             self.curr_prob.status = ProblemStatus.CORRECT
-            self._notify_observers(Event.UPDATE_STATUS, self.curr_prob_idx, ProblemStatus.CORRECT)
+            self._notify_observers(ProbStatusEvent(self.curr_prob_idx, ProblemStatus.CORRECT))
         return
     
     def set_wrong(self):
         if self.curr_prob is not None:
             self.curr_prob.status = ProblemStatus.WRONG
-            self._notify_observers(Event.UPDATE_STATUS, self.curr_prob_idx, ProblemStatus.WRONG)
+            self._notify_observers(ProbStatusEvent(self.curr_prob_idx, ProblemStatus.WRONG))
         return
     
     def set_skip(self):
         if self.curr_prob is not None:
             self.curr_prob.status = ProblemStatus.SKIP
-            self._notify_observers(Event.UPDATE_STATUS, self.curr_prob_idx, ProblemStatus.SKIP)
+            self._notify_observers(ProbStatusEvent(self.curr_prob_idx, ProblemStatus.SKIP))
         return
     
     def set_time(self, time):
         if self.curr_prob is not None:
             self.curr_prob.time = time
-            self._notify_observers(Event.UPDATE_TIME, self.curr_prob_idx, time)
-        return
-    
-    def _notify_observers(self, event, *args):
-        for observer in self.observers:
-            observer.on_notify(event, *args)
+            self._notify_observers(ProbTimeEvent(self.curr_prob_idx, time))
         return

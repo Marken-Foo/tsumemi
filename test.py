@@ -3,14 +3,14 @@ import unittest
 from io import StringIO
 from time import sleep
 
-from split_timer import SplitTimer
-from kif_browser_gui import TimerPane
+import timer
+
 from kif_parser import KifReader, Piece
 
 
 class TestTimer(unittest.TestCase):
     def setUp(self):
-        self.timer = SplitTimer()
+        self.timer = timer.SplitTimer()
     
     def tearDown(self):
         self.timer = None
@@ -114,31 +114,13 @@ class TestTimer(unittest.TestCase):
         cases = [0, 60, 61, 3600, 3601, 3660, 3662]
         answers = [(0,0,0), (0,1,0), (0,1,1), (1,0,0), (1,0,1), (1,1,0), (1,1,2)]
         for case, answer in zip(cases, answers):
-            self.assertEqual(SplitTimer.sec_to_hms(case), answer)
+            self.assertEqual(timer.sec_to_hms(case), answer)
     
     def test_sec_to_str(self, places=1):
         cases = [0.0, 34.1, 78.2, 1437.0, 3602.6, 86400.0, 359999.9, 363659.7]
         answers = ["00:00:00.0", "00:00:34.1", "00:01:18.2", "00:23:57.0", "01:00:02.6", "24:00:00.0", "99:59:59.9", "101:00:59.7"]
         for case, answer in zip(cases, answers):
-            self.assertEqual(SplitTimer.sec_to_str(case, places=1), answer)
-
-
-class TestTimerPane(unittest.TestCase):
-    def setUp(self):
-        class DummyCtrl():
-            def __init__(self):
-                self.split_timer = None
-        self.ctrl = DummyCtrl()
-        self.timer_pane = TimerPane(parent=None, controller=self.ctrl)
-    
-    def tearDown(self):
-        self.ctrl = None
-        self.timer_pane = None
-    
-    def test_reset(self):
-        tt = TestTimer()
-        tt.timer = self.timer_pane.timer
-        tt.test_default_timer()
+            self.assertEqual(timer.sec_to_str(case, places=1), answer)
 
 
 class TestKifReader(unittest.TestCase):

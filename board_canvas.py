@@ -7,12 +7,12 @@ from kif_parser import KanjiNumber
 class BoardCanvas(Canvas):
     '''Class encapsulating the canvas where the board is drawn.'''
     # Default/current canvas size for board
-    canvas_width = 570
-    canvas_height = 460
+    canvas_width = 600
+    canvas_height = 500
     
     # Constant proportions
     SQ_ASPECT_RATIO = 11 / 12
-    KOMADAI_W_IN_SQ = 1.5
+    KOMADAI_W_IN_SQ = 1.7
     INNER_H_PAD = 30
     
     
@@ -39,43 +39,43 @@ class BoardCanvas(Canvas):
         # Note: if is_upside_down, essentially performs a deep copy,
         # but just "passes by reference" the reader's board if not.
         if self.is_upside_down:
-            north_hand = reader.board.gote_hand
-            south_hand = reader.board.sente_hand
-            north_board = reader.board.gote[::-1]
-            south_board = reader.board.sente[::-1]
-            for i, row in enumerate(north_board):
-                north_board[i] = row[::-1]
+            south_hand = reader.board.gote_hand
+            north_hand = reader.board.sente_hand
+            south_board = reader.board.gote[::-1]
+            north_board = reader.board.sente[::-1]
             for i, row in enumerate(south_board):
                 south_board[i] = row[::-1]
-            north_hand_strings = ["△\n持\n駒\n"]
-            south_hand_strings = ["▲\n持\n駒\n"]
+            for i, row in enumerate(north_board):
+                north_board[i] = row[::-1]
+            south_hand_strings = ["△\n持\n駒\n"]
+            north_hand_strings = ["▲\n持\n駒\n"]
             row_coords = [" " + KanjiNumber(i).name for i in range(9, 0, -1)]
             col_coords = [str(i) for i in range(1, 10, 1)]
         else:
-            north_hand = reader.board.sente_hand
-            south_hand = reader.board.gote_hand
-            north_board = reader.board.sente
-            south_board = reader.board.gote
-            north_hand_strings = ["▲\n持\n駒\n"]
-            south_hand_strings = ["△\n持\n駒\n"]
+            south_hand = reader.board.sente_hand
+            north_hand = reader.board.gote_hand
+            south_board = reader.board.sente
+            north_board = reader.board.gote
+            south_hand_strings = ["▲\n持\n駒\n"]
+            north_hand_strings = ["△\n持\n駒\n"]
             row_coords = [" " + KanjiNumber(i).name for i in range(1, 10, 1)]
             col_coords = [str(i) for i in range(9, 0, -1)]
         
         # Draw board
         for i in range(10):
             self.create_line(x_sq(i), y_sq(0), x_sq(i), y_sq(9),
-                                    fill="black", width=2)
+                                    fill="black", width=1)
             self.create_line(x_sq(0), y_sq(i), x_sq(9), y_sq(i),
-                                    fill="black", width=2)
+                                    fill="black", width=1)
         # Draw board pieces
-        for row_num, row in enumerate(north_board):
+        for row_num, row in enumerate(south_board):
             for col_num, piece in enumerate(row):
                 self.create_text(
                     x_sq(col_num+0.5), y_sq(row_num+0.5),
                     text=str(piece),
                     font=(font.nametofont("TkDefaultFont"), sq_text_size)
                 )
-        for row_num, row in enumerate(south_board):
+        for row_num, row in enumerate(north_board):
             for col_num, piece in enumerate(row):
                 self.create_text(
                     x_sq(col_num+0.5), y_sq(row_num+0.5),
@@ -99,26 +99,26 @@ class BoardCanvas(Canvas):
                 anchor="s"
             )
         # Draw sente hand pieces
-        c = Counter(north_hand)
-        for piece in c:
-            north_hand_strings.append(str(piece) + str(c[piece]))
-        if len(north_hand_strings) == 1:
-            north_hand_strings.append("な\nし")
-        self.create_text(
-            x_sq(9) + komadai_w, y_sq(9),
-            text="\n".join(north_hand_strings),
-            font=(font.nametofont("TkDefaultFont"), komadai_text_size),
-            anchor="se"
-        )
-        # Draw gote hand pieces
         c = Counter(south_hand)
         for piece in c:
             south_hand_strings.append(str(piece) + str(c[piece]))
         if len(south_hand_strings) == 1:
             south_hand_strings.append("な\nし")
         self.create_text(
-            w_pad, h_pad,
+            x_sq(9) + komadai_w, y_sq(9),
             text="\n".join(south_hand_strings),
+            font=(font.nametofont("TkDefaultFont"), komadai_text_size),
+            anchor="se"
+        )
+        # Draw gote hand pieces
+        c = Counter(north_hand)
+        for piece in c:
+            north_hand_strings.append(str(piece) + str(c[piece]))
+        if len(north_hand_strings) == 1:
+            north_hand_strings.append("な\nし")
+        self.create_text(
+            w_pad, h_pad,
+            text="\n".join(north_hand_strings),
             font=(font.nametofont("TkDefaultFont"), komadai_text_size),
             anchor="nw"
         )
@@ -146,7 +146,7 @@ class BoardCanvas(Canvas):
         else:
             w_pad = (self.canvas_width - 2*komadai_w - 9*sq_w) / 2
             h_pad = self.INNER_H_PAD
-        sq_text_size = int(sq_w / 2)
+        sq_text_size = int(sq_w * 7/10)
         komadai_text_size = int(sq_w * 2/5)
         coords_text_size = int(sq_w * 2/9)
         return (sq_w, sq_h, komadai_w, w_pad, h_pad,
