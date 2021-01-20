@@ -14,6 +14,8 @@ Python 3 is required. You can download an installer for the latest version from 
 
 To install, download all the .py files to a single folder. To run, make sure you have Python 3 installed on your system, then double click `kif_browser_gui.py` or run it from the command line.
 
+Comes with a free set of ten 1-te and ten 3-te problems in the folder `/sample_problems`, composed by Marken Foo.
+
 ## How to use ##
 
 From the menu bar, "File -> Open folder...", or Ctrl-O on the keyboard opens the folder selection dialog. Select the folder containing the kifu files you want to browse.
@@ -39,3 +41,7 @@ Your time splits for each problem are displayed in the panel on the right.
 ## Feedback ##
 
 This is just a small bit of code to try making something convenient. If you encounter any bugs, let me know. Including an example of the offending .kif files that it couldn't read would help.
+
+## Licence ##
+
+This project is licenced under the LGPLv3.
