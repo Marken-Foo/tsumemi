@@ -104,6 +104,20 @@ class Timer(Emitter):
         self.observers = []
         return
     
+    def read(self):
+        return self.clock.read()
+    
+    def reset(self):
+        self.clock.reset()
+        self._notify_observers(TimerStopEvent())
+        return
+    
+    def split(self):
+        time = self.clock.split()
+        if time is not None:
+            self._notify_observers(TimerSplitEvent(time))
+        return time # can be None
+    
     def start(self):
         self.clock.start()
         self._notify_observers(TimerStartEvent())
@@ -114,8 +128,17 @@ class Timer(Emitter):
         self._notify_observers(TimerStopEvent())
         return
     
-    def split(self):
-        time = self.clock.split()
-        if time is not None:
-            self._notify_observers(TimerSplitEvent())
+    def toggle(self):
+        if self.clock.is_running: # remove this private access
+            self.stop()
+        else:
+            self.start()
         return
+
+class CmdReadTimer:
+    # Command pattern
+    def __init__(self, timer):
+        self.timer = timer
+    
+    def execute(self, invoker):
+        return self.timer.read()

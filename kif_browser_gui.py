@@ -3,11 +3,11 @@ import tkinter as tk
 
 from tkinter import filedialog, messagebox, ttk
 
+import event
 import model
 import timer
 
 from board_canvas import BoardCanvas
-from event import IObserver
 from model import Model, ProblemStatus
 
 
@@ -131,6 +131,48 @@ class SpeedrunNavControls(NavControls):
         return
 
 
+class TimerDisplay(ttk.Label, event.IObserver):
+    def __init__(self, parent, controller, *args, **kwargs):
+        self.controller = controller
+        super().__init__(parent, *args, **kwargs)
+        
+        self.NOTIFY_ACTIONS = {
+            event.TimerStartEvent: self._on_start,
+            event.TimerStopEvent: self._on_stop
+        }
+        # we assume timer is in reset state
+        self.is_running = False
+        self.time_str = tk.StringVar(value=timer.sec_to_str(0.0))
+        self["textvariable"] = self.time_str
+        self.configure(
+            background="black",
+            foreground="light sky blue",
+            font=("TkDefaultFont", 48)
+        )
+    
+    def on_notify(self, event):
+        event_type = type(event)
+        if event_type in self.NOTIFY_ACTIONS:
+            self.NOTIFY_ACTIONS[event_type](event)
+        return
+    
+    def _on_start(self, event):
+        self.is_running = True
+        self.refresh()
+        return
+        
+    def _on_stop(self, event):
+        self.is_running = False
+        self.refresh()
+        return
+    
+    def refresh(self):
+        self.time_str.set(timer.sec_to_str(self.controller.cmd_read_timer.execute(self)))
+        if self.is_running:
+            self.after(40, self.refresh)
+        return
+
+
 class TimerPane(ttk.Frame):
     def __init__(self, parent, controller, *args, **kwargs):
         self.controller = controller
@@ -139,29 +181,20 @@ class TimerPane(ttk.Frame):
         # Basic timer
         self.timer = timer.SplitTimer()
         # The Label will update itself via Observer pattern when refactored.
-        self.timer_display_str = tk.StringVar(value=timer.sec_to_str(0.0))
-        self.timer_display = ttk.Label(
-            self, textvariable=self.timer_display_str
-        )
+        self.timer_display = TimerDisplay(parent=self, controller=self.controller)
         self.timer_display.grid(
             column=0, row=0, columnspan=3
-        )
-        # Format timer appearance
-        self.timer_display.configure(
-            background="black",
-            foreground="light sky blue",
-            font=("TkDefaultFont", 48)
         )
         # Timer control widgets
         ttk.Button(
             self, text="Start/stop timer",
-            command=self.toggle_timer
+            command=self.controller.toggle_timer
         ).grid(
             column=0, row=1
         )
         ttk.Button(
             self, text="Reset timer",
-            command=self.reset
+            command=self.controller.reset_timer
         ).grid(
             column=1, row=1
         )
@@ -171,50 +204,23 @@ class TimerPane(ttk.Frame):
         ).grid(
             column=2, row=1
         )
-    
-    def start(self):
-        self.timer.start()
-        self.refresh_timer()
-        return
-        
-    def stop(self):
-        self.timer.stop()
-        return
-    
-    def toggle_timer(self):
-        if self.timer.is_running:
-            self.stop()
-        else:
-            self.start()
-        return
-    
-    def reset(self):
-        self.timer.stop()
-        self.timer.reset()
-        self.refresh_timer()
-        return
-    
-    def refresh_timer(self):
-        self.timer_display_str.set(timer.sec_to_str(self.timer.read()))
-        if self.timer.is_running:
-            self.timer_display.after(40, self.refresh_timer)
-        return
 
 
-class ProblemsView(ttk.Treeview, IObserver):
+class ProblemsView(ttk.Treeview, event.IObserver):
     '''
     Displays list of problems in currently open folder.
     As it is a view of the underlying data model, it uses the Observer pattern
     to update itself whenever the model updates.
     '''
+    
     def __init__(self, parent, controller, *args, **kwargs):
         self.controller = controller
         super().__init__(parent, *args, **kwargs)
         
-        self.notify_actions = {
-            model.ProbStatusEvent: self.set_status,
-            model.ProbTimeEvent: self.set_time,
-            model.ProbDirEvent: self.refresh_view
+        self.NOTIFY_ACTIONS = {
+            event.ProbStatusEvent: self.set_status,
+            event.ProbTimeEvent: self.set_time,
+            event.ProbDirEvent: self.refresh_view
         }
         self.status_strings = {
             ProblemStatus.SKIP: "-",
@@ -236,7 +242,9 @@ class ProblemsView(ttk.Treeview, IObserver):
         return
     
     def on_notify(self, event):
-        self.notify_actions[type(event)](event)
+        event_type = type(event)
+        if event_type in self.NOTIFY_ACTIONS:
+            self.NOTIFY_ACTIONS[event_type](event)
         return
     
     def set_time(self, event):
@@ -317,6 +325,7 @@ class MainWindow:
         # Set up data model
         self.model = Model()
         self.timer = timer.Timer()
+        self.cmd_read_timer = timer.CmdReadTimer(self.timer)
         # tkinter stuff, set up the main window
         # Reference to tk.Tk() root object
         self.master = master
@@ -379,7 +388,7 @@ class MainWindow:
         self.timer_controls.columnconfigure(0, weight=0)
         self.timer_controls.rowconfigure(0, weight=0)
         # Observer pattern; timer panel updates itself alongside timer
-        self.timer.add_observer(self.timer_controls)
+        self.timer.add_observer(self.timer_controls.timer_display) # ewww
         
         # Problem list
         self.problem_list_pane = ProblemListPane(parent=self.mainframe, controller=self)
@@ -452,12 +461,27 @@ class MainWindow:
         self.board.flip_board(want_upside_down)
         return
     
+    def start_timer(self):
+        self.timer.start()
+        return
+    
+    def stop_timer(self):
+        self.timer.stop()
+        return
+    
+    def toggle_timer(self):
+        self.timer.toggle()
+        return
+    
+    def reset_timer(self):
+        self.timer.reset()
+        return
+    
     def split_timer(self):
         # what am I doing? OK kind of works but many logic issues. NEEDS WORK
         # what if last file in list? what if manually out of order?
-        self.timer_controls.timer.split()
-        if self.model.curr_prob is not None and len(self.timer_controls.timer.lap_times) != 0:
-            time = self.timer_controls.timer.lap_times[-1]
+        time = self.timer.split()
+        if self.model.curr_prob is not None and time is not None:
             self.model.set_time(time)
         return
     
@@ -478,8 +502,8 @@ class MainWindow:
         
         # Set application state
         self.go_to_file(idx=0)
-        self.timer_controls.reset()
-        self.timer_controls.start()
+        self.reset_timer()
+        self.start_timer()
         return
         
     def abort(self):
@@ -496,7 +520,7 @@ class MainWindow:
         self.master.bind("<Left>", self.prev_file)
         self.master.bind("<Right>", self.next_file)
         
-        self.timer_controls.stop()
+        self.stop_timer()
         return
     
     def skip(self):
@@ -510,7 +534,7 @@ class MainWindow:
     def view_solution(self):
         # show solution, split and pause timer, change NavControl
         self.split_timer()
-        self.timer_controls.stop()
+        self.stop_timer()
         self.show_solution()
         self.nav_controls.show_correct_wrong()
         return
@@ -522,7 +546,7 @@ class MainWindow:
             self.end_of_folder()
             return
         self.nav_controls.show_sol_skip()
-        self.timer_controls.start()
+        self.start_timer()
         return
     
     def mark_wrong(self):
@@ -532,11 +556,11 @@ class MainWindow:
             self.end_of_folder()
             return
         self.nav_controls.show_sol_skip()
-        self.timer_controls.start()
+        self.start_timer()
         return
     
     def end_of_folder(self):
-        self.timer_controls.stop()
+        self.stop_timer()
         messagebox.showinfo(
             title="End of folder",
             message="You have reached the end of the speedrun."

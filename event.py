@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 
-
 class Event:
     def __init__(self):
         pass
@@ -33,7 +32,10 @@ class TimerSplitEvent(Event):
 class IObserver(ABC):
     @abstractmethod
     def on_notify(event):
-        pass
+        event_type = type(event)
+        if event_type in self.NOTIFY_ACTIONS:
+            self.NOTIFY_ACTIONS[event_type](event)
+        return
 
 class Emitter():
     def add_observer(self, observer):
