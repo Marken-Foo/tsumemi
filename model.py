@@ -4,10 +4,26 @@ import re
 from enum import Enum
 
 from kif_parser import KifReader
+from split_timer import SplitTimer
 
 
-class Event(Enum):
-    UPDATE_STATUS = 0; UPDATE_TIME = 1; UPDATE_DIRECTORY = 2
+class Event:
+    def __init__(self):
+        pass
+
+class ProbStatusEvent(Event):
+    def __init__(self, prob_idx, status):
+        self.idx = prob_idx
+        self.status = status
+
+class ProbTimeEvent(Event):
+    def __init__(self, prob_idx, time):
+        self.idx = prob_idx
+        self.time = time
+
+class ProbDirEvent(Event):
+    def __init__(self, prob_list):
+        self.prob_list = prob_list
 
 
 class ProblemStatus(Enum):
@@ -52,6 +68,11 @@ class Model:
             pass
         return
     
+    def _notify_observers(self, event):
+        for observer in self.observers:
+            observer.on_notify(event)
+        return
+    
     def read_problem(self):
         # Read current problem into reader.
         # Try any likely encodings for the KIF files
@@ -79,7 +100,7 @@ class Model:
         self.curr_prob_idx = 0
         self.curr_prob = self.problems[self.curr_prob_idx]
         self.read_problem()
-        self._notify_observers(Event.UPDATE_DIRECTORY, self.problems)
+        self._notify_observers(ProbDirEvent(self.problems))
         return
     
     def open_next_file(self):
@@ -109,28 +130,23 @@ class Model:
     def set_correct(self):
         if self.curr_prob is not None:
             self.curr_prob.status = ProblemStatus.CORRECT
-            self._notify_observers(Event.UPDATE_STATUS, self.curr_prob_idx, ProblemStatus.CORRECT)
+            self._notify_observers(ProbStatusEvent(self.curr_prob_idx, ProblemStatus.CORRECT))
         return
     
     def set_wrong(self):
         if self.curr_prob is not None:
             self.curr_prob.status = ProblemStatus.WRONG
-            self._notify_observers(Event.UPDATE_STATUS, self.curr_prob_idx, ProblemStatus.WRONG)
+            self._notify_observers(ProbStatusEvent(self.curr_prob_idx, ProblemStatus.WRONG))
         return
     
     def set_skip(self):
         if self.curr_prob is not None:
             self.curr_prob.status = ProblemStatus.SKIP
-            self._notify_observers(Event.UPDATE_STATUS, self.curr_prob_idx, ProblemStatus.SKIP)
+            self._notify_observers(ProbStatusEvent(self.curr_prob_idx, ProblemStatus.SKIP))
         return
     
     def set_time(self, time):
         if self.curr_prob is not None:
             self.curr_prob.time = time
-            self._notify_observers(Event.UPDATE_TIME, self.curr_prob_idx, time)
-        return
-    
-    def _notify_observers(self, event, *args):
-        for observer in self.observers:
-            observer.on_notify(event, *args)
+            self._notify_observers(ProbTimeEvent(self.curr_prob_idx, time))
         return

@@ -3,8 +3,10 @@ import tkinter as tk
 
 from tkinter import filedialog, messagebox, ttk
 
+import model
+
 from board_canvas import BoardCanvas
-from model import Event, Model, ProblemStatus
+from model import Model, ProblemStatus
 from split_timer import SplitTimer
 
 
@@ -132,11 +134,11 @@ class TimerPane(ttk.Frame):
     def __init__(self, parent, controller, *args, **kwargs):
         self.controller = controller
         super().__init__(parent, *args, **kwargs)
-        self.timer = SplitTimer()
         
         # Basic timer
         self.timer = SplitTimer()
-        self.timer_display_str = tk.StringVar(value="00:00:00")
+        # The Label will update itself via Observer pattern when refactored.
+        self.timer_display_str = tk.StringVar(value=SplitTimer.sec_to_str(0.0))
         self.timer_display = ttk.Label(
             self, textvariable=self.timer_display_str
         )
@@ -209,9 +211,9 @@ class ProblemsView(ttk.Treeview):
         super().__init__(parent, *args, **kwargs)
         
         self.notify_actions = {
-            Event.UPDATE_STATUS: self.set_status,
-            Event.UPDATE_TIME: self.set_time,
-            Event.UPDATE_DIRECTORY: self.refresh_view
+            model.ProbStatusEvent: self.set_status,
+            model.ProbTimeEvent: self.set_time,
+            model.ProbDirEvent: self.refresh_view
         }
         self.status_strings = {
             ProblemStatus.SKIP: "-",
@@ -232,14 +234,18 @@ class ProblemsView(ttk.Treeview):
         self.tag_configure("WRONG", background="LightPink1")
         return
     
-    def set_time(self, idx, time):
+    def set_time(self, event):
+        idx = event.idx
+        time = event.time
         # Set time column for item at given index
         id = self.get_children()[idx]
         time_str = SplitTimer.sec_to_str(time)
         self.set(id, column="time", value=time_str)
         return
     
-    def set_status(self, idx, status):
+    def set_status(self, event):
+        idx = event.idx
+        status = event.status
         id = self.get_children()[idx]
         self.set(id, column="status", value=self.status_strings[status])
         curr_tags = self.item(id)["tags"]
@@ -254,8 +260,9 @@ class ProblemsView(ttk.Treeview):
             pass # no need to update item
         return
     
-    def refresh_view(self, problems):
+    def refresh_view(self, event):
         # Refresh the entire view as the model changed, e.g. on opening folder
+        problems = event.prob_list
         self.delete(*self.get_children())
         for problem in problems:
             filename = os.path.basename(problem.filename)
@@ -269,9 +276,9 @@ class ProblemsView(ttk.Treeview):
     def get_selection_idx(self, event):
         return self.index(self.selection()[0])
     
-    def on_notify(self, event, *args):
+    def on_notify(self, event):
         # Observer pattern
-        self.notify_actions[event](*args)
+        self.notify_actions[type(event)](event)
         return
 
 
