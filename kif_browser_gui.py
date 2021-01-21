@@ -8,7 +8,7 @@ import model
 import timer
 
 from board_canvas import BoardCanvas
-from model import Model, ProblemStatus
+from model import ProblemStatus
 
 
 class Menubar(tk.Menu):
@@ -140,7 +140,7 @@ class TimerDisplay(ttk.Label, event.IObserver):
             event.TimerStartEvent: self._on_start,
             event.TimerStopEvent: self._on_stop
         }
-        # we assume timer is in reset state
+        # we assume the observed timer is in reset state, initialise to match
         self.is_running = False
         self.time_str = tk.StringVar(value=timer.sec_to_str(0.0))
         self["textvariable"] = self.time_str
@@ -167,7 +167,11 @@ class TimerDisplay(ttk.Label, event.IObserver):
         return
     
     def refresh(self):
-        self.time_str.set(timer.sec_to_str(self.controller.cmd_read_timer.execute(self)))
+        self.time_str.set(
+            timer.sec_to_str(
+                self.controller.cmd_read_timer.execute(self)
+            )
+        )
         if self.is_running:
             self.after(40, self.refresh)
         return
@@ -181,7 +185,8 @@ class TimerPane(ttk.Frame):
         # Basic timer
         self.timer = timer.SplitTimer()
         # The Label will update itself via Observer pattern when refactored.
-        self.timer_display = TimerDisplay(parent=self, controller=self.controller)
+        self.timer_display = TimerDisplay(parent=self,
+                                          controller=self.controller)
         self.timer_display.grid(
             column=0, row=0, columnspan=3
         )
@@ -220,7 +225,7 @@ class ProblemsView(ttk.Treeview, event.IObserver):
         self.NOTIFY_ACTIONS = {
             event.ProbStatusEvent: self.set_status,
             event.ProbTimeEvent: self.set_time,
-            event.ProbDirEvent: self.refresh_view
+            event.ProbListEvent: self.refresh_view
         }
         self.status_strings = {
             ProblemStatus.SKIP: "-",
@@ -278,7 +283,7 @@ class ProblemsView(ttk.Treeview, event.IObserver):
         problems = event.prob_list
         self.delete(*self.get_children())
         for problem in problems:
-            filename = os.path.basename(problem.filename)
+            filename = os.path.basename(problem.filepath)
             time_str = "-" if problem.time is None \
                        else timer.sec_to_str(problem.time)
             self.insert(
@@ -308,10 +313,16 @@ class ProblemListPane(ttk.Frame):
         self.tvw["yscrollcommand"] = self.scrollbar_tvw.set
         
         # Make speedrun mode button
-        self.btn_speedrun = ttk.Button(self, text="Start speedrun", command=controller.start_speedrun)
+        self.btn_speedrun = ttk.Button(
+            self, text="Start speedrun",
+            command=controller.start_speedrun
+        )
         self.btn_speedrun.grid(column=0, row=1)
         self.btn_speedrun.grid_remove()
-        self.btn_abort_speedrun = ttk.Button(self, text="Abort speedrun", command=controller.abort)
+        self.btn_abort_speedrun = ttk.Button(
+            self, text="Abort speedrun",
+            command=controller.abort
+        )
         self.btn_abort_speedrun.grid(column=0, row=1)
         self.btn_abort_speedrun.grid_remove()
         
@@ -323,7 +334,7 @@ class MainWindow:
     # eventually, refactor menu labels and dialog out into a constant namespace
     def __init__(self, master):
         # Set up data model
-        self.model = Model()
+        self.model = model.Model()
         self.timer = timer.Timer()
         self.cmd_read_timer = timer.CmdReadTimer(self.timer)
         # tkinter stuff, set up the main window
@@ -373,8 +384,10 @@ class MainWindow:
         
         # Initialise nav controls and select one to begin with
         self._navcons = {
-            "free" : FreeModeNavControls(parent=self.mainframe, controller=self),
-            "speedrun" : SpeedrunNavControls(parent=self.mainframe, controller=self)
+            "free" : FreeModeNavControls(parent=self.mainframe,
+                                         controller=self),
+            "speedrun" : SpeedrunNavControls(parent=self.mainframe,
+                                             controller=self)
         }
         for navcon in self._navcons.values():
             navcon.grid(column=0, row=2)
@@ -391,14 +404,16 @@ class MainWindow:
         self.timer.add_observer(self.timer_controls.timer_display) # ewww
         
         # Problem list
-        self.problem_list_pane = ProblemListPane(parent=self.mainframe, controller=self)
+        self.problem_list_pane = ProblemListPane(parent=self.mainframe,
+                                                 controller=self)
         self.problem_list_pane.grid(column=1, row=0)
         self.problem_list_pane.grid_configure(padx=5, pady=5)
         # Observer pattern; treeview updates itself when model updates
         tvw = self.problem_list_pane.tvw
-        self.model.add_observer(tvw)
+        self.model.prob_buffer.add_observer(tvw)
         # Double click to go to problem
-        tvw.bind("<Double-1>", lambda e: self.go_to_file(idx=tvw.get_selection_idx(e)))
+        tvw.bind("<Double-1>",
+                 lambda e: self.go_to_file(idx=tvw.get_selection_idx(e)))
         
         # Keyboard shortcuts
         self.master.bind("<Key-h>", self.toggle_solution)
@@ -411,7 +426,8 @@ class MainWindow:
     def display_problem(self):
         self.board.draw()
         self.hide_solution()
-        self.master.title("KIF folder browser - " + str(self.model.curr_prob.filename))
+        self.master.title("KIF folder browser - "
+                          + str(self.model.get_curr_filepath()))
         return
     
     def hide_solution(self):
@@ -478,10 +494,8 @@ class MainWindow:
         return
     
     def split_timer(self):
-        # what am I doing? OK kind of works but many logic issues. NEEDS WORK
-        # what if last file in list? what if manually out of order?
         time = self.timer.split()
-        if self.model.curr_prob is not None and time is not None:
+        if time is not None:
             self.model.set_time(time)
         return
     
@@ -524,15 +538,13 @@ class MainWindow:
         return
     
     def skip(self):
-        # split, mark current problem as wrong/skipped, and go next.
         self.split_timer()
-        self.model.set_skip()
+        self.model.set_status(ProblemStatus.SKIP)
         if not self.next_file():
             self.end_of_folder()
         return
     
     def view_solution(self):
-        # show solution, split and pause timer, change NavControl
         self.split_timer()
         self.stop_timer()
         self.show_solution()
@@ -540,8 +552,7 @@ class MainWindow:
         return
     
     def mark_correct(self):
-        # mark correct, unpause timer, go to next problem, change NavControl
-        self.model.set_correct()
+        self.model.set_status(ProblemStatus.CORRECT)
         if not self.next_file():
             self.end_of_folder()
             return
@@ -550,8 +561,7 @@ class MainWindow:
         return
     
     def mark_wrong(self):
-        # mark wrong, unpause timer, go next, change NavControl
-        self.model.set_wrong()
+        self.model.set_status(ProblemStatus.WRONG)
         if not self.next_file():
             self.end_of_folder()
             return
@@ -573,7 +583,8 @@ if __name__ == "__main__":
     def apply_theme_fix():
         # Fix from pyIDM on GitHub:
         # https://github.com/pyIDM/PyIDM/issues/128#issuecomment-655477524
-        # fix for table colors in tkinter 8.6.9, call style.map twice to work properly
+        # fix for table colors in tkinter 8.6.9,
+        # call style.map twice to work properly
         style = ttk.Style()
         def fixed_map(option):
             return [elm for elm in style.map('Treeview', query_opt=option)

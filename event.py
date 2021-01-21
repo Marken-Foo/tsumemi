@@ -1,28 +1,35 @@
 from abc import ABC, abstractmethod
 
+
 class Event:
     def __init__(self):
         pass
 
-class ProbDirEvent(Event):
+
+class ProbListEvent(Event):
     def __init__(self, prob_list):
         self.prob_list = prob_list
+
 
 class ProbStatusEvent(Event):
     def __init__(self, prob_idx, status):
         self.idx = prob_idx
         self.status = status
 
+
 class ProbTimeEvent(Event):
     def __init__(self, prob_idx, time):
         self.idx = prob_idx
         self.time = time
 
+
 class TimerStartEvent(Event):
     pass
 
+
 class TimerStopEvent(Event):
     pass
+
 
 class TimerSplitEvent(Event):
     def __init__(self, lap_time):
@@ -36,6 +43,7 @@ class IObserver(ABC):
         if event_type in self.NOTIFY_ACTIONS:
             self.NOTIFY_ACTIONS[event_type](event)
         return
+
 
 class Emitter():
     def add_observer(self, observer):
