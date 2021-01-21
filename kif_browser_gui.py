@@ -266,16 +266,7 @@ class ProblemsView(ttk.Treeview, event.IObserver):
         status = event.status
         id = self.get_children()[idx]
         self.set(id, column="status", value=self.status_strings[status])
-        curr_tags = self.item(id)["tags"]
-        # tags returns empty string (!) if none, or list of str if at least one
-        if not curr_tags:
-            curr_tags = [status.name]
-            self.item(id, tags=curr_tags)
-        elif status.name not in curr_tags:
-            curr_tags.append(status.name)
-            self.item(id, tags=curr_tags)
-        else:
-            pass # no need to update item
+        self.item(id, tags=[status.name]) # overrides existing tags
         return
     
     def refresh_view(self, event):
