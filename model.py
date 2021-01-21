@@ -27,10 +27,29 @@ class Problem:
         return isinstance(obj, Problem) and self.filepath == obj.filepath
 
 
+class CmdSortProbList:
+    def __init__(self, prob_list):
+        self.prob_list = prob_list
+        return
+    
+    def by_file(self):
+        return self.prob_list.sort_by_file()
+    
+    def by_time(self):
+        return self.prob_list.sort_by_time()
+    
+    def by_status(self):
+        return self.prob_list.sort_by_status()
+
+
 class ProblemList(Emitter):
     @staticmethod
     def natural_sort_key(str, _nsre=re.compile(r'(\d+)')):
         return [int(c) if c.isdigit() else c.lower() for c in _nsre.split(str)]
+    
+    @staticmethod
+    def _file_key(prob):
+        return ProblemList.natural_sort_key(prob.filepath)
     
     def __init__(self):
         self.problems = []
@@ -52,12 +71,6 @@ class ProblemList(Emitter):
         if not suppress:
             self._notify_observers(ProbListEvent(self.problems))
         return
-    
-    def sort(self, suppress=False, *args, **kwargs):
-        res = self.problems.sort(*args, **kwargs)
-        if not suppress:
-            self._notify_observers(ProbListEvent(self.problems))
-        return res
     
     def get_curr_filepath(self):
         if self.curr_prob is None:
@@ -97,6 +110,21 @@ class ProblemList(Emitter):
         self.curr_prob = self.problems[idx]
         self.curr_prob_idx = idx
         return True
+    
+    def sort(self, key, suppress=False):
+        res = self.problems.sort(key=key)
+        if not suppress:
+            self._notify_observers(ProbListEvent(self.problems))
+        return res
+    
+    def sort_by_file(self):
+        return self.sort(key=ProblemList._file_key)
+    
+    def sort_by_time(self):
+        return self.sort(key=lambda p: p.time)
+    
+    def sort_by_status(self):
+        return self.sort(key=lambda p: p.status.name)
 
 
 class Model():
@@ -132,8 +160,7 @@ class Model():
                 for entry in it
                 if entry.name.endswith(".kif") or entry.name.endswith(".kifu")
             ], suppress=True)
-        self.prob_buffer.sort(key=lambda p:\
-                                  ProblemList.natural_sort_key(p.filepath))
+        self.prob_buffer.sort_by_file()
         self.prob_buffer.go_to_idx(0)
         self.read_problem()
         return

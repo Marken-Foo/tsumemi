@@ -169,7 +169,7 @@ class TimerDisplay(ttk.Label, event.IObserver):
     def refresh(self):
         self.time_str.set(
             timer.sec_to_str(
-                self.controller.cmd_read_timer.execute(self)
+                self.controller.cmd_read_timer.execute()
             )
         )
         if self.is_running:
@@ -228,6 +228,7 @@ class ProblemsView(ttk.Treeview, event.IObserver):
             event.ProbListEvent: self.refresh_view
         }
         self.status_strings = {
+            ProblemStatus.NONE: "",
             ProblemStatus.SKIP: "-",
             ProblemStatus.CORRECT: "O",
             ProblemStatus.WRONG: "X"
@@ -235,10 +236,10 @@ class ProblemsView(ttk.Treeview, event.IObserver):
         
         self["columns"] = ("filename", "time", "status")
         self["show"] = "headings"
-        self.heading("filename", text="Problem")
-        self.heading("time", text="Time")
+        self.heading("filename", text="Problem", command=controller.cmd_sort_pbuf.by_file)
+        self.heading("time", text="Time", command=controller.cmd_sort_pbuf.by_time)
         self.column("time", width=120)
-        self.heading("status", text="Status")
+        self.heading("status", text="Status", command=controller.cmd_sort_pbuf.by_status)
         self.column("status", anchor="center", width=40)
         # Colours to be decided (accessibility)
         self.tag_configure("SKIP", background="snow2")
@@ -277,8 +278,11 @@ class ProblemsView(ttk.Treeview, event.IObserver):
             filename = os.path.basename(problem.filepath)
             time_str = "-" if problem.time is None \
                        else timer.sec_to_str(problem.time)
+            status_str = self.status_strings[problem.status]
             self.insert(
-                "", "end", values=(filename, time_str)
+                "", "end",
+                values=(filename, time_str, status_str),
+                tags=[problem.status.name]
             )
         return
     
@@ -328,6 +332,7 @@ class MainWindow:
         self.model = model.Model()
         self.timer = timer.Timer()
         self.cmd_read_timer = timer.CmdReadTimer(self.timer)
+        self.cmd_sort_pbuf = model.CmdSortProbList(self.model.prob_buffer)
         # tkinter stuff, set up the main window
         # Reference to tk.Tk() root object
         self.master = master
@@ -402,7 +407,7 @@ class MainWindow:
         # Observer pattern; treeview updates itself when model updates
         tvw = self.problem_list_pane.tvw
         self.model.prob_buffer.add_observer(tvw)
-        # Double click to go to problem
+        # Double click to go to problem - throws exception on Double-1 heading
         tvw.bind("<Double-1>",
                  lambda e: self.go_to_file(idx=tvw.get_selection_idx(e)))
         

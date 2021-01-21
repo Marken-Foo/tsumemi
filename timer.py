@@ -135,10 +135,11 @@ class Timer(Emitter):
             self.start()
         return
 
+
 class CmdReadTimer:
     # Command pattern
     def __init__(self, timer):
         self.timer = timer
     
-    def execute(self, invoker):
+    def execute(self):
         return self.timer.read()
