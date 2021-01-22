@@ -2,6 +2,7 @@ import os
 import re
 
 from enum import Enum
+from random import shuffle
 
 from event import Emitter, ProbListEvent, ProbStatusEvent, ProbTimeEvent
 from kif_parser import KifReader
@@ -40,6 +41,9 @@ class CmdSortProbList:
     
     def by_status(self):
         return self.prob_list.sort_by_status()
+    
+    def randomise(self):
+        return self.prob_list.randomise()
 
 
 class ProblemList(Emitter):
@@ -125,6 +129,17 @@ class ProblemList(Emitter):
     
     def sort_by_status(self):
         return self.sort(key=lambda p: p.status.name)
+    
+    def randomise(self):
+        # Randomise problem list, but keep focus on the same problem
+        z = list(zip(range(len(self.problems)), self.problems))
+        shuffle(z)
+        idxs, probs = zip(*z)
+        self.problems = list(probs)
+        self.curr_prob_idx = idxs.index(self.curr_prob_idx)
+        curr_prob = self.problems[self.curr_prob_idx]
+        self._notify_observers(ProbListEvent(self.problems))
+        return
 
 
 class Model():

@@ -307,18 +307,25 @@ class ProblemListPane(ttk.Frame):
         self.scrollbar_tvw.grid(column=1, row=0, sticky="NS")
         self.tvw["yscrollcommand"] = self.scrollbar_tvw.set
         
+        # Make randomise button
+        self.btn_randomise = ttk.Button(
+            self, text="Randomise problems",
+            command=controller.cmd_sort_pbuf.randomise # no; this needs to be a controller method, not a Command, since we need to update the zeroth problem and redraw the board. Right? Do we?
+        )
+        self.btn_randomise.grid(column=0, row=1)
+        
         # Make speedrun mode button
         self.btn_speedrun = ttk.Button(
             self, text="Start speedrun",
             command=controller.start_speedrun
         )
-        self.btn_speedrun.grid(column=0, row=1)
+        self.btn_speedrun.grid(column=0, row=2)
         self.btn_speedrun.grid_remove()
         self.btn_abort_speedrun = ttk.Button(
             self, text="Abort speedrun",
             command=controller.abort
         )
-        self.btn_abort_speedrun.grid(column=0, row=1)
+        self.btn_abort_speedrun.grid(column=0, row=2)
         self.btn_abort_speedrun.grid_remove()
         
         self.btn_speedrun.grid()
