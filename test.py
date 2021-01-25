@@ -42,6 +42,7 @@ class TestProblemList(unittest.TestCase):
         self.problem_list.curr_prob = self.problem_list.problems[idx] # 6.kif
         # Register self as an Observer of the ProblemList
         self.problem_list.add_observer(self)
+        self.event = None
         
         # Answer key to sortings
         # by file: good
@@ -59,6 +60,7 @@ class TestProblemList(unittest.TestCase):
     
     def tearDown(self):
         self.problem_list = None
+        self.event = None
     
     def on_notify(self, event):
         # to test Observer pattern, receive the Event
@@ -201,6 +203,16 @@ class TestProblemList(unittest.TestCase):
         self.problem_list.sort_by_status()
         self.assertEqual([p.filepath for p in self.problem_list.problems], self.names_by_status)
         self.verify_active_prob_by_prob(prob)
+    
+    def test_notify_on_sort(self):
+        self.problem_list.sort_by_file()
+        self.verify_list_event()
+        self.event = None
+        self.problem_list.sort_by_status()
+        self.verify_list_event()
+        self.event = None
+        self.problem_list.sort_by_time()
+        self.verify_list_event()
 
 
 class TestTimer(unittest.TestCase):

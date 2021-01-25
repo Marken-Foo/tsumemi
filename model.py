@@ -24,7 +24,7 @@ class Problem:
         return self.filepath
     
     def __eq__(self, obj):
-        # For future use
+        # Used in tests, will be useful in future features
         return isinstance(obj, Problem) and self.filepath == obj.filepath
 
 
@@ -115,8 +115,20 @@ class ProblemList(Emitter):
         self.curr_prob_idx = idx
         return True
     
+    def set_active_problem(self, prob):
+        if prob in self.problems:
+            idx = self.problems.index(prob)
+            self.curr_prob_idx = idx
+            self.curr_prob = self.problems[self.curr_prob_idx]
+            return True
+        else:
+            return False
+    
     def sort(self, key, suppress=False):
+        # Sorts problem list in-place, keeps focus on same problem
+        prob = self.curr_prob
         res = self.problems.sort(key=key)
+        self.set_active_problem(prob)
         if not suppress:
             self._notify_observers(ProbListEvent(self.problems))
         return res
