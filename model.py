@@ -70,6 +70,9 @@ class ProblemList(Emitter):
             self._notify_observers(ProbListEvent(self.problems))
         return
     
+    def is_empty(self):
+        return False if self.problems else True
+    
     def add_problems(self, new_problems, suppress=False):
         self.problems.extend(new_problems)
         if not suppress:
@@ -162,6 +165,14 @@ class Model():
         self.solution = ""
         self.reader = KifReader()
     
+    def set_active_problem(self, idx=0):
+        if self.prob_buffer.is_empty():
+            return False
+        else:
+            self.prob_buffer.go_to_idx(idx)
+            self.read_problem()
+            return True
+    
     def read_problem(self):
         # Read current problem into reader.
         # Try any likely encodings for the KIF files
@@ -178,18 +189,31 @@ class Model():
                 break
         return self.reader
     
-    def set_directory(self, directory):
+    def add_problems_in_directory(self, directory, recursive=False, suppress=False):
+        # Adds all problems in given directory to self.prob_buffer.
+        # Does not otherwise alter state of Model.
+        if recursive:
+            for dirpath, _, filenames in os.walk(directory):
+                self.prob_buffer.add_problems([
+                    Problem(os.path.join(dirpath, filename))
+                    for filename in filenames
+                    if filename.endswith(".kif") or filename.endswith(".kifu")
+                ], suppress=suppress)
+        else:
+            with os.scandir(directory) as it:
+                self.prob_buffer.add_problems([
+                    Problem(os.path.join(directory, entry.name))
+                    for entry in it
+                    if entry.name.endswith(".kif") or entry.name.endswith(".kifu")
+                ], suppress=suppress)
+        return
+    
+    def set_directory(self, directory, recursive=False):
         self.directory = directory
         self.prob_buffer.clear(suppress=True)
-        with os.scandir(directory) as it:
-            self.prob_buffer.add_problems([
-                Problem(os.path.join(directory, entry.name))
-                for entry in it
-                if entry.name.endswith(".kif") or entry.name.endswith(".kifu")
-            ], suppress=True)
+        self.add_problems_in_directory(directory, recursive=recursive, suppress=True)
         self.prob_buffer.sort_by_file()
-        self.prob_buffer.go_to_idx(0)
-        self.read_problem()
+        self.set_active_problem()
         return
     
     def get_curr_filepath(self):

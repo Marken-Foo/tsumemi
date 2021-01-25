@@ -24,6 +24,10 @@ class Menubar(tk.Menu):
             accelerator="Ctrl+O",
             underline=0
         )
+        menu_file.add_command(
+            label="Open all subfolders...",
+            command=self.controller.open_folder_recursive
+        )
         
         menu_help = tk.Menu(self)
         self.add_cascade(menu=menu_help, label="Help")
@@ -468,13 +472,19 @@ class MainWindow:
             self.display_problem()
         return res
     
-    def open_folder(self, event=None):
+    def open_folder(self, event=None, recursive=False):
         directory = filedialog.askdirectory()
         if directory == "":
             return
-        self.model.set_directory(os.path.normpath(directory))
-        self.display_problem()
+        directory = os.path.normpath(directory)
+        self.model.set_directory(directory, recursive=recursive)
+        # Iff any KIF files were found, read the first and show it
+        if self.model.set_active_problem():
+            self.display_problem()
         return
+    
+    def open_folder_recursive(self, event=None):
+        return self.open_folder(event, recursive=True)
     
     def flip_board(self, want_upside_down):
         self.board.flip_board(want_upside_down)
