@@ -26,7 +26,8 @@ class Menubar(tk.Menu):
         )
         menu_file.add_command(
             label="Open all subfolders...",
-            command=self.controller.open_folder_recursive
+            command=self.controller.open_folder_recursive,
+            accelerator="Ctrl+Shift+O",
         )
         
         menu_help = tk.Menu(self)
@@ -426,8 +427,8 @@ class MainWindow:
         self.master.bind("<Key-h>", self.toggle_solution)
         self.master.bind("<Left>", self.prev_file)
         self.master.bind("<Right>", self.next_file)
-        self.master.bind("<Control_L><Key-o>", self.open_folder)
-        self.master.bind("<Control_R><Key-o>", self.open_folder)
+        self.master.bind("<Control-o>", self.open_folder)
+        self.master.bind("<Control-Shift-O>", self.open_folder_recursive)
         return
         
     def display_problem(self):
@@ -477,9 +478,8 @@ class MainWindow:
         if directory == "":
             return
         directory = os.path.normpath(directory)
-        self.model.set_directory(directory, recursive=recursive)
-        # Iff any KIF files were found, read the first and show it
-        if self.model.set_active_problem():
+        if self.model.set_directory(directory, recursive=recursive):
+            # Iff any KIF files were found, read the first and show it
             self.display_problem()
         return
     

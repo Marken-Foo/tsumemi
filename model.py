@@ -169,8 +169,8 @@ class Model():
         if self.prob_buffer.is_empty():
             return False
         else:
-            self.prob_buffer.go_to_idx(idx)
-            self.read_problem()
+            if self.prob_buffer.go_to_idx(idx):
+                self.read_problem()
             return True
     
     def read_problem(self):
@@ -213,8 +213,7 @@ class Model():
         self.prob_buffer.clear(suppress=True)
         self.add_problems_in_directory(directory, recursive=recursive, suppress=True)
         self.prob_buffer.sort_by_file()
-        self.set_active_problem()
-        return
+        return self.set_active_problem()
     
     def get_curr_filepath(self):
         return self.prob_buffer.get_curr_filepath()
