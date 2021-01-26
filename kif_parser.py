@@ -108,23 +108,29 @@ class KifReader:
         # takes in text, extracts board and moves, ignores metadata.
         # assumes file has no extraneous blank lines/whitespace lines
         self.moves = [] # clear state; I should do the same for the Position
-        line = " "
+        line = handle.readline()
         while line != "":
-            line = handle.readline()
             line = line.lstrip().rstrip()
             if line == "": # after stripping whitespace
-                continue
+                pass
             # skip escapes and comments
-            if line.startswith("#") or line.startswith("*"):
-                line = handle.readline()
+            elif line.startswith("#") or line.startswith("*"):
+                pass
             elif line.startswith("後手の持駒："):
                 # Assume BOD starts and is contiguous, read the BOD
                 self.board.gote_hand = self.parse_hand(handle, line=line)
                 (self.board.sente, self.board.gote) = self.parse_board(handle)
                 self.board.sente_hand = self.parse_hand(handle)
+            elif line.startswith("変化"):
+                # read away the variation without adding it to self.moves
+                line = handle.readline().lstrip().rstrip()
+                while line != "" and line[0].isdigit():
+                    line = handle.readline().lstrip().rstrip()
+                continue
             elif line[0].isdigit():
                 move = line.split(" ")[1]
                 self.moves.append(move)
             else:
                 # don't know what to do, skip everything else.
-                continue
+                pass
+            line = handle.readline()
