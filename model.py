@@ -134,7 +134,7 @@ class ProblemList(Emitter):
         return self.sort(key=ProblemList._file_key)
     
     def sort_by_time(self):
-        return self.sort(key=lambda p: p.time)
+        return self.sort(key=lambda p: -1.0 if p.time is None else p.time)
     
     def sort_by_status(self):
         return self.sort(key=lambda p: p.status.name)
