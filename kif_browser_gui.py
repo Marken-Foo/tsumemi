@@ -291,8 +291,11 @@ class ProblemsView(ttk.Treeview, event.IObserver):
             )
         return
     
-    def get_selection_idx(self, event):
-        return self.index(self.selection()[0])
+    def get_idx_on_click(self, event):
+        if self.identify_region(event.x, event.y) == "cell":
+            return self.index(self.identify_row(event.y))
+        else:
+            return None
 
 
 class ProblemListPane(ttk.Frame):
@@ -421,7 +424,7 @@ class MainWindow:
         self.model.prob_buffer.add_observer(tvw)
         # Double click to go to problem - throws exception on Double-1 heading
         tvw.bind("<Double-1>",
-                 lambda e: self.go_to_file(idx=tvw.get_selection_idx(e)))
+                 lambda e: self.go_to_file(idx=tvw.get_idx_on_click(e)))
         
         # Keyboard shortcuts
         self.master.bind("<Key-h>", self.toggle_solution)

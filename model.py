@@ -98,21 +98,15 @@ class ProblemList(Emitter):
         return
     
     def next(self):
-        if self.curr_prob_idx+1 >= len(self.problems):
-            return False
-        self.curr_prob = self.problems[self.curr_prob_idx + 1]
-        self.curr_prob_idx += 1
-        return True
+        return (False if self.curr_prob_idx is None
+            else self.go_to_idx(self.curr_prob_idx + 1))
     
     def prev(self):
-        if self.curr_prob_idx-1 < 0:
-            return False
-        self.curr_prob = self.problems[self.curr_prob_idx - 1]
-        self.curr_prob_idx -= 1
-        return True
+        return (False if self.curr_prob_idx is None
+            else self.go_to_idx(self.curr_prob_idx - 1))
     
     def go_to_idx(self, idx):
-        if idx >= len(self.problems) or idx < 0:
+        if idx is None or idx >= len(self.problems) or idx < 0:
             return False
         self.curr_prob = self.problems[idx]
         self.curr_prob_idx = idx
