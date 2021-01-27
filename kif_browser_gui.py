@@ -427,11 +427,9 @@ class MainWindow:
                  lambda e: self.go_to_file(idx=tvw.get_idx_on_click(e)))
         
         # Keyboard shortcuts
-        self.master.bind("<Key-h>", self.toggle_solution)
-        self.master.bind("<Left>", self.prev_file)
-        self.master.bind("<Right>", self.next_file)
-        self.master.bind("<Control-o>", self.open_folder)
-        self.master.bind("<Control-Shift-O>", self.open_folder_recursive)
+        self.bindings = Bindings(self)
+        self.bindings.bind_shortcuts(self.master, self.bindings.MASTER_SHORTCUTS)
+        self.bindings.bind_shortcuts(self.master, self.bindings.FREE_SHORTCUTS)
         return
         
     def display_problem(self):
@@ -459,19 +457,15 @@ class MainWindow:
         return
     
     def next_file(self, event=None):
-        res = self.model.open_next_file()
-        if res:
-            self.display_problem()
-        return res
+        return self.go_to_file(fn=self.model.open_next_file, event=event)
     
     def prev_file(self, event=None):
-        res = self.model.open_prev_file()
-        if res:
-            self.display_problem()
-        return res
+        return self.go_to_file(fn=self.model.open_prev_file, event=event)
     
-    def go_to_file(self, idx, event=None):
-        res = self.model.open_file(idx)
+    def go_to_file(self, idx=0, fn=None, event=None):
+        if fn is None:
+            fn = lambda: self.model.open_file(idx)
+        res = fn()
         if res:
             self.display_problem()
         return res
@@ -524,13 +518,8 @@ class MainWindow:
         self.nav_controls.grid()
         self.problem_list_pane.btn_speedrun.grid_remove()
         self.problem_list_pane.btn_abort_speedrun.grid()
-        
-        # Unbind keyboard shortcuts
-        self.master.unbind("<Key-h>")
-        self.master.unbind("<Left>")
-        self.master.unbind("<Right>")
-        
         # Set application state
+        self.bindings.unbind_shortcuts(self.master, self.bindings.FREE_SHORTCUTS)
         self.go_to_file(idx=0)
         self.reset_timer()
         self.start_timer()
@@ -544,12 +533,8 @@ class MainWindow:
         self.nav_controls.grid()
         self.problem_list_pane.btn_speedrun.grid()
         self.problem_list_pane.btn_abort_speedrun.grid_remove()
-        
-        # Rebind keyboard shortcuts
-        self.master.bind("<Key-h>", self.toggle_solution)
-        self.master.bind("<Left>", self.prev_file)
-        self.master.bind("<Right>", self.next_file)
-        
+        # Set application state
+        self.bindings.bind_shortcuts(self.master, self.bindings.FREE_SHORTCUTS)
         self.stop_timer()
         return
     
@@ -592,6 +577,40 @@ class MainWindow:
             message="You have reached the end of the speedrun."
         )
         self.abort()
+        return
+
+
+class Bindings:
+    # Just to group all shortcut bindings together for convenience.
+    def __init__(self, controller):
+        self.controller = controller
+    
+        self.MASTER_SHORTCUTS = {
+            "<Control-o>": self.controller.open_folder,
+            "<Control-O>": self.controller.open_folder,
+            "<Control-Shift-O>": self.controller.open_folder_recursive,
+            "<Control-Shift-o>": self.controller.open_folder_recursive
+        }
+        
+        self.FREE_SHORTCUTS = {
+            "<Key-h>": self.controller.toggle_solution,
+            "<Key-H>": self.controller.toggle_solution,
+            "<Left>": self.controller.prev_file,
+            "<Right>": self.controller.next_file
+        }
+        
+        self.SPEEDRUN_SHORTCUTS = {}
+    
+    @staticmethod
+    def bind_shortcuts(target, shortcuts):
+        for keypress, command in shortcuts.items():
+            target.bind(keypress, command)
+        return
+    
+    @staticmethod
+    def unbind_shortcuts(target, shortcuts):
+        for keypress in shortcuts.keys():
+            target.unbind(keypress)
         return
 
 
