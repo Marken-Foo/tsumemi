@@ -1,6 +1,7 @@
 import os
 import tkinter as tk
 
+from functools import partial
 from tkinter import filedialog, messagebox, ttk
 
 import event
@@ -35,7 +36,8 @@ class Menubar(tk.Menu):
         #menu_help.add_command(label="Help", command=None)
         menu_help.add_command(
             label="About kif-browser",
-            command=lambda: messagebox.showinfo(
+            command=partial(
+                messagebox.showinfo,
                 title="About kif-browser",
                 message="Written in Python 3 for the shogi community. KIF files sold separately."
             )
@@ -190,8 +192,10 @@ class TimerPane(ttk.Frame):
         # Basic timer
         self.timer = timer.SplitTimer()
         # The Label will update itself via Observer pattern when refactored.
-        self.timer_display = TimerDisplay(parent=self,
-                                          controller=self.controller)
+        self.timer_display = TimerDisplay(
+            parent=self,
+            controller=self.controller
+        )
         self.timer_display.grid(
             column=0, row=0, columnspan=3
         )
@@ -281,8 +285,8 @@ class ProblemsView(ttk.Treeview, event.IObserver):
         self.delete(*self.get_children())
         for problem in problems:
             filename = os.path.basename(problem.filepath)
-            time_str = "-" if problem.time is None \
-                       else timer.sec_to_str(problem.time)
+            time_str = ("-" if problem.time is None
+                        else timer.sec_to_str(problem.time))
             status_str = self.status_strings[problem.status]
             self.insert(
                 "", "end",
@@ -331,7 +335,7 @@ class ProblemListPane(ttk.Frame):
         self.btn_speedrun.grid_remove()
         self.btn_abort_speedrun = ttk.Button(
             self, text="Abort speedrun",
-            command=controller.abort
+            command=controller.abort_speedrun
         )
         self.btn_abort_speedrun.grid(column=0, row=2)
         self.btn_abort_speedrun.grid_remove()
@@ -464,7 +468,7 @@ class MainWindow:
     
     def go_to_file(self, idx=0, fn=None, event=None):
         if fn is None:
-            fn = lambda: self.model.open_file(idx)
+            fn = partial(self.model.open_file, idx)
         res = fn()
         if res:
             self.display_problem()
@@ -525,7 +529,7 @@ class MainWindow:
         self.start_timer()
         return
         
-    def abort(self):
+    def abort_speedrun(self):
         # Abort speedrun, go back to free browsing
         # Make UI changes
         self.nav_controls.grid_remove()
@@ -576,7 +580,7 @@ class MainWindow:
             title="End of folder",
             message="You have reached the end of the speedrun."
         )
-        self.abort()
+        self.abort_speedrun()
         return
 
 
