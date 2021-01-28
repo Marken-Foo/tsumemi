@@ -1,34 +1,40 @@
 from enum import Enum, IntEnum
 import re
 
-
+# Refactor Piece enum to use namedtuples, and include NAME, kanji, alt_kanji, CSA_name
 class Piece(Enum):
-    NONE = 0
-    GYOKU, 玉, 王 = 1, 1, 1
-    HISHA, 飛 = 2, 2
-    RYUU, 龍, 竜 = 3, 3, 3
-    KAKU, 角 = 4, 4
-    UMA, 馬 = 5, 5
-    KIN, 金 = 6, 6
-    GIN, 銀 = 7, 7
-    NARIGIN, 全, 成銀 = 8, 8, 8
-    KEI, 桂 = 9, 9
-    NARIKEI, 圭, 成桂 = 10, 10, 10
-    KYOU, 香 = 11, 11
-    NARIKYOU, 杏, 成香 = 12, 12, 12
-    FU, 歩 = 13, 13
-    TOKIN, と = 14, 14
+    NONE = ("", "", "* ")
+    GYOKU = ("玉", "王", "OU")
+    HISHA = ("飛", "飛", "HI")
+    RYUU = ("龍", "竜", "RY")
+    KAKU = ("角", "角", "KA")
+    UMA = ("馬", "馬", "UM")
+    KIN = ("金", "金", "KI")
+    GIN = ("銀", "銀", "GI")
+    NARIGIN = ("全", "成銀", "NG")
+    KEI = ("桂", "桂", "KE")
+    NARIKEI = ("圭", "成桂", "NK")
+    KYOU = ("香", "香", "KY")
+    NARIKYOU = ("杏", "成香", "NY")
+    FU = ("歩", "歩", "FU")
+    TOKIN = ("と", "と", "TO")
     
-    _ignore_ = "one_kanji"
-    one_kanji = {}
+    def __init__(self, kanji, kanji_alt, CSA_name):
+        self.kanji = kanji
+        self.kanji_alt = kanji_alt
+        self.CSA_name = CSA_name
     
     def __str__(self):
-        return self.one_kanji[self.value]
-
-Piece.one_kanji = {
-    0:"", 1:"玉", 2:"飛", 3:"龍", 4:"角", 5:"馬", 6:"金", 7:"銀",
-    8:"全", 9:"桂", 10:"圭", 11:"香", 12:"杏", 13:"歩", 14:"と"
-}
+        return self.kanji
+    
+    @classmethod
+    def from_kanji(cls, kanji):
+        for item in cls:
+            if item.kanji == kanji or item.kanji_alt == kanji:
+                return item
+            else:
+                pass
+        raise ValueError(kanji + " is not a valid shogi piece")
 
 
 class KanjiNumber(IntEnum):
@@ -74,7 +80,7 @@ class KifReader:
             return hand_pieces
         hand = re.split("　| ", hand_str) # full-width or half-width space
         for entry in hand:
-            piece_type = Piece[entry[0]]
+            piece_type = Piece.from_kanji(entry[0])
             if len(entry) == 1:
                 num_piece = 1
             elif len(entry) == 2:
@@ -98,9 +104,9 @@ class KifReader:
             for col_num in range(9):
                 piece_str = rank[col_num]
                 if piece_str[0] == "v":
-                    gote_board[row_num][col_num] = Piece[piece_str[1]]
+                    gote_board[row_num][col_num] = Piece.from_kanji(piece_str[1])
                 elif piece_str[0] == " " and piece_str[1] != "・":
-                    sente_board[row_num][col_num] = Piece[piece_str[1]]
+                    sente_board[row_num][col_num] = Piece.from_kanji(piece_str[1])
         line = handle.readline() # "+---------------------------+"
         return (sente_board, gote_board)
     
