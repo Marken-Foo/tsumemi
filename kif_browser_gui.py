@@ -1,3 +1,4 @@
+import configparser
 import os
 import tkinter as tk
 
@@ -8,7 +9,7 @@ import event
 import model
 import timer
 
-from board_canvas import BoardCanvas
+from board_canvas import BoardCanvas, PieceSkin
 from model import ProblemStatus
 
 
@@ -30,7 +31,6 @@ class Menubar(tk.Menu):
             command=self.controller.open_folder_recursive,
             accelerator="Ctrl+Shift+O",
         )
-        
         menu_help = tk.Menu(self)
         self.add_cascade(menu=menu_help, label="Help")
         #menu_help.add_command(label="Help", command=None)
@@ -42,9 +42,46 @@ class Menubar(tk.Menu):
                 message="Written in Python 3 for the shogi community. KIF files sold separately."
             )
         )
-        
+        menu_settings = tk.Menu(self)
+        self.add_cascade(menu=menu_settings, label="Settings")
+        menu_settings.add_command(
+            label="Settings...",
+            command=lambda: SettingsWindow(controller=self.controller)
+        )
         parent["menu"] = self
         return
+
+
+class SettingsWindow(tk.Toplevel):
+    # Refactor the values of the settings options into Enums.
+    def __init__(self, controller, *args, **kwargs):
+        self.controller = controller
+        super().__init__(*args, **kwargs)
+        
+        self.title("Settings")
+        
+        # TODO: flesh out this code. It sort of works already.
+        self.piece_palette = ttk.Frame(self)
+        self.piece_palette.grid(column=0, row=0)
+        self.svar_pieces = tk.StringVar(value="text")
+        self.svar_board_colour = tk.StringVar(value="FFFFFF")
+        
+        self.rdo_pieces_text = ttk.Radiobutton(self.piece_palette, text=PieceSkin.TEXT.desc, variable=self.svar_pieces, value=PieceSkin.TEXT.name)
+        self.rdo_pieces_text.grid(column=0, row=0)
+        self.rdo_pieces_light = ttk.Radiobutton(self.piece_palette, text=PieceSkin.LIGHT.desc, variable=self.svar_pieces, value=PieceSkin.LIGHT.name)
+        self.rdo_pieces_light.grid(column=1, row=0)
+        
+        # TODO: Board colour picker???
+        
+        self.btn_okay = ttk.Button(self, text="OK", command=self.save_and_quit)
+        self.btn_okay.grid(column=0, row=1)
+        return
+    
+    def save_and_quit(self):
+        self.controller.config["skins"] = {"pieces": self.svar_pieces.get()}
+        with open("config.ini", "w") as configfile:
+            self.controller.config.write(configfile)
+        self.destroy()
 
 
 class NavControls(ttk.Frame):
@@ -191,7 +228,7 @@ class TimerPane(ttk.Frame):
         
         # Basic timer
         self.timer = timer.SplitTimer()
-        # The Label will update itself via Observer pattern when refactored.
+        # Display updates automatically by watching timer (Observer pattern).
         self.timer_display = TimerDisplay(
             parent=self,
             controller=self.controller
@@ -360,6 +397,14 @@ class MainWindow:
         self.master.rowconfigure(0, weight=1)
         self.master.title("KIF folder browser")
         
+        # Create settings file if none exists
+        self.config = configparser.ConfigParser(dict_type=dict)
+        try:
+            with open("config.ini", "r") as configfile:
+                self.config.read_file(configfile)
+        except FileNotFoundError:
+            #TODO: alert user to missing config file or create default file
+            pass
         self.mainframe = ttk.Frame(self.master)
         self.mainframe.grid(column=0, row=0, sticky="NSEW")
         self.mainframe.columnconfigure(0, weight=1)

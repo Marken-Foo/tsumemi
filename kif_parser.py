@@ -1,7 +1,7 @@
 from enum import Enum, IntEnum
 import re
 
-# Refactor Piece enum to use namedtuples, and include NAME, kanji, alt_kanji, CSA_name
+
 class Piece(Enum):
     NONE = ("", "", "* ")
     GYOKU = ("玉", "王", "OU")
@@ -19,10 +19,10 @@ class Piece(Enum):
     FU = ("歩", "歩", "FU")
     TOKIN = ("と", "と", "TO")
     
-    def __init__(self, kanji, kanji_alt, CSA_name):
+    def __init__(self, kanji, kanji_alt, CSA):
         self.kanji = kanji
         self.kanji_alt = kanji_alt
-        self.CSA_name = CSA_name
+        self.CSA = CSA
     
     def __str__(self):
         return self.kanji

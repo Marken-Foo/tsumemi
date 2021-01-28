@@ -1,8 +1,21 @@
-from collections import Counter
-from tkinter import Canvas
+import configparser
+import os
+
+from collections import Counter, namedtuple
+from enum import Enum
+from tkinter import Canvas, PhotoImage
 from tkinter import font
 
-from kif_parser import KanjiNumber
+from kif_parser import KanjiNumber, Piece
+
+
+# namedtuple mixin for Enum
+Skin = namedtuple("Skin", ["desc", "directory"])
+
+class PieceSkin(Skin, Enum):
+    TEXT = Skin("1-kanji text characters", "")
+    LIGHT = Skin("1-kanji light piece set by Ka-hu", os.path.relpath(r"static/images/pieces/kanji_light"))
+
 
 class BoardCanvas(Canvas):
     '''Class encapsulating the canvas where the board is drawn.'''
@@ -15,7 +28,6 @@ class BoardCanvas(Canvas):
     KOMADAI_W_IN_SQ = 1.7
     INNER_H_PAD = 30
     
-    
     def __init__(self, parent, controller, *args, **kwargs):
         self.controller = controller
         self.is_upside_down = False
@@ -25,6 +37,7 @@ class BoardCanvas(Canvas):
     def draw(self):
         # Specify source of board data
         reader = self.controller.model.reader
+        cp = self.controller.config # code should only read configparser
         
         # Clear board display - could also keep board and just redraw pieces
         self.delete("all")
@@ -35,6 +48,23 @@ class BoardCanvas(Canvas):
             return w_pad + komadai_w + sq_w * i
         def y_sq(j):
             return h_pad + sq_h * j
+        
+        def _draw_piece(x, y, piece, invert=False):
+            if piece == Piece.NONE:
+                return
+            piece_skin = cp["skins"]["pieces"]
+            angle = 180 if invert else 0
+            if piece_skin.upper() == "TEXT":
+                self.create_text(
+                    x, y, text=str(piece.kanji),
+                    font=(font.nametofont("TkDefaultFont"), sq_text_size),
+                    angle=angle
+                )
+            else:
+                piece_filename = ("1" if invert else "0") + piece.CSA + ".svg"
+                piece_img = PhotoImage(file=os.path.join(PieceSkin[piece_skin].directory, piece_filename))
+                self.create_image(x, y, image=piece_img)
+            return
         
         # Note: if is_upside_down, essentially performs a deep copy,
         # but just "passes by reference" the reader's board if not.
@@ -70,19 +100,10 @@ class BoardCanvas(Canvas):
         # Draw board pieces
         for row_num, row in enumerate(south_board):
             for col_num, piece in enumerate(row):
-                self.create_text(
-                    x_sq(col_num+0.5), y_sq(row_num+0.5),
-                    text=str(piece),
-                    font=(font.nametofont("TkDefaultFont"), sq_text_size)
-                )
+                _draw_piece(x_sq(col_num+0.5), y_sq(row_num+0.5), piece)
         for row_num, row in enumerate(north_board):
             for col_num, piece in enumerate(row):
-                self.create_text(
-                    x_sq(col_num+0.5), y_sq(row_num+0.5),
-                    text=str(piece),
-                    font=(font.nametofont("TkDefaultFont"), sq_text_size),
-                    angle=180
-                )
+                _draw_piece(x_sq(col_num+0.5), y_sq(row_num+0.5), piece, invert=True)
         # Draw board coordinates
         for row_num in range(9):
             self.create_text(
