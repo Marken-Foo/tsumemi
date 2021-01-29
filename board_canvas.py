@@ -3,6 +3,7 @@ import os
 
 from collections import Counter, namedtuple
 from enum import Enum
+from PIL import Image, ImageTk
 from tkinter import Canvas, PhotoImage
 from tkinter import font
 
@@ -32,6 +33,7 @@ class BoardCanvas(Canvas):
         self.controller = controller
         self.is_upside_down = False
         super().__init__(parent, *args, **kwargs)
+        self.images = [] # to avoid tkinter PhotoImage gc
         return
     
     def draw(self):
@@ -41,6 +43,7 @@ class BoardCanvas(Canvas):
         
         # Clear board display - could also keep board and just redraw pieces
         self.delete("all")
+        self.images = []
         
         (sq_w, sq_h, komadai_w, w_pad, h_pad, sq_text_size,
          komadai_text_size, coords_text_size) = self.calculate_sizes()
@@ -61,8 +64,12 @@ class BoardCanvas(Canvas):
                     angle=angle
                 )
             else:
-                piece_filename = ("1" if invert else "0") + piece.CSA + ".svg"
-                piece_img = PhotoImage(file=os.path.join(PieceSkin[piece_skin].directory, piece_filename))
+                piece_filename = ("1" if invert else "0") + piece.CSA + ".png"
+                piece_path = os.path.join(PieceSkin[piece_skin].directory, piece_filename)
+                img = Image.open(piece_path)
+                new_img = img.resize((int(sq_w), int(sq_w))) # assume image is square
+                piece_img = ImageTk.PhotoImage(new_img)
+                self.images.append(piece_img)
                 self.create_image(x, y, image=piece_img)
             return
         
