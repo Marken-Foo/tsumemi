@@ -81,6 +81,7 @@ class SettingsWindow(tk.Toplevel):
         self.controller.config["skins"] = {"pieces": self.svar_pieces.get()}
         with open("config.ini", "w") as configfile:
             self.controller.config.write(configfile)
+        self.controller.display_problem()
         self.destroy()
 
 

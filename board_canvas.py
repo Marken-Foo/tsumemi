@@ -65,12 +65,100 @@ class BoardCanvas(Canvas):
                 )
             else:
                 piece_filename = ("1" if invert else "0") + piece.CSA + ".png"
-                piece_path = os.path.join(PieceSkin[piece_skin].directory, piece_filename)
+                piece_path = os.path.join(PieceSkin[piece_skin].directory,
+                                          piece_filename)
                 img = Image.open(piece_path)
-                new_img = img.resize((int(sq_w), int(sq_w))) # assume image is square
+                new_img = img.resize((int(sq_w), int(sq_w))) # assume square
                 piece_img = ImageTk.PhotoImage(new_img)
                 self.images.append(piece_img)
                 self.create_image(x, y, image=piece_img)
+            return
+        
+        def _draw_komadai_text(hand, north=True, sente=True):
+            komadai_font = (font.nametofont("TkDefaultFont"), komadai_text_size)
+            c_hand = Counter(hand)
+            mochigoma_chars = ["▲"] if sente else ["△"]
+            mochigoma_chars.append("\n持\n駒\n")
+            if not list(c_hand):
+                # Hand is empty, write なし
+                mochigoma_chars.append("\nな\nし")
+            else:
+                for piece, count in c_hand.items():
+                    mochigoma_chars.extend(["\n", str(piece), " ", str(count)])
+            if north:
+                self.create_text(
+                    w_pad + komadai_w/2,
+                    y_sq(0),
+                    text="".join(mochigoma_chars),
+                    font=komadai_font,
+                    anchor="n"
+                )
+            else:
+                self.create_text(
+                    x_sq(9) + komadai_w/2,
+                    y_sq(9),
+                    text="".join(mochigoma_chars),
+                    font=komadai_font,
+                    anchor="s"
+                )
+            return
+        
+        def _draw_komadai(hand, north=True, sente=True):
+            # if text, deal with it separately
+            piece_skin = cp["skins"]["pieces"]
+            if piece_skin.upper() == "TEXT":
+                _draw_komadai_text(hand, north, sente)
+                return
+            komadai_font = (font.nametofont("TkDefaultFont"), komadai_text_size)
+            c_hand = Counter(hand)
+            mochigoma_chars = ["▲"] if sente else ["△"]
+            mochigoma_chars.append("\n持\n駒\n")
+            if not list(c_hand):
+                # Hand is empty, write なし
+                mochigoma_chars.append("\nな\nし")
+            mochigoma_text = "".join(mochigoma_chars)
+            if north:
+                self.create_text(
+                    w_pad + komadai_w/2,
+                    y_sq(0),
+                    text=mochigoma_text,
+                    font=komadai_font,
+                    anchor="n"
+                )
+            num = 2 if north else 9
+            if list(c_hand):
+                # hand is not empty
+                x_displ = sq_w / 3
+                x_pc = (w_pad + komadai_w/2 if north
+                        else x_sq(9) + komadai_w*3/4)
+                if north:
+                    for piece, count in c_hand.items():
+                        _draw_piece(x_pc - x_displ, y_sq(num + 0.3), piece)
+                        self.create_text(
+                            x_pc + x_displ,
+                            y_sq(num + 0.3),
+                            text=str(count),
+                            font=komadai_font
+                        )
+                        num += 1
+                else:
+                    for piece, count in reversed(c_hand.items()):
+                        _draw_piece(x_pc - x_displ, y_sq(num - 0.5), piece)
+                        self.create_text(
+                            x_pc + x_displ,
+                            y_sq(num - 0.5),
+                            text=str(count),
+                            font=komadai_font
+                        )
+                        num -= 1
+            if not north:
+                self.create_text(
+                    x_sq(9) + komadai_w*3/4,
+                    y_sq(num),
+                    text=mochigoma_text,
+                    font=komadai_font,
+                    anchor="s"
+                )
             return
         
         # Note: if is_upside_down, essentially performs a deep copy,
@@ -84,8 +172,7 @@ class BoardCanvas(Canvas):
                 south_board[i] = row[::-1]
             for i, row in enumerate(north_board):
                 north_board[i] = row[::-1]
-            south_hand_strings = ["△\n持\n駒\n"]
-            north_hand_strings = ["▲\n持\n駒\n"]
+            is_north_sente = True
             row_coords = [" " + KanjiNumber(i).name for i in range(9, 0, -1)]
             col_coords = [str(i) for i in range(1, 10, 1)]
         else:
@@ -93,8 +180,7 @@ class BoardCanvas(Canvas):
             north_hand = reader.board.gote_hand
             south_board = reader.board.sente
             north_board = reader.board.gote
-            south_hand_strings = ["▲\n持\n駒\n"]
-            north_hand_strings = ["△\n持\n駒\n"]
+            is_north_sente = False
             row_coords = [" " + KanjiNumber(i).name for i in range(1, 10, 1)]
             col_coords = [str(i) for i in range(9, 0, -1)]
         
@@ -110,7 +196,8 @@ class BoardCanvas(Canvas):
                 _draw_piece(x_sq(col_num+0.5), y_sq(row_num+0.5), piece)
         for row_num, row in enumerate(north_board):
             for col_num, piece in enumerate(row):
-                _draw_piece(x_sq(col_num+0.5), y_sq(row_num+0.5), piece, invert=True)
+                _draw_piece(x_sq(col_num+0.5), y_sq(row_num+0.5), piece,
+                            invert=True)
         # Draw board coordinates
         for row_num in range(9):
             self.create_text(
@@ -126,29 +213,16 @@ class BoardCanvas(Canvas):
                 font=(font.nametofont("TkDefaultFont"), coords_text_size),
                 anchor="s"
             )
-        # Draw sente hand pieces
-        c = Counter(south_hand)
-        for piece in c:
-            south_hand_strings.append(str(piece) + str(c[piece]))
-        if len(south_hand_strings) == 1:
-            south_hand_strings.append("な\nし")
-        self.create_text(
-            x_sq(9) + komadai_w, y_sq(9),
-            text="\n".join(south_hand_strings),
-            font=(font.nametofont("TkDefaultFont"), komadai_text_size),
-            anchor="se"
+        # Draw komadai pieces
+        _draw_komadai(
+            south_hand,
+            north=False,
+            sente=False if is_north_sente else True
         )
-        # Draw gote hand pieces
-        c = Counter(north_hand)
-        for piece in c:
-            north_hand_strings.append(str(piece) + str(c[piece]))
-        if len(north_hand_strings) == 1:
-            north_hand_strings.append("な\nし")
-        self.create_text(
-            w_pad, h_pad,
-            text="\n".join(north_hand_strings),
-            font=(font.nametofont("TkDefaultFont"), komadai_text_size),
-            anchor="nw"
+        _draw_komadai(
+            north_hand,
+            north=True,
+            sente=True if is_north_sente else False
         )
         return
     
