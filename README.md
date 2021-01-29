@@ -44,4 +44,6 @@ This is just a small bit of code to try making something convenient. If you enco
 
 ## Licence ##
 
-This project is licenced under the LGPLv3.
+This project is licensed under the GPLv3.
+
+[1-kanji light piece set by Ka-hu](https://github.com/Ka-hu/shogi-pieces/) (.png files created from .svg files) (licensed under CC-BY-4.0)
