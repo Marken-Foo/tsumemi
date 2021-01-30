@@ -25,11 +25,11 @@ class Komadai(tk.Frame):
         self.font = font
         super().__init__(parent, *args, **kwargs)
         
-        header_text = "▲\n持\n駒" if sente else "△\n持\n駒"
+        header_text = "▲\n持\n駒\n" if sente else "△\n持\n駒\n"
         self.header = tk.Label(self, text=header_text, font=self.font)
         self.header.grid(column=0, row=0, columnspan=2)
         
-        self.nashi = tk.Label(self, text="\nな\nし", font=self.font)
+        self.nashi = tk.Label(self, text="な\nし", font=self.font)
         self.nashi.grid(column=0, row=1)
         
         cp = self.controller.config
@@ -69,7 +69,7 @@ class Komadai(tk.Frame):
     def draw(self, hand, sente=True):
         # Updates the komadai with new hand and sente information
         # sente is True/False, font is tuple for tkinter font and size
-        self.header["text"] = "▲\n持\n駒" if sente else "△\n持\n駒"
+        self.header["text"] = "▲\n持\n駒\n" if sente else "△\n持\n駒\n"
         c_hand = Counter(hand)
         for label in self.piece_labels.values():
             label.grid_remove()
@@ -85,17 +85,18 @@ class Komadai(tk.Frame):
                 self.piece_counts[piece]["text"] = str(count)
                 self.piece_counts[piece].grid()
                 self.piece_labels[piece].grid()
-                if self.piece_skin.upper() == "TEXT":
-                    self.piece_labels[piece]["image"] = None
-                else:
-                    self.piece_labels[piece]["compound"] = "none"
         return
     
     def update_skin(self):
         # When new skin is selected
         cp = self.controller.config
         self.piece_skin = cp["skins"]["pieces"]
-        self.init_images()
+        if self.piece_skin.upper() == "TEXT":
+            self.images = []
+            for label in self.piece_labels.values():
+                label["image"] = ""
+        else:
+            self.init_images()
         return
 
 
@@ -121,11 +122,8 @@ class BoardCanvas(tk.Canvas):
         self.config = self.controller.config # code should only read configparser
         
         (sq_w, sq_h, komadai_w, w_pad, h_pad, sq_text_size,
-         komadai_text_size, coords_text_size) = self.calculate_sizes()
-        def x_sq(i):
-            return w_pad + komadai_w + sq_w * i
-        def y_sq(j):
-            return h_pad + sq_h * j
+         komadai_text_size, coords_text_size,
+         x_sq, y_sq) = self.calculate_sizes()
         
         self.south_komadai = Komadai(
             parent=self,
@@ -159,11 +157,8 @@ class BoardCanvas(tk.Canvas):
         self.images = []
         
         (sq_w, sq_h, komadai_w, w_pad, h_pad, sq_text_size,
-         komadai_text_size, coords_text_size) = self.calculate_sizes()
-        def x_sq(i):
-            return w_pad + komadai_w + sq_w * i
-        def y_sq(j):
-            return h_pad + sq_h * j
+         komadai_text_size, coords_text_size,
+         x_sq, y_sq) = self.calculate_sizes()
         
         def _draw_piece(x, y, piece, invert=False):
             if piece == Piece.NONE:
@@ -286,8 +281,15 @@ class BoardCanvas(tk.Canvas):
         sq_text_size = int(sq_w * 7/10)
         komadai_text_size = int(sq_w * 2/5)
         coords_text_size = int(sq_w * 2/9)
+        
+        def x_sq(i):
+            return w_pad + komadai_w + sq_w * i
+        def y_sq(j):
+            return h_pad + sq_h * j
+        
         return (sq_w, sq_h, komadai_w, w_pad, h_pad,
-                sq_text_size, komadai_text_size, coords_text_size)
+                sq_text_size, komadai_text_size, coords_text_size,
+                x_sq, y_sq)
     
     def flip_board(self, want_upside_down):
         if self.is_upside_down != want_upside_down:
