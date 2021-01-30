@@ -4,7 +4,6 @@ import tkinter as tk
 
 from collections import Counter, namedtuple
 from enum import Enum
-from tkinter import font
 from PIL import Image, ImageTk
 
 from kif_parser import KanjiNumber, Piece
@@ -19,20 +18,20 @@ class PieceSkin(Skin, Enum):
 
 
 class Komadai(tk.Frame):
-    def __init__(self, parent, controller, sente=True, font=None, *args, **kwargs):
+    def __init__(self, parent, controller, sente=True, font="", *args, **kwargs):
         self.controller = controller
         self.parent = parent
         self.font = font
         super().__init__(parent, *args, **kwargs)
         
         header_text = "▲\n持\n駒\n" if sente else "△\n持\n駒\n"
-        self.header = tk.Label(self, text=header_text, font=self.font)
+        self.header = tk.Label(self, text=header_text, font=font)
         self.header.grid(column=0, row=0, columnspan=2)
         
-        self.nashi = tk.Label(self, text="な\nし", font=self.font)
+        self.nashi = tk.Label(self, text="な\nし", font=font)
         self.nashi.grid(column=0, row=1)
         
-        cp = self.controller.config
+        cp = controller.config
         self.piece_skin = cp["skins"]["pieces"]
         self.hand_piece_types = (Piece.HISHA, Piece.KAKU, Piece.KIN, Piece.GIN, Piece.KEI, Piece.KYOU, Piece.FU)
         
@@ -41,17 +40,20 @@ class Komadai(tk.Frame):
         self.images = [] # avoid tkinter gc
         
         for n, piece in enumerate(self.hand_piece_types):
-            self.piece_labels[piece] = tk.Label(self, text=str(piece), font=self.font)
-            self.piece_labels[piece].grid(column=0, row=n+1)
-            self.piece_labels[piece].grid_remove()
-            self.piece_counts[piece] = tk.Label(self, text="0", font=self.font)
-            self.piece_counts[piece].grid(column=1, row=n+1)
-            self.piece_counts[piece].grid_remove()
-        if self.piece_skin.upper() != "TEXT":
-            self.init_images()
+            lbl_piece = self.piece_labels[piece] = tk.Label(self, text=str(piece), font=font)
+            lbl_piece.grid(column=0, row=n+1)
+            lbl_piece.grid_remove()
+            lbl_count = self.piece_counts[piece] = tk.Label(self, text="0", font=font)
+            lbl_count.grid(column=1, row=n+1)
+            lbl_count.grid_remove()
+        if not self.is_skin_text():
+            self.init_images(40) # um what?
         return
     
-    def init_images(self):
+    def is_skin_text(self):
+        return self.piece_skin.upper() == "TEXT"
+    
+    def init_images(self, img_w):
         # Contains Labels for each of the piece types - run this section iff
         # PIL available and iff the skin is not text.
         self.images = []
@@ -60,13 +62,13 @@ class Komadai(tk.Frame):
             piece_path = os.path.join(PieceSkin[self.piece_skin].directory,
                                       piece_filename)
             img = Image.open(piece_path)
-            new_img = img.resize((int(40), int(40))) # assume square
-            piece_img = ImageTk.PhotoImage(new_img)
+            img = img.resize((int(img_w), int(img_w))) # assume square
+            piece_img = ImageTk.PhotoImage(img)
             self.images.append(piece_img)
             self.piece_labels[piece]["image"] = piece_img
         return
     
-    def draw(self, hand, sente=True):
+    def update(self, hand, sente=True):
         # Updates the komadai with new hand and sente information
         # sente is True/False, font is tuple for tkinter font and size
         self.header["text"] = "▲\n持\n駒\n" if sente else "△\n持\n駒\n"
@@ -87,16 +89,27 @@ class Komadai(tk.Frame):
                 self.piece_labels[piece].grid()
         return
     
-    def update_skin(self):
+    def update_skin(self, img_w):
         # When new skin is selected
         cp = self.controller.config
         self.piece_skin = cp["skins"]["pieces"]
-        if self.piece_skin.upper() == "TEXT":
+        if self.is_skin_text():
             self.images = []
             for label in self.piece_labels.values():
                 label["image"] = ""
         else:
-            self.init_images()
+            self.init_images(img_w)
+        return
+    
+    def on_resize(self, text_size, img_size):
+        self.header["font"] = ("", text_size)
+        self.nashi["font"] = ("", text_size)
+        for label in self.piece_labels.values():
+            label["font"] = ("", text_size)
+        for label in self.piece_counts.values():
+            label["font"] = ("", text_size)
+        if not self.is_skin_text():
+            self.init_images(img_size)
         return
 
 
@@ -121,33 +134,19 @@ class BoardCanvas(tk.Canvas):
         self.reader = self.controller.model.reader
         self.config = self.controller.config # code should only read configparser
         
-        (sq_w, sq_h, komadai_w, w_pad, h_pad, sq_text_size,
-         komadai_text_size, coords_text_size,
-         x_sq, y_sq) = self.calculate_sizes()
+        _, _, _, _, _, _, komadai_text_size, _, _, _ = self._calculate_sizes()
         
         self.south_komadai = Komadai(
             parent=self,
             controller=self.controller,
             sente=True,
-            font=(font.nametofont("TkDefaultFont"), komadai_text_size)
-        )
-        self.south_komadai_window = self.create_window(
-            x_sq(9) + komadai_w,
-            y_sq(9),
-            anchor="se",
-            window=self.south_komadai
+            font=("", komadai_text_size)
         )
         self.north_komadai = Komadai(
             parent=self,
             controller=self.controller,
             sente=False,
-            font=(font.nametofont("TkDefaultFont"), komadai_text_size)
-        )
-        self.north_komadai_window = self.create_window(
-            w_pad,
-            y_sq(0),
-            anchor="nw",
-            window=self.north_komadai
+            font=("", komadai_text_size)
         )
         return
     
@@ -155,10 +154,12 @@ class BoardCanvas(tk.Canvas):
         # Clear board display - could also keep board and just redraw pieces
         self.delete("all")
         self.images = []
+        reader = self.reader
         
-        (sq_w, sq_h, komadai_w, w_pad, h_pad, sq_text_size,
+        # Avoid self hell by calculating
+        (sq_w, _, komadai_w, w_pad, _, sq_text_size,
          komadai_text_size, coords_text_size,
-         x_sq, y_sq) = self.calculate_sizes()
+         x_sq, y_sq) = self._calculate_sizes()
         
         def _draw_piece(x, y, piece, invert=False):
             if piece == Piece.NONE:
@@ -168,7 +169,7 @@ class BoardCanvas(tk.Canvas):
             if piece_skin.upper() == "TEXT":
                 self.create_text(
                     x, y, text=str(piece.kanji),
-                    font=(font.nametofont("TkDefaultFont"), sq_text_size),
+                    font=("", sq_text_size),
                     angle=angle
                 )
             else:
@@ -176,8 +177,8 @@ class BoardCanvas(tk.Canvas):
                 piece_path = os.path.join(PieceSkin[piece_skin].directory,
                                           piece_filename)
                 img = Image.open(piece_path)
-                new_img = img.resize((int(sq_w), int(sq_w))) # assume square
-                piece_img = ImageTk.PhotoImage(new_img)
+                img = img.resize((int(sq_w), int(sq_w))) # assume square
+                piece_img = ImageTk.PhotoImage(img)
                 self.images.append(piece_img)
                 self.create_image(x, y, image=piece_img)
             return
@@ -197,10 +198,10 @@ class BoardCanvas(tk.Canvas):
             row_coords = [" " + KanjiNumber(i).name for i in range(9, 0, -1)]
             col_coords = [str(i) for i in range(1, 10, 1)]
         else:
-            south_hand = self.reader.board.sente_hand
-            north_hand = self.reader.board.gote_hand
-            south_board = self.reader.board.sente
-            north_board = self.reader.board.gote
+            south_hand = reader.board.sente_hand
+            north_hand = reader.board.gote_hand
+            south_board = reader.board.sente
+            north_board = reader.board.gote
             is_north_sente = False
             row_coords = [" " + KanjiNumber(i).name for i in range(1, 10, 1)]
             col_coords = [str(i) for i in range(9, 0, -1)]
@@ -211,6 +212,21 @@ class BoardCanvas(tk.Canvas):
                                     fill="black", width=1)
             self.create_line(x_sq(0), y_sq(i), x_sq(9), y_sq(i),
                                     fill="black", width=1)
+        # Draw board coordinates
+        for row_num in range(9):
+            self.create_text(
+                x_sq(9), y_sq(row_num+0.5),
+                text=" " + row_coords[row_num],
+                font=("", coords_text_size),
+                anchor="w"
+            )
+        for col_num in range(9):
+            self.create_text(
+                x_sq(col_num+0.5), y_sq(0),
+                text=col_coords[col_num],
+                font=("", coords_text_size),
+                anchor="s"
+            )
         # Draw board pieces
         for row_num, row in enumerate(south_board):
             for col_num, piece in enumerate(row):
@@ -219,21 +235,6 @@ class BoardCanvas(tk.Canvas):
             for col_num, piece in enumerate(row):
                 _draw_piece(x_sq(col_num+0.5), y_sq(row_num+0.5), piece,
                             invert=True)
-        # Draw board coordinates
-        for row_num in range(9):
-            self.create_text(
-                x_sq(9), y_sq(row_num+0.5),
-                text=" " + row_coords[row_num],
-                font=(font.nametofont("TkDefaultFont"), coords_text_size),
-                anchor="w"
-            )
-        for col_num in range(9):
-            self.create_text(
-                x_sq(col_num+0.5), y_sq(0),
-                text=col_coords[col_num],
-                font=(font.nametofont("TkDefaultFont"), coords_text_size),
-                anchor="s"
-            )
         # Draw komadai pieces
         self.south_komadai_window = self.create_window(
             x_sq(9) + komadai_w,
@@ -247,23 +248,27 @@ class BoardCanvas(tk.Canvas):
             anchor="nw",
             window=self.north_komadai
         )
-        self.south_komadai.draw(hand=south_hand, sente=not is_north_sente)
-        self.north_komadai.draw(hand=north_hand, sente=is_north_sente)
+        self.south_komadai.update(hand=south_hand, sente=not is_north_sente)
+        self.north_komadai.update(hand=north_hand, sente=is_north_sente)
         return
     
     def update_skin(self):
-        self.north_komadai.update_skin()
-        self.south_komadai.update_skin()
+        _, _, _, _, _, _, komadai_text_size, _, _, _ = self._calculate_sizes()
+        self.north_komadai.update_skin(komadai_text_size*2)
+        self.south_komadai.update_skin(komadai_text_size*2)
         return
     
     def on_resize(self, event):
         self.canvas_width = event.width
         self.canvas_height = event.height
+        _, _, _, _, _, _, komadai_text_size, _, _, _ = self._calculate_sizes()
+        self.north_komadai.on_resize(komadai_text_size, komadai_text_size*2)
+        self.south_komadai.on_resize(komadai_text_size, komadai_text_size*2)
         # Redraw board after setting new dimensions
         self.draw()
         return
     
-    def calculate_sizes(self):
+    def _calculate_sizes(self):
         # Geometry: 9x9 shogi board, flanked by komadai area on either side
         max_sq_w = self.canvas_width / (9 + 2*self.KOMADAI_W_IN_SQ)
         max_sq_h = (self.canvas_height - 2*self.INNER_H_PAD) / 9
