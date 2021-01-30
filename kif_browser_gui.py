@@ -404,8 +404,11 @@ class MainWindow:
             with open("config.ini", "r") as configfile:
                 self.config.read_file(configfile)
         except FileNotFoundError:
-            #TODO: alert user to missing config file or create default file
-            pass
+            with open("config.ini", "w+") as configfile:
+                # write a default config.ini
+                configfile.write("[skins]\npieces = LIGHT\n")
+            with open("config.ini", "r") as configfile:
+                self.config.read_file(configfile)
         self.mainframe = ttk.Frame(self.master)
         self.mainframe.grid(column=0, row=0, sticky="NSEW")
         self.mainframe.columnconfigure(0, weight=1)
