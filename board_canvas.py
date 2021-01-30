@@ -27,46 +27,75 @@ class Komadai(tk.Frame):
         
         header_text = "▲\n持\n駒" if sente else "△\n持\n駒"
         self.header = tk.Label(self, text=header_text, font=self.font)
-        self.header.grid(column=0, row=0)
-        # Contains Labels for each of the piece types
-        self.piece_tiles = {}
-        self.images = [] # avoid tkinter gc
-        
-        cp = self.controller.config
-        piece_skin = cp["skins"]["pieces"]
-        hand_piece_types = (Piece.HISHA, Piece.KAKU, Piece.KIN, Piece.GIN, Piece.KEI, Piece.KYOU, Piece.FU)
+        self.header.grid(column=0, row=0, columnspan=2)
         
         self.nashi = tk.Label(self, text="\nな\nし", font=self.font)
         self.nashi.grid(column=0, row=1)
         
-        for n, piece in enumerate(hand_piece_types):
+        cp = self.controller.config
+        self.piece_skin = cp["skins"]["pieces"]
+        self.hand_piece_types = (Piece.HISHA, Piece.KAKU, Piece.KIN, Piece.GIN, Piece.KEI, Piece.KYOU, Piece.FU)
+        
+        self.piece_labels = {}
+        self.piece_counts = {}
+        self.images = [] # avoid tkinter gc
+        
+        for n, piece in enumerate(self.hand_piece_types):
+            self.piece_labels[piece] = tk.Label(self, text=str(piece), font=self.font)
+            self.piece_labels[piece].grid(column=0, row=n+1)
+            self.piece_labels[piece].grid_remove()
+            self.piece_counts[piece] = tk.Label(self, text="0", font=self.font)
+            self.piece_counts[piece].grid(column=1, row=n+1)
+            self.piece_counts[piece].grid_remove()
+        if self.piece_skin.upper() != "TEXT":
+            self.init_images()
+        return
+    
+    def init_images(self):
+        # Contains Labels for each of the piece types - run this section iff
+        # PIL available and iff the skin is not text.
+        self.images = []
+        for n, piece in enumerate(self.hand_piece_types):
             piece_filename = "0" + piece.CSA + ".png"
-            piece_path = os.path.join(PieceSkin[piece_skin].directory,
+            piece_path = os.path.join(PieceSkin[self.piece_skin].directory,
                                       piece_filename)
             img = Image.open(piece_path)
             new_img = img.resize((int(40), int(40))) # assume square
             piece_img = ImageTk.PhotoImage(new_img)
             self.images.append(piece_img)
-            self.piece_tiles[piece] = tk.Label(self, image=piece_img, text=0, font=self.font, compound="left")
-            self.piece_tiles[piece].grid(column=0, row=n+1)
-            self.piece_tiles[piece].grid_remove()
+            self.piece_labels[piece]["image"] = piece_img
         return
     
     def draw(self, hand, sente=True):
+        # Updates the komadai with new hand and sente information
         # sente is True/False, font is tuple for tkinter font and size
         self.header["text"] = "▲\n持\n駒" if sente else "△\n持\n駒"
         c_hand = Counter(hand)
+        for label in self.piece_labels.values():
+            label.grid_remove()
+        for label in self.piece_counts.values():
+            label.grid_remove()
         if not list(c_hand):
             # Hand is empty, write なし
             self.nashi.grid()
-            for label in self.piece_tiles.values():
-                label.grid_remove()
         else:
             # Hand is not empty
             self.nashi.grid_remove()
             for piece, count in c_hand.items():
-                self.piece_tiles[piece]["text"] = str(count)
-                self.piece_tiles[piece].grid()
+                self.piece_counts[piece]["text"] = str(count)
+                self.piece_counts[piece].grid()
+                self.piece_labels[piece].grid()
+                if self.piece_skin.upper() == "TEXT":
+                    self.piece_labels[piece]["image"] = None
+                else:
+                    self.piece_labels[piece]["compound"] = "none"
+        return
+    
+    def update_skin(self):
+        # When new skin is selected
+        cp = self.controller.config
+        self.piece_skin = cp["skins"]["pieces"]
+        self.init_images()
         return
 
 
@@ -86,13 +115,45 @@ class BoardCanvas(tk.Canvas):
         self.is_upside_down = False
         super().__init__(parent, *args, **kwargs)
         self.images = [] # to avoid tkinter PhotoImage gc
+        
+        # Specify source of board data
+        self.reader = self.controller.model.reader
+        self.config = self.controller.config # code should only read configparser
+        
+        (sq_w, sq_h, komadai_w, w_pad, h_pad, sq_text_size,
+         komadai_text_size, coords_text_size) = self.calculate_sizes()
+        def x_sq(i):
+            return w_pad + komadai_w + sq_w * i
+        def y_sq(j):
+            return h_pad + sq_h * j
+        
+        self.south_komadai = Komadai(
+            parent=self,
+            controller=self.controller,
+            sente=True,
+            font=(font.nametofont("TkDefaultFont"), komadai_text_size)
+        )
+        self.south_komadai_window = self.create_window(
+            x_sq(9) + komadai_w,
+            y_sq(9),
+            anchor="se",
+            window=self.south_komadai
+        )
+        self.north_komadai = Komadai(
+            parent=self,
+            controller=self.controller,
+            sente=False,
+            font=(font.nametofont("TkDefaultFont"), komadai_text_size)
+        )
+        self.north_komadai_window = self.create_window(
+            w_pad,
+            y_sq(0),
+            anchor="nw",
+            window=self.north_komadai
+        )
         return
     
     def draw(self):
-        # Specify source of board data
-        reader = self.controller.model.reader
-        cp = self.controller.config # code should only read configparser
-        
         # Clear board display - could also keep board and just redraw pieces
         self.delete("all")
         self.images = []
@@ -107,7 +168,7 @@ class BoardCanvas(tk.Canvas):
         def _draw_piece(x, y, piece, invert=False):
             if piece == Piece.NONE:
                 return
-            piece_skin = cp["skins"]["pieces"]
+            piece_skin = self.config["skins"]["pieces"]
             angle = 180 if invert else 0
             if piece_skin.upper() == "TEXT":
                 self.create_text(
@@ -126,93 +187,6 @@ class BoardCanvas(tk.Canvas):
                 self.create_image(x, y, image=piece_img)
             return
         
-        def _draw_komadai_text(hand, north=True, sente=True):
-            komadai_font = (font.nametofont("TkDefaultFont"), komadai_text_size)
-            c_hand = Counter(hand)
-            mochigoma_chars = ["▲"] if sente else ["△"]
-            mochigoma_chars.append("\n持\n駒\n")
-            if not list(c_hand):
-                # Hand is empty, write なし
-                mochigoma_chars.append("\nな\nし")
-            else:
-                for piece, count in c_hand.items():
-                    mochigoma_chars.extend(["\n", str(piece), " ", str(count)])
-            if north:
-                self.create_text(
-                    w_pad + komadai_w/2,
-                    y_sq(0),
-                    text="".join(mochigoma_chars),
-                    font=komadai_font,
-                    anchor="n"
-                )
-            else:
-                self.create_text(
-                    x_sq(9) + komadai_w/2,
-                    y_sq(9),
-                    text="".join(mochigoma_chars),
-                    font=komadai_font,
-                    anchor="s"
-                )
-            return
-        
-        def _draw_komadai(hand, north=True, sente=True):
-            # if text, deal with it separately
-            piece_skin = cp["skins"]["pieces"]
-            if piece_skin.upper() == "TEXT":
-                _draw_komadai_text(hand, north, sente)
-                return
-            komadai_font = (font.nametofont("TkDefaultFont"), komadai_text_size)
-            c_hand = Counter(hand)
-            mochigoma_chars = ["▲"] if sente else ["△"]
-            mochigoma_chars.append("\n持\n駒\n")
-            if not list(c_hand):
-                # Hand is empty, write なし
-                mochigoma_chars.append("\nな\nし")
-            mochigoma_text = "".join(mochigoma_chars)
-            if north:
-                self.create_text(
-                    w_pad + komadai_w/2,
-                    y_sq(0),
-                    text=mochigoma_text,
-                    font=komadai_font,
-                    anchor="n"
-                )
-            num = 2 if north else 9
-            if list(c_hand):
-                # hand is not empty
-                x_displ = sq_w / 3
-                x_pc = (w_pad + komadai_w/2 if north
-                        else x_sq(9) + komadai_w*3/4)
-                if north:
-                    for piece, count in c_hand.items():
-                        _draw_piece(x_pc - x_displ, y_sq(num + 0.3), piece)
-                        self.create_text(
-                            x_pc + x_displ,
-                            y_sq(num + 0.3),
-                            text=str(count),
-                            font=komadai_font
-                        )
-                        num += 1
-                else:
-                    for piece, count in reversed(c_hand.items()):
-                        _draw_piece(x_pc - x_displ, y_sq(num - 0.5), piece)
-                        self.create_text(
-                            x_pc + x_displ,
-                            y_sq(num - 0.5),
-                            text=str(count),
-                            font=komadai_font
-                        )
-                        num -= 1
-            if not north:
-                self.create_text(
-                    x_sq(9) + komadai_w*3/4,
-                    y_sq(num),
-                    text=mochigoma_text,
-                    font=komadai_font,
-                    anchor="s"
-                )
-            return
-        
         # Note: if is_upside_down, essentially performs a deep copy,
         # but just "passes by reference" the reader's board if not.
         if self.is_upside_down:
@@ -228,10 +202,10 @@ class BoardCanvas(tk.Canvas):
             row_coords = [" " + KanjiNumber(i).name for i in range(9, 0, -1)]
             col_coords = [str(i) for i in range(1, 10, 1)]
         else:
-            south_hand = reader.board.sente_hand
-            north_hand = reader.board.gote_hand
-            south_board = reader.board.sente
-            north_board = reader.board.gote
+            south_hand = self.reader.board.sente_hand
+            north_hand = self.reader.board.gote_hand
+            south_board = self.reader.board.sente
+            north_board = self.reader.board.gote
             is_north_sente = False
             row_coords = [" " + KanjiNumber(i).name for i in range(1, 10, 1)]
             col_coords = [str(i) for i in range(9, 0, -1)]
@@ -266,24 +240,25 @@ class BoardCanvas(tk.Canvas):
                 anchor="s"
             )
         # Draw komadai pieces
-        south_komadai = Komadai(parent=self, controller=self.controller, sente=not is_north_sente, font=(font.nametofont("TkDefaultFont"), komadai_text_size))
-        south_komadai.draw(hand=south_hand, sente=not is_north_sente)
-        self.create_window(x_sq(9) + komadai_w, y_sq(9), anchor="se", window=south_komadai)
-        
-        north_komadai = Komadai(parent=self, controller=self.controller, sente=is_north_sente, font=(font.nametofont("TkDefaultFont"), komadai_text_size))
-        north_komadai.draw(hand=north_hand, sente=is_north_sente)
-        self.create_window(w_pad, y_sq(0), anchor="nw", window=north_komadai)
-        
-        _draw_komadai(
-            south_hand,
-            north=False,
-            sente=not is_north_sente
+        self.south_komadai_window = self.create_window(
+            x_sq(9) + komadai_w,
+            y_sq(9),
+            anchor="se",
+            window=self.south_komadai
         )
-        _draw_komadai(
-            north_hand,
-            north=True,
-            sente=is_north_sente
+        self.north_komadai_window = self.create_window(
+            w_pad,
+            y_sq(0),
+            anchor="nw",
+            window=self.north_komadai
         )
+        self.south_komadai.draw(hand=south_hand, sente=not is_north_sente)
+        self.north_komadai.draw(hand=north_hand, sente=is_north_sente)
+        return
+    
+    def update_skin(self):
+        self.north_komadai.update_skin()
+        self.south_komadai.update_skin()
         return
     
     def on_resize(self, event):
