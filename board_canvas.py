@@ -1,11 +1,11 @@
 import configparser
 import os
+import tkinter as tk
 
 from collections import Counter, namedtuple
 from enum import Enum
-from PIL import Image, ImageTk
-from tkinter import Canvas, PhotoImage
 from tkinter import font
+from PIL import Image, ImageTk
 
 from kif_parser import KanjiNumber, Piece
 
@@ -18,7 +18,59 @@ class PieceSkin(Skin, Enum):
     LIGHT = Skin("1-kanji light piece set by Ka-hu", os.path.relpath(r"static/images/pieces/kanji_light"))
 
 
-class BoardCanvas(Canvas):
+class Komadai(tk.Frame):
+    def __init__(self, parent, controller, sente=True, font=None, *args, **kwargs):
+        self.controller = controller
+        self.parent = parent
+        self.font = font
+        super().__init__(parent, *args, **kwargs)
+        
+        header_text = "▲\n持\n駒" if sente else "△\n持\n駒"
+        self.header = tk.Label(self, text=header_text, font=self.font)
+        self.header.grid(column=0, row=0)
+        # Contains Labels for each of the piece types
+        self.piece_tiles = {}
+        self.images = [] # avoid tkinter gc
+        
+        cp = self.controller.config
+        piece_skin = cp["skins"]["pieces"]
+        hand_piece_types = (Piece.HISHA, Piece.KAKU, Piece.KIN, Piece.GIN, Piece.KEI, Piece.KYOU, Piece.FU)
+        
+        self.nashi = tk.Label(self, text="\nな\nし", font=self.font)
+        self.nashi.grid(column=0, row=1)
+        
+        for n, piece in enumerate(hand_piece_types):
+            piece_filename = "0" + piece.CSA + ".png"
+            piece_path = os.path.join(PieceSkin[piece_skin].directory,
+                                      piece_filename)
+            img = Image.open(piece_path)
+            new_img = img.resize((int(40), int(40))) # assume square
+            piece_img = ImageTk.PhotoImage(new_img)
+            self.images.append(piece_img)
+            self.piece_tiles[piece] = tk.Label(self, image=piece_img, text=0, font=self.font, compound="left")
+            self.piece_tiles[piece].grid(column=0, row=n+1)
+            self.piece_tiles[piece].grid_remove()
+        return
+    
+    def draw(self, hand, sente=True):
+        # sente is True/False, font is tuple for tkinter font and size
+        self.header["text"] = "▲\n持\n駒" if sente else "△\n持\n駒"
+        c_hand = Counter(hand)
+        if not list(c_hand):
+            # Hand is empty, write なし
+            self.nashi.grid()
+            for label in self.piece_tiles.values():
+                label.grid_remove()
+        else:
+            # Hand is not empty
+            self.nashi.grid_remove()
+            for piece, count in c_hand.items():
+                self.piece_tiles[piece]["text"] = str(count)
+                self.piece_tiles[piece].grid()
+        return
+
+
+class BoardCanvas(tk.Canvas):
     '''Class encapsulating the canvas where the board is drawn.'''
     # Default/current canvas size for board
     canvas_width = 600
@@ -214,15 +266,23 @@ class BoardCanvas(Canvas):
                 anchor="s"
             )
         # Draw komadai pieces
+        south_komadai = Komadai(parent=self, controller=self.controller, sente=not is_north_sente, font=(font.nametofont("TkDefaultFont"), komadai_text_size))
+        south_komadai.draw(hand=south_hand, sente=not is_north_sente)
+        self.create_window(x_sq(9) + komadai_w, y_sq(9), anchor="se", window=south_komadai)
+        
+        north_komadai = Komadai(parent=self, controller=self.controller, sente=is_north_sente, font=(font.nametofont("TkDefaultFont"), komadai_text_size))
+        north_komadai.draw(hand=north_hand, sente=is_north_sente)
+        self.create_window(w_pad, y_sq(0), anchor="nw", window=north_komadai)
+        
         _draw_komadai(
             south_hand,
             north=False,
-            sente=False if is_north_sente else True
+            sente=not is_north_sente
         )
         _draw_komadai(
             north_hand,
             north=True,
-            sente=True if is_north_sente else False
+            sente=is_north_sente
         )
         return
     
