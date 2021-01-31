@@ -34,6 +34,7 @@ class BoardMeasurements():
     # Constant proportions
     SQ_ASPECT_RATIO = 11 / 12
     KOMADAI_W_IN_SQ = 2
+    INNER_W_PAD = 10
     INNER_H_PAD = 30
     
     def __init__(self, width, height):
@@ -54,16 +55,17 @@ class BoardMeasurements():
     
     def calculate_sizes(self, canvas_width, canvas_height):
         # Geometry: 9x9 shogi board, flanked by komadai area on either side
-        max_sq_w = canvas_width / (9 + 2*self.KOMADAI_W_IN_SQ)
+        max_sq_w = ((canvas_width - 2*self.INNER_W_PAD)
+                    / (9 + 2*self.KOMADAI_W_IN_SQ))
         max_sq_h = (canvas_height - 2*self.INNER_H_PAD) / 9
         # Determine whether the width or the height is the limiting factor
         sq_w = min(max_sq_w, max_sq_h*self.SQ_ASPECT_RATIO)
         # Propagate other measurements
         sq_h = sq_w / self.SQ_ASPECT_RATIO
         komadai_w = sq_w * self.KOMADAI_W_IN_SQ
-        if sq_w == max_sq_w:
-            w_pad = 0
-            h_pad = self.INNER_H_PAD + (canvas_height - 9*sq_h) / 2
+        if int(sq_w) == int(max_sq_w):
+            w_pad = self.INNER_W_PAD
+            h_pad = (canvas_height - 9*sq_h) / 2
         else:
             w_pad = (canvas_width - 2*komadai_w - 9*sq_w) / 2
             h_pad = self.INNER_H_PAD
@@ -204,7 +206,6 @@ class BoardCanvas(tk.Canvas):
         self.controller = controller
         self.is_upside_down = False
         super().__init__(parent, *args, **kwargs)
-        self.images = [] # to avoid tkinter PhotoImage gc
         self.piece_images_upright = {}
         self.piece_images_inverted = {}
         self.board_images = []
@@ -311,7 +312,6 @@ class BoardCanvas(tk.Canvas):
     def draw(self):
         # Clear board display - could also keep board and just redraw pieces
         self.delete("all")
-        self.images = []
         reader = self.reader
         
         (sq_w, sq_h, komadai_w, w_pad, _, sq_text_size,
@@ -402,12 +402,17 @@ class BoardCanvas(tk.Canvas):
         is_text = self.is_skin_text
         for row_num, row in enumerate(south_board):
             for col_num, piece in enumerate(row):
-                _draw_piece(x_sq(col_num+0.5), y_sq(row_num+0.5), piece, is_text=is_text)
+                _draw_piece(
+                    x_sq(col_num+0.5), y_sq(row_num+0.5), piece,
+                    is_text=is_text
+                )
         for row_num, row in enumerate(north_board):
             for col_num, piece in enumerate(row):
-                _draw_piece(x_sq(col_num+0.5), y_sq(row_num+0.5), piece,
-                                invert=True, is_text=is_text)
-        
+                _draw_piece(
+                    x_sq(col_num+0.5), y_sq(row_num+0.5), piece,
+                    is_text=is_text,
+                    invert=True
+                )
         # Draw komadai pieces
         self.create_window(
             x_sq(9) + komadai_w*2/3,
@@ -427,8 +432,12 @@ class BoardCanvas(tk.Canvas):
     
     def update_piece_skin(self):
         piece_skin = self.config["skins"]["pieces"]
-        self.is_skin_text = (piece_skin.upper() == "TEXT")
+        is_text = (piece_skin.upper() == "TEXT")
+        self.is_skin_text = is_text
+        if not is_text:
+            self.load_piece_images()
         komadai_text_size = self.measurements.komadai_text_size
+        #TODO: change the size to something more meaningful
         self.north_komadai.update_skin(komadai_text_size*2)
         self.south_komadai.update_skin(komadai_text_size*2)
         return
@@ -438,7 +447,6 @@ class BoardCanvas(tk.Canvas):
         sq_h = self.measurements.sq_h
         komadai_text_size = self.measurements.komadai_text_size
         is_loaded = self.load_board_images()
-        
         board_skin = BoardSkin[self.config["skins"]["board"]]
         self.itemconfig(self.board_rect, fill=board_skin.colour)
         board_img = self.board_images[1] if is_loaded else ""
