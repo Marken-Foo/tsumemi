@@ -9,7 +9,7 @@ import event
 import model
 import timer
 
-from board_canvas import BoardCanvas, PieceSkin
+from board_canvas import BoardCanvas, PieceSkin, BoardSkin
 from model import ProblemStatus
 
 
@@ -64,7 +64,6 @@ class SettingsWindow(tk.Toplevel):
         self.piece_palette = ttk.Frame(self)
         self.piece_palette.grid(column=0, row=0)
         self.svar_pieces = tk.StringVar(value="text")
-        self.svar_board_colour = tk.StringVar(value="FFFFFF")
         
         self.rdo_pieces_text = ttk.Radiobutton(self.piece_palette, text=PieceSkin.TEXT.desc, variable=self.svar_pieces, value=PieceSkin.TEXT.name)
         self.rdo_pieces_text.grid(column=0, row=0)
@@ -72,17 +71,33 @@ class SettingsWindow(tk.Toplevel):
         self.rdo_pieces_light.grid(column=1, row=0)
         
         # TODO: Board colour picker???
+        self.board_palette = ttk.Frame(self)
+        self.board_palette.grid(column=0, row=1)
+        self.svar_board = tk.StringVar(value="text")
+        self.rdo_board_white = ttk.Radiobutton(self.board_palette, text=BoardSkin.WHITE.desc, variable=self.svar_board, value=BoardSkin.WHITE.name)
+        self.rdo_board_white.grid(column=0, row=1)
+        self.rdo_board_brown = ttk.Radiobutton(self.board_palette, text=BoardSkin.BROWN.desc, variable=self.svar_board, value=BoardSkin.BROWN.name)
+        self.rdo_board_brown.grid(column=1, row=1)
+        self.rdo_board_wood2 = ttk.Radiobutton(self.board_palette, text=BoardSkin.WOOD2.desc, variable=self.svar_board, value=BoardSkin.WOOD2.name)
+        self.rdo_board_wood2.grid(column=2, row=1)
         
         self.btn_okay = ttk.Button(self, text="OK", command=self.save_and_quit)
-        self.btn_okay.grid(column=0, row=1)
+        self.btn_okay.grid(column=0, row=2)
+        self.btn_apply = ttk.Button(self, text="Apply", command=self.save)
+        self.btn_apply.grid(column=1, row=2)
         return
     
-    def save_and_quit(self):
-        self.controller.config["skins"] = {"pieces": self.svar_pieces.get()}
+    def save(self):
+        self.controller.config["skins"] = {"pieces": self.svar_pieces.get(), "board": self.svar_board.get()}
         with open("config.ini", "w") as configfile:
             self.controller.config.write(configfile)
         self.controller.board.update_skin()
+        self.controller.board.update_board()
         self.controller.display_problem()
+        return
+    
+    def save_and_quit(self):
+        self.save()
         self.destroy()
 
 
@@ -407,7 +422,9 @@ class MainWindow:
         except FileNotFoundError:
             with open("config.ini", "w+") as configfile:
                 # write a default config.ini
-                configfile.write("[skins]\npieces = LIGHT\n")
+                configfile.write("[skins]\n")
+                configfile.write("pieces = LIGHT\n")
+                configfile.write("board = BROWN\n")
             with open("config.ini", "r") as configfile:
                 self.config.read_file(configfile)
         self.mainframe = ttk.Frame(self.master)

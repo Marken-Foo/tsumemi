@@ -23,6 +23,7 @@ class Piece(Enum):
         self.kanji = kanji
         self.kanji_alt = kanji_alt
         self.CSA = CSA
+        return
     
     def __str__(self):
         return self.kanji

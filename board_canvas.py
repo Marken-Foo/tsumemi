@@ -2,19 +2,32 @@ import configparser
 import os
 import tkinter as tk
 
-from collections import Counter, namedtuple
+from collections import Counter
 from enum import Enum
 from PIL import Image, ImageTk
 
 from kif_parser import KanjiNumber, Piece
 
 
-# namedtuple mixin for Enum
-Skin = namedtuple("Skin", ["desc", "directory"])
+class BoardSkin(Enum):
+    WHITE = ("solid white", "white", "")
+    BROWN = ("solid brown", "burlywood1", "")
+    WOOD2 = ("Wood2 by Ka-hu", "", os.path.relpath(r"static/images/boards/tile_wood2.png"))
+    
+    def __init__(self, desc, colour, directory):
+        self.desc = desc
+        self.colour = colour
+        self.directory = directory
 
-class PieceSkin(Skin, Enum):
-    TEXT = Skin("1-kanji text characters", "")
-    LIGHT = Skin("1-kanji light piece set by Ka-hu", os.path.relpath(r"static/images/pieces/kanji_light"))
+
+class PieceSkin(Enum):
+    TEXT = ("1-kanji text characters", "")
+    LIGHT = ("1-kanji light piece set by Ka-hu", os.path.relpath(r"static/images/pieces/kanji_light"))
+    
+    def __init__(self, desc, directory):
+        self.desc = desc
+        self.directory = directory
+        return
 
 
 class Komadai(tk.Frame):
@@ -48,6 +61,10 @@ class Komadai(tk.Frame):
             lbl_count.grid_remove()
         if not self.is_skin_text():
             self.init_images(40) # um what?
+        
+        self["background"] = "white"
+        for child in self.winfo_children():
+            child["background"] = "white"
         return
     
     def is_skin_text(self):
@@ -121,7 +138,7 @@ class BoardCanvas(tk.Canvas):
     
     # Constant proportions
     SQ_ASPECT_RATIO = 11 / 12
-    KOMADAI_W_IN_SQ = 1.7
+    KOMADAI_W_IN_SQ = 2
     INNER_H_PAD = 30
     
     def __init__(self, parent, controller, *args, **kwargs):
@@ -157,7 +174,7 @@ class BoardCanvas(tk.Canvas):
         reader = self.reader
         
         # Avoid self hell by calculating
-        (sq_w, _, komadai_w, w_pad, _, sq_text_size,
+        (sq_w, sq_h, komadai_w, w_pad, _, sq_text_size,
          komadai_text_size, coords_text_size,
          x_sq, y_sq) = self._calculate_sizes()
         
@@ -207,6 +224,22 @@ class BoardCanvas(tk.Canvas):
             col_coords = [str(i) for i in range(9, 0, -1)]
         
         # Draw board
+        board_skin = BoardSkin[self.config["skins"]["board"]]
+        board_filename = board_skin.directory
+        self.board_rect = self.create_rectangle(x_sq(0), y_sq(0), x_sq(9), y_sq(9), fill=board_skin.colour)
+        self.board_tiles = [[None] * 9 for i in range(9)]
+        for row_num in range(9):
+            for col_num in range(9):
+                self.board_tiles[row_num][col_num] = self.create_image(x_sq(row_num+0.5), y_sq(col_num+0.5), image="")
+        if board_filename:
+            # assumes you want to TILE the image one per square.
+            img = Image.open(board_filename)
+            img = img.resize((int(sq_w), int(sq_h)))
+            board_img = ImageTk.PhotoImage(img)
+            self.images.append(board_img)
+            for row in self.board_tiles:
+                for tile in row:
+                    self.itemconfig(tile, image=board_img)
         for i in range(10):
             self.create_line(x_sq(i), y_sq(0), x_sq(i), y_sq(9),
                                     fill="black", width=1)
@@ -236,16 +269,16 @@ class BoardCanvas(tk.Canvas):
                 _draw_piece(x_sq(col_num+0.5), y_sq(row_num+0.5), piece,
                             invert=True)
         # Draw komadai pieces
-        self.south_komadai_window = self.create_window(
-            x_sq(9) + komadai_w,
+        self.create_window(
+            x_sq(9) + komadai_w*2/3,
             y_sq(9),
-            anchor="se",
+            anchor="s",
             window=self.south_komadai
         )
-        self.north_komadai_window = self.create_window(
-            w_pad,
+        self.create_window(
+            w_pad + komadai_w/3,
             y_sq(0),
-            anchor="nw",
+            anchor="n",
             window=self.north_komadai
         )
         self.south_komadai.update(hand=south_hand, sente=not is_north_sente)
@@ -256,6 +289,25 @@ class BoardCanvas(tk.Canvas):
         _, _, _, _, _, _, komadai_text_size, _, _, _ = self._calculate_sizes()
         self.north_komadai.update_skin(komadai_text_size*2)
         self.south_komadai.update_skin(komadai_text_size*2)
+        return
+    
+    def update_board(self):
+        sq_w, sq_h, _, _, _, _, komadai_text_size, _, _, _ = self._calculate_sizes()
+        board_skin = BoardSkin[self.config["skins"]["board"]]
+        board_filename = board_skin.directory
+        self.itemconfig(self.board_rect, fill=board_skin.colour)
+        if board_filename:
+            img = Image.open(board_filename)
+            img = img.resize((int(sq_w), int(sq_h)))
+            board_img = ImageTk.PhotoImage(img)
+            self.images.append(board_img)
+            for row in self.board_tiles:
+                for tile in row:
+                    self.itemconfig(tile, image=board_img)
+        else:
+            for row in self.board_tiles:
+                for tile in row:
+                    self.itemconfig(tile, image="")
         return
     
     def on_resize(self, event):

@@ -12,7 +12,7 @@ This little bit of Python aims to let shogi players train with their large colle
 
 Python 3 is required. You can download an installer for the latest version from the [official website](https://www.python.org/). (Tested with Python 3.8.1 but *should* be compatible with Python 3.5 onwards.)
 
-To install, download all the .py files to a single folder. To run, make sure you have Python 3 installed on your system, then double click `kif_browser_gui.py` or run it from the command line.
+To install, download everything in this repository. To run, make sure you have Python 3 installed on your system, then double click `kif_browser_gui.py` or run it from the command line.
 
 Comes with a free set of ten 1-te and ten 3-te problems in the folder `/sample_problems`, composed by Marken Foo.
 
@@ -46,4 +46,4 @@ This is just a small bit of code to try making something convenient. If you enco
 
 This project is licensed under the GPLv3.
 
-[1-kanji light piece set by Ka-hu](https://github.com/Ka-hu/shogi-pieces/) (.png files created from .svg files) (licensed under CC-BY-4.0)
+Aside from the solid colours and plain text board, this project uses [pieces and boards by Ka-hu](https://github.com/Ka-hu/shogi-pieces/) (piece .png files created from .svg files) (licensed under CC-BY-4.0)
