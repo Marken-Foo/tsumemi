@@ -61,31 +61,39 @@ class SettingsWindow(tk.Toplevel):
         self.title("Settings")
         
         # TODO: flesh out this code. It sort of works already.
-        self.piece_palette = ttk.Frame(self)
-        self.piece_palette.grid(column=0, row=0)
-        self.svar_pieces = tk.StringVar(value="text")
+        piece_palette = ttk.LabelFrame(self, text="Piece graphics")
+        piece_palette.grid(column=0, row=0, sticky="EW")
+        self.svar_pieces = tk.StringVar(value="TEXT")
         
-        self.rdo_pieces_text = ttk.Radiobutton(self.piece_palette, text=PieceSkin.TEXT.desc, variable=self.svar_pieces, value=PieceSkin.TEXT.name)
-        self.rdo_pieces_text.grid(column=0, row=0)
-        self.rdo_pieces_light = ttk.Radiobutton(self.piece_palette, text=PieceSkin.LIGHT.desc, variable=self.svar_pieces, value=PieceSkin.LIGHT.name)
-        self.rdo_pieces_light.grid(column=1, row=0)
+        self.rdo_pieces_text = self._add_rdo_pieceskin(piece_palette, PieceSkin.TEXT)
+        self.rdo_pieces_text.grid(column=0, row=0, sticky="W")
+        self.rdo_pieces_light = self._add_rdo_pieceskin(piece_palette, PieceSkin.LIGHT)
+        self.rdo_pieces_light.grid(column=0, row=1, sticky="W")
         
         # TODO: Board colour picker???
-        self.board_palette = ttk.Frame(self)
-        self.board_palette.grid(column=0, row=1)
-        self.svar_board = tk.StringVar(value="text")
-        self.rdo_board_white = ttk.Radiobutton(self.board_palette, text=BoardSkin.WHITE.desc, variable=self.svar_board, value=BoardSkin.WHITE.name)
-        self.rdo_board_white.grid(column=0, row=1)
-        self.rdo_board_brown = ttk.Radiobutton(self.board_palette, text=BoardSkin.BROWN.desc, variable=self.svar_board, value=BoardSkin.BROWN.name)
-        self.rdo_board_brown.grid(column=1, row=1)
-        self.rdo_board_wood2 = ttk.Radiobutton(self.board_palette, text=BoardSkin.WOOD2.desc, variable=self.svar_board, value=BoardSkin.WOOD2.name)
-        self.rdo_board_wood2.grid(column=2, row=1)
+        board_palette = ttk.LabelFrame(self, text="Board graphics")
+        board_palette.grid(column=0, row=1, sticky="EW")
+        self.svar_board = tk.StringVar(value="WHITE")
+        self.rdo_board_white = self._add_rdo_boardskin(board_palette, BoardSkin.WHITE)
+        self.rdo_board_white.grid(column=0, row=0, sticky="W")
+        self.rdo_board_brown = self._add_rdo_boardskin(board_palette, BoardSkin.BROWN)
+        self.rdo_board_brown.grid(column=0, row=1, sticky="W")
+        self.rdo_board_wood2 = self._add_rdo_boardskin(board_palette, BoardSkin.WOOD2)
+        self.rdo_board_wood2.grid(column=0, row=2, sticky="W")
         
-        self.btn_okay = ttk.Button(self, text="OK", command=self.save_and_quit)
-        self.btn_okay.grid(column=0, row=2)
-        self.btn_apply = ttk.Button(self, text="Apply", command=self.save)
-        self.btn_apply.grid(column=1, row=2)
+        buttons_frame = ttk.Frame(self)
+        buttons_frame.grid(column=0, row=2, sticky="EW")
+        btn_okay = ttk.Button(buttons_frame, text="OK", command=self.save_and_quit)
+        btn_okay.grid(column=0, row=2)
+        btn_apply = ttk.Button(buttons_frame, text="Apply", command=self.save)
+        btn_apply.grid(column=1, row=2)
         return
+    
+    def _add_rdo_boardskin(self, parent, skin):
+        return ttk.Radiobutton(parent, text=skin.desc, variable=self.svar_board, value=skin.name)
+    
+    def _add_rdo_pieceskin(self, parent, skin):
+        return ttk.Radiobutton(parent, text=skin.desc, variable=self.svar_pieces, value=skin.name)
     
     def save(self):
         self.controller.config["skins"] = {"pieces": self.svar_pieces.get(), "board": self.svar_board.get()}

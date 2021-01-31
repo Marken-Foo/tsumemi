@@ -12,7 +12,7 @@ from kif_parser import KanjiNumber, Piece
 class BoardSkin(Enum):
     WHITE = ("solid white", "white", "")
     BROWN = ("solid brown", "burlywood1", "")
-    WOOD2 = ("Wood2 by Ka-hu", "", os.path.relpath(r"static/images/boards/tile_wood2.png"))
+    WOOD2 = ("Wood2", "", os.path.relpath(r"static/images/boards/tile_wood2.png"))
     
     def __init__(self, desc, colour, directory):
         self.desc = desc
@@ -22,7 +22,7 @@ class BoardSkin(Enum):
 
 class PieceSkin(Enum):
     TEXT = ("1-kanji text characters", "")
-    LIGHT = ("1-kanji light piece set by Ka-hu", os.path.relpath(r"static/images/pieces/kanji_light"))
+    LIGHT = ("1-kanji light pieces", os.path.relpath(r"static/images/pieces/kanji_light"))
     
     def __init__(self, desc, directory):
         self.desc = desc
