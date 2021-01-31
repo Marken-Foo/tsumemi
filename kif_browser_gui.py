@@ -11,6 +11,7 @@ import timer
 
 from board_canvas import BoardCanvas, PieceSkin, BoardSkin
 from model import ProblemStatus
+from nav_controls import FreeModeNavControls, SpeedrunNavControls
 
 
 class Menubar(tk.Menu):
@@ -18,8 +19,15 @@ class Menubar(tk.Menu):
         self.controller = controller
         super().__init__(parent, *args, **kwargs)
         
+        # Set cascades
         menu_file = tk.Menu(self)
         self.add_cascade(menu=menu_file, label="File")
+        menu_settings = tk.Menu(self)
+        self.add_cascade(menu=menu_settings, label="Settings")
+        menu_help = tk.Menu(self)
+        self.add_cascade(menu=menu_help, label="Help")
+        
+        # File
         menu_file.add_command(
             label="Open folder...",
             command=self.controller.open_folder,
@@ -31,9 +39,12 @@ class Menubar(tk.Menu):
             command=self.controller.open_folder_recursive,
             accelerator="Ctrl+Shift+O",
         )
-        menu_help = tk.Menu(self)
-        self.add_cascade(menu=menu_help, label="Help")
-        #menu_help.add_command(label="Help", command=None)
+        # Settings
+        menu_settings.add_command(
+            label="Settings...",
+            command=lambda: SettingsWindow(controller=self.controller)
+        )
+        # Help
         menu_help.add_command(
             label="About kif-browser",
             command=partial(
@@ -42,12 +53,7 @@ class Menubar(tk.Menu):
                 message="Written in Python 3 for the shogi community. KIF files sold separately."
             )
         )
-        menu_settings = tk.Menu(self)
-        self.add_cascade(menu=menu_settings, label="Settings")
-        menu_settings.add_command(
-            label="Settings...",
-            command=lambda: SettingsWindow(controller=self.controller)
-        )
+        # Bind to main window
         parent["menu"] = self
         return
 
@@ -107,97 +113,6 @@ class SettingsWindow(tk.Toplevel):
     def save_and_quit(self):
         self.save()
         self.destroy()
-
-
-class NavControls(ttk.Frame):
-    def __init__(self, parent, controller, *args, **kwargs):
-        self.controller = controller
-        super().__init__(parent, *args, **kwargs)
-     
-    def _add_btn_prev(self, text="< Prev"):
-        return ttk.Button(self, text=text, command=self.controller.prev_file)
-    
-    def _add_btn_next(self, text="Next >"):
-        return ttk.Button(self, text=text, command=self.controller.next_file)
-    
-    def _add_btn_toggle_solution(self, text="Show/hide solution"):
-        return ttk.Button(
-            self, text=text, command=self.controller.toggle_solution
-        )
-    
-    def _add_btn_view_solution(self, text="Show solution"):
-        return ttk.Button(
-            self, text=text, command=self.controller.view_solution
-        )
-    
-    def _add_btn_skip(self, text="Skip"):
-        return ttk.Button(self, text=text, command=self.controller.skip)
-    
-    def _add_btn_correct(self, text="Correct"):
-        return ttk.Button(self, text=text, command=self.controller.mark_correct)
-    
-    def _add_btn_wrong(self, text="Wrong"):
-        return ttk.Button(self, text=text, command=self.controller.mark_wrong)
-    
-    def _add_chk_upside_down(self, text="Upside-down mode"):
-        want_upside_down = tk.BooleanVar(value=False)
-        return ttk.Checkbutton(
-            self, text="Upside-down mode",
-            command=lambda: self.controller.flip_board(want_upside_down.get()),
-            variable=want_upside_down, onvalue=True, offvalue=False
-        )
-
-
-class FreeModeNavControls(NavControls):
-    def __init__(self, parent, controller, *args, **kwargs):
-        super().__init__(parent, controller, *args, **kwargs)
-        # Make buttons to navigate, show/hide solution, upside-down mode
-        btn_prev = self._add_btn_prev()
-        btn_prev.grid(column=0, row=0, sticky="E")
-        btn_toggle_solution = self._add_btn_toggle_solution()
-        btn_toggle_solution.grid(column=1, row=0, sticky="S")
-        btn_next = self._add_btn_next()
-        btn_next.grid(column=2, row=0, sticky="W")
-        chk_upside_down = self._add_chk_upside_down()
-        chk_upside_down.grid(column=0, row=1, columnspan=3)
-        for child in self.winfo_children():
-            child.grid_configure(padx=5, pady=5)
-        return
-
-
-class SpeedrunNavControls(NavControls):
-    def __init__(self, parent, controller, *args, **kwargs):
-        super().__init__(parent, controller, *args, **kwargs)
-        # Initialise all nav options
-        self.btn_view_solution = self._add_btn_view_solution()
-        self.btn_view_solution.grid(column=0, row=0, sticky="E")
-        self.btn_skip = self._add_btn_skip()
-        self.btn_skip.grid(column=1, row=0, sticky="W")
-        self.btn_correct = self._add_btn_correct()
-        self.btn_correct.grid(column=0, row=0, sticky="E")
-        self.btn_wrong = self._add_btn_wrong()
-        self.btn_wrong.grid(column=1, row=0, sticky="W")
-        self.chk_upside_down = self._add_chk_upside_down()
-        self.chk_upside_down.grid(column=0, row=1, columnspan=3)
-        for child in self.winfo_children():
-            child.grid_configure(padx=5, pady=5)
-            
-        self.show_sol_skip() # Hide only after calling grid_configure
-        return
-     
-    def show_correct_wrong(self):
-        self.btn_view_solution.grid_remove()
-        self.btn_skip.grid_remove()
-        self.btn_correct.grid()
-        self.btn_wrong.grid()
-        return
-    
-    def show_sol_skip(self):
-        self.btn_view_solution.grid()
-        self.btn_skip.grid()
-        self.btn_correct.grid_remove()
-        self.btn_wrong.grid_remove()
-        return
 
 
 class TimerDisplay(ttk.Label, event.IObserver):
@@ -439,7 +354,6 @@ class MainWindow:
         self.mainframe.grid(column=0, row=0, sticky="NSEW")
         self.mainframe.columnconfigure(0, weight=1)
         self.mainframe.columnconfigure(1, weight=1)
-        self.mainframe.columnconfigure(2, weight=1)
         self.mainframe.rowconfigure(0, weight=1)
         
         # Make menubar
@@ -496,7 +410,9 @@ class MainWindow:
         # Problem list
         self.problem_list_pane = ProblemListPane(parent=self.mainframe,
                                                  controller=self)
-        self.problem_list_pane.grid(column=1, row=0)
+        self.problem_list_pane.grid(column=1, row=0, sticky="NSEW")
+        self.problem_list_pane.columnconfigure(0, weight=1)
+        self.problem_list_pane.rowconfigure(0, weight=1)
         self.problem_list_pane.grid_configure(padx=5, pady=5)
         # Observer pattern; treeview updates itself when model updates
         tvw = self.problem_list_pane.tvw
@@ -711,4 +627,5 @@ if __name__ == "__main__":
     root = tk.Tk()
     main_window = MainWindow(root)
     apply_theme_fix()
+    root.minsize(width=400, height=200) # stopgap vs canvas overshrinking bug
     root.mainloop()
