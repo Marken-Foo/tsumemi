@@ -105,8 +105,8 @@ class SettingsWindow(tk.Toplevel):
         self.controller.config["skins"] = {"pieces": self.svar_pieces.get(), "board": self.svar_board.get()}
         with open("config.ini", "w") as configfile:
             self.controller.config.write(configfile)
-        self.controller.board.update_skin()
-        self.controller.board.update_board()
+        self.controller.board.update_piece_skin()
+        self.controller.board.update_board_skin()
         self.controller.display_problem()
         return
     
