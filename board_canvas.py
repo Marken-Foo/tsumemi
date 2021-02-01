@@ -9,7 +9,8 @@ from kif_parser import KanjiNumber, Piece
 
 
 def _resize_image(img, width, height):
-    # take PIL image, return resized PhotoImage
+    """Take PIL Image img, return resized ImageTk.PhotoImage
+    """
     resized_img = img.resize((int(width), int(height)))
     return ImageTk.PhotoImage(resized_img)
 
@@ -47,10 +48,14 @@ class CmdApplySkin:
 
 class BoardMeasurements():
     # Constant proportions
-    SQ_ASPECT_RATIO = 11 / 12
-    KOMADAI_W_IN_SQ = 2
-    INNER_W_PAD = 10
+    COORD_TEXT_IN_SQ = 2/9
     INNER_H_PAD = 30
+    INNER_W_PAD = 10
+    KOMADAI_PIECE_RATIO = 4/5 # board piece : komadai piece size ratio
+    KOMADAI_TEXT_IN_SQ = 2/5
+    KOMADAI_W_IN_SQ = 2
+    SQ_ASPECT_RATIO = 11/12
+    SQ_TEXT_IN_SQ = 7/10
     
     def __init__(self, width, height):
         # could refactor into a dictionary perhaps?
@@ -63,8 +68,10 @@ class BoardMeasurements():
     
     def calculate_sizes(self, canvas_width, canvas_height):
         # Geometry: 9x9 shogi board, flanked by komadai area on either side
+        # Padded on all 4 sides (canvas internal padding)
+        # Space allocated on right for coords; 2 times the coord text size
         max_sq_w = ((canvas_width - 2*self.INNER_W_PAD)
-                    / (9 + 2*self.KOMADAI_W_IN_SQ))
+                    / (9 + 2*self.KOMADAI_W_IN_SQ + 2*self.COORD_TEXT_IN_SQ))
         max_sq_h = (canvas_height - 2*self.INNER_H_PAD) / 9
         # Determine whether the width or the height is the limiting factor
         sq_w = min(max_sq_w, max_sq_h*self.SQ_ASPECT_RATIO)
@@ -75,12 +82,13 @@ class BoardMeasurements():
             w_pad = self.INNER_W_PAD
             h_pad = (canvas_height - 9*sq_h) / 2
         else:
-            w_pad = (canvas_width - 2*komadai_w - 9*sq_w) / 2
+            w_pad = (canvas_width - 2*komadai_w
+                     - 2*coords_text_size - 9*sq_w) / 2
             h_pad = self.INNER_H_PAD
-        sq_text_size = int(sq_w * 7/10)
-        komadai_piece_size = int(sq_w * 4/5)
-        komadai_text_size = int(sq_w * 2/5)
-        coords_text_size = int(sq_w * 2/9)
+        coords_text_size = int(sq_w * self.COORD_TEXT_IN_SQ)
+        komadai_piece_size = int(sq_w * self.KOMADAI_PIECE_RATIO)
+        komadai_text_size = int(sq_w * self.KOMADAI_TEXT_IN_SQ)
+        sq_text_size = int(sq_w * self.SQ_TEXT_IN_SQ)
         
         def x_sq(i):
             return w_pad + komadai_w + sq_w * i
@@ -101,15 +109,11 @@ class BoardMeasurements():
 
 
 class BoardCanvas(tk.Canvas):
-    '''Class encapsulating the canvas where the board is drawn.'''
+    """The canvas where the shogi position is drawn.
+    """
     # Default/current canvas size for board
     canvas_width = 600
     canvas_height = 500
-    
-    # Constant proportions
-    SQ_ASPECT_RATIO = 11 / 12
-    KOMADAI_W_IN_SQ = 2
-    INNER_H_PAD = 30
     
     def __init__(self, parent, controller, *args, **kwargs):
         self.controller = controller
@@ -118,15 +122,13 @@ class BoardCanvas(tk.Canvas):
         self.piece_images_upright = {}
         self.piece_images_inverted = {}
         self.board_images = []
-        
         # Specify source of board data
         self.reader = self.controller.model.reader
-        config = self.controller.config # code should only read configparser
+        config = self.controller.config
         # Initialise measurements, used for many other things
         self.measurements = BoardMeasurements(
             self.canvas_width, self.canvas_height
         )
-        komadai_text_size = self.measurements.komadai_text_size
         try:
             name = config["skins"]["pieces"]
             self.piece_skin = PieceSkin[name]
@@ -143,9 +145,9 @@ class BoardCanvas(tk.Canvas):
     
     def load_piece_images(self, skin):
         sq_w = self.measurements.sq_w
-        kpc_w = self.measurements.komadai_text_size*2
+        kpc_w = self.measurements.komadai_piece_size
         if skin is PieceSkin.TEXT:
-            # Text skin, no need images
+            # text skin, no need images
             return
         for piece in Piece:
             if piece == Piece.NONE:
@@ -153,28 +155,32 @@ class BoardCanvas(tk.Canvas):
             filename = "0" + piece.CSA + ".png"
             img_path = os.path.join(skin.directory, filename)
             img = Image.open(img_path)
-            photoimage = _resize_image(img, sq_w, sq_w)
-            komadai_photoimage = _resize_image(img, kpc_w, kpc_w)
-            self.piece_images_upright[piece] = [img, photoimage, komadai_photoimage]
-            # inverted image
+            photoimg = _resize_image(img, sq_w, sq_w)
+            komadai_photoimg = _resize_image(img, kpc_w, kpc_w)
+            self.piece_images_upright[piece] = [
+                img, photoimg, komadai_photoimg
+            ]
+            # upside-down image
             filename = "1" + piece.CSA + ".png"
             img_path = os.path.join(skin.directory, filename)
             img = Image.open(img_path)
-            photoimage = _resize_image(img, sq_w, sq_w)
-            komadai_photoimage = _resize_image(img, kpc_w, kpc_w)
-            self.piece_images_inverted[piece] = [img, photoimage, komadai_photoimage]
+            photoimg = _resize_image(img, sq_w, sq_w)
+            komadai_photoimg = _resize_image(img, kpc_w, kpc_w)
+            self.piece_images_inverted[piece] = [
+                img, photoimg, komadai_photoimg
+            ]
         return
     
     def load_board_images(self, skin):
         sq_w = self.measurements.sq_w
         sq_h = self.measurements.sq_h
-        board_filename = skin.directory # Nonetype error?
+        board_filename = skin.directory
         if board_filename:
-            # assumes you want to TILE the image one per square.
+            # assumes you want to TILE the image, one per square
             img = Image.open(board_filename)
-            # The +1 pixel avoids gaps when tiling
-            photoimage = _resize_image(img, sq_w+1, sq_h+1)
-            self.board_images = [img, photoimage]
+            # the +1 pixel avoids gaps when tiling
+            photoimg = _resize_image(img, sq_w+1, sq_h+1)
+            self.board_images = [img, photoimg]
             return True
         else:
             return False
@@ -182,8 +188,8 @@ class BoardCanvas(tk.Canvas):
     def resize_images(self):
         sq_w = self.measurements.sq_w
         sq_h = self.measurements.sq_h
-        kpc_w = self.measurements.komadai_text_size*2
-        # resize piece images if using
+        kpc_w = self.measurements.komadai_piece_size
+        # Resize piece images, if using
         if self.piece_skin is not PieceSkin.TEXT:
             for piece in Piece:
                 if piece == Piece.NONE:
@@ -212,9 +218,9 @@ class BoardCanvas(tk.Canvas):
         return
     
     def draw_board(self):
-        # Draws just the board, irrespective of the position.
-        # Assumes board piece images are already loaded.
-        # Komadai not included.
+        """Draw just the shogiban, irrespective of the position. Assume board
+        images are already loaded in self. Komadai not included.
+        """
         x_sq = self.measurements.x_sq
         y_sq = self.measurements.y_sq
         coords_text_size = self.measurements.coords_text_size
@@ -269,8 +275,10 @@ class BoardCanvas(tk.Canvas):
             )
         return
     
-    def draw_piece(self, x, y, piece, komadai=False, invert=False, is_text=True, anchor="center"):
-        text_size = self.measurements.komadai_text_size if komadai else self.measurements.sq_text_size
+    def draw_piece(self, x, y, piece, komadai=False, invert=False,
+                   is_text=True, anchor="center"):
+        text_size = (self.measurements.komadai_text_size if komadai
+                     else self.measurements.sq_text_size)
         if piece == Piece.NONE:
             return
         if is_text:
@@ -288,37 +296,71 @@ class BoardCanvas(tk.Canvas):
         return
     
     def draw_komadai(self, x, y, hand, sente=True, align="top"):
-        # draws a komadai with hand pieces, anchored "north" at (x, y).
-        # does its own "anchoring" (align="top" or "bottom")
+        """Draw komadai with pieces given by argument hand, anchored at canvas
+        position (x, y).
+        "Anchoring" north or south achieved with align="top" or "bottom".
+        """
         komadai_text_size = self.measurements.komadai_text_size
         komadai_piece_size = self.measurements.komadai_piece_size
         is_text = (self.piece_skin is PieceSkin.TEXT)
-        pad = -5 if is_text else 10
+        symbol_size = komadai_text_size*3/2 if is_text else komadai_piece_size
+        pad = (komadai_text_size / 8 if is_text
+               else komadai_piece_size / 8)
         
         c_hand = Counter(hand)
-        # work out needed height
         num_piece_types = len(c_hand.items())
-        if num_piece_types == 0:
-            k_height = 9 * komadai_text_size
-        else:
-            k_height = 5.5*komadai_text_size + num_piece_types*(komadai_piece_size+10)-10
         if align == "bottom":
-            # adjust the "anchor" point
+            # Adjust the "anchor" point
+            k_height = (
+                9 * komadai_text_size if num_piece_types == 0
+                else 6*komadai_text_size
+                     + num_piece_types*(symbol_size+pad)
+                     - pad
+            )
             y = y - k_height
         
         header_text = "▲\n持\n駒" if sente else "△\n持\n駒"
-        self.create_text(x, y, text=header_text, font=("", komadai_text_size), anchor="n")
+        self.create_text(
+            x, y,
+            text=header_text,
+            font=("", komadai_text_size),
+            anchor="n"
+        )
         if not list(c_hand):
             # Hand is empty, write なし
-            self.create_text(x, y+6*komadai_text_size, text="な\nし", anchor="n", font=("", komadai_text_size))
+            # Actual size of each character is about 1.5*text_size
+            self.create_text(
+                x,
+                y+6*komadai_text_size,
+                text="な\nし",
+                font=("", komadai_text_size),
+                anchor="n"
+            )
             return
         else:
             # Hand is not empty
-            n = 0
-            for piece, count in c_hand.items():
-                self.draw_piece(x-0.4*komadai_piece_size, y+6*komadai_text_size+n*(komadai_piece_size+pad), piece=piece, komadai=True, is_text=is_text, anchor="center")
-                self.create_text(x+0.5*komadai_piece_size, y+6*komadai_text_size+n*(komadai_piece_size+pad), text=str(count), font=("", komadai_text_size))
-                n += 1
+            for n, (piece, count) in enumerate(c_hand.items()):
+                # Reason for each term: "▲ 持 駒"; symbols; anchor="center"
+                y_offset = (
+                    6*komadai_text_size
+                    + n*(symbol_size+pad)
+                    + symbol_size/2
+                )
+                self.draw_piece(
+                    x-0.4*komadai_piece_size,
+                    y+y_offset,
+                    piece=piece,
+                    komadai=True,
+                    is_text=is_text,
+                    anchor="center"
+                )
+                self.create_text(
+                    x+0.5*komadai_piece_size,
+                    y+y_offset,
+                    text=str(count),
+                    font=("", komadai_text_size),
+                    anchor="center"
+                )
         return
     
     def draw(self):
@@ -326,6 +368,7 @@ class BoardCanvas(tk.Canvas):
         self.delete("all")
         reader = self.reader
         komadai_w = self.measurements.komadai_w
+        coords_text_size = self.measurements.coords_text_size
         w_pad = self.measurements.w_pad
         x_sq = self.measurements.x_sq
         y_sq = self.measurements.y_sq
@@ -354,7 +397,6 @@ class BoardCanvas(tk.Canvas):
         
         # Draw board
         self.draw_board()
-        
         # Draw board pieces
         is_text = (self.piece_skin is PieceSkin.TEXT)
         for row_num, row in enumerate(south_board):
@@ -371,8 +413,20 @@ class BoardCanvas(tk.Canvas):
                     invert=True
                 )
         # Draw komadai
-        self.draw_komadai(w_pad + komadai_w/3, y_sq(0), north_hand, sente=is_north_sente, align="top")
-        self.draw_komadai(x_sq(9) + komadai_w*2/3, y_sq(9), south_hand, sente=not is_north_sente, align="bottom")
+        self.draw_komadai(
+            w_pad + komadai_w/2,
+            y_sq(0),
+            north_hand,
+            sente=is_north_sente,
+            align="top"
+        )
+        self.draw_komadai(
+            x_sq(9) + 2*coords_text_size + komadai_w/2,
+            y_sq(9),
+            south_hand,
+            sente=not is_north_sente,
+            align="bottom"
+        )
         return
     
     def apply_skin(self, skin):
