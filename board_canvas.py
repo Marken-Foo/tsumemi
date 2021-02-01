@@ -10,7 +10,7 @@ from kif_parser import KanjiNumber, Piece
 
 def _resize_image(img, width, height):
     # take PIL image, return resized PhotoImage
-    resized_img = img.resize((width, height))
+    resized_img = img.resize((int(width), int(height)))
     return ImageTk.PhotoImage(resized_img)
 
 
@@ -56,8 +56,8 @@ class BoardMeasurements():
         # could refactor into a dictionary perhaps?
         (
             self.sq_w, self.sq_h, self.komadai_w, self.w_pad, self.h_pad,
-            self.sq_text_size, self.komadai_text_size, self.coords_text_size,
-            self.x_sq, self.y_sq
+            self.komadai_piece_size, self.sq_text_size, self.komadai_text_size,
+            self.coords_text_size, self.x_sq, self.y_sq
         ) = self.calculate_sizes(width, height)
         return
     
@@ -78,6 +78,7 @@ class BoardMeasurements():
             w_pad = (canvas_width - 2*komadai_w - 9*sq_w) / 2
             h_pad = self.INNER_H_PAD
         sq_text_size = int(sq_w * 7/10)
+        komadai_piece_size = int(sq_w * 4/5)
         komadai_text_size = int(sq_w * 2/5)
         coords_text_size = int(sq_w * 2/9)
         
@@ -87,116 +88,16 @@ class BoardMeasurements():
             return h_pad + sq_h * j
         
         res = (
-            sq_w, sq_h, komadai_w, w_pad, h_pad,
+            sq_w, sq_h, komadai_w, w_pad, h_pad, komadai_piece_size,
             sq_text_size, komadai_text_size, coords_text_size,
             x_sq, y_sq
         )
         (
             self.sq_w, self.sq_h, self.komadai_w, self.w_pad, self.h_pad,
-            self.sq_text_size, self.komadai_text_size, self.coords_text_size,
-            self.x_sq, self.y_sq
+            self.komadai_piece_size, self.sq_text_size, self.komadai_text_size,
+            self.coords_text_size, self.x_sq, self.y_sq
         ) = res
         return res
-
-
-class Komadai(tk.Frame):
-    def __init__(self, parent, controller, sente=True, font="", *args, **kwargs):
-        self.controller = controller
-        self.parent = parent
-        self.font = font
-        super().__init__(parent, *args, **kwargs)
-        
-        header_text = "▲\n持\n駒\n" if sente else "△\n持\n駒\n"
-        self.header = tk.Label(self, text=header_text, font=font)
-        self.header.grid(column=0, row=0, columnspan=2)
-        
-        self.nashi = tk.Label(self, text="な\nし", font=font)
-        self.nashi.grid(column=0, row=1)
-        
-        cp = controller.config
-        self.piece_skin = cp["skins"]["pieces"]
-        self.hand_piece_types = (Piece.HISHA, Piece.KAKU, Piece.KIN, Piece.GIN, Piece.KEI, Piece.KYOU, Piece.FU)
-        
-        self.piece_labels = {}
-        self.piece_counts = {}
-        self.images = [] # avoid tkinter gc
-        
-        for n, piece in enumerate(self.hand_piece_types):
-            lbl_piece = self.piece_labels[piece] = tk.Label(self, text=str(piece), font=font)
-            lbl_piece.grid(column=0, row=n+1)
-            lbl_piece.grid_remove()
-            lbl_count = self.piece_counts[piece] = tk.Label(self, text="0", font=font)
-            lbl_count.grid(column=1, row=n+1)
-            lbl_count.grid_remove()
-        if not self.is_skin_text():
-            self.init_images(40) # um what?
-        
-        self["background"] = "white"
-        for child in self.winfo_children():
-            child["background"] = "white"
-        return
-    
-    def is_skin_text(self):
-        return self.piece_skin.upper() == "TEXT"
-    
-    def init_images(self, img_w):
-        # Contains Labels for each of the piece types - run this section iff
-        # PIL available and iff the skin is not text.
-        self.images = []
-        for n, piece in enumerate(self.hand_piece_types):
-            piece_filename = "0" + piece.CSA + ".png"
-            piece_path = os.path.join(PieceSkin[self.piece_skin].directory,
-                                      piece_filename)
-            img = Image.open(piece_path)
-            img = img.resize((int(img_w), int(img_w))) # assume square
-            piece_img = ImageTk.PhotoImage(img)
-            self.images.append(piece_img)
-            self.piece_labels[piece]["image"] = piece_img
-        return
-    
-    def update(self, hand, sente=True):
-        # Updates the komadai with new hand and sente information
-        # sente is True/False, font is tuple for tkinter font and size
-        self.header["text"] = "▲\n持\n駒\n" if sente else "△\n持\n駒\n"
-        c_hand = Counter(hand)
-        for label in self.piece_labels.values():
-            label.grid_remove()
-        for label in self.piece_counts.values():
-            label.grid_remove()
-        if not list(c_hand):
-            # Hand is empty, write なし
-            self.nashi.grid()
-        else:
-            # Hand is not empty
-            self.nashi.grid_remove()
-            for piece, count in c_hand.items():
-                self.piece_counts[piece]["text"] = str(count)
-                self.piece_counts[piece].grid()
-                self.piece_labels[piece].grid()
-        return
-    
-    def update_skin(self, img_w):
-        # When new skin is selected
-        cp = self.controller.config
-        self.piece_skin = cp["skins"]["pieces"]
-        if self.is_skin_text():
-            self.images = []
-            for label in self.piece_labels.values():
-                label["image"] = ""
-        else:
-            self.init_images(img_w)
-        return
-    
-    def on_resize(self, text_size, img_size):
-        self.header["font"] = ("", text_size)
-        self.nashi["font"] = ("", text_size)
-        for label in self.piece_labels.values():
-            label["font"] = ("", text_size)
-        for label in self.piece_counts.values():
-            label["font"] = ("", text_size)
-        if not self.is_skin_text():
-            self.init_images(img_size)
-        return
 
 
 class BoardCanvas(tk.Canvas):
@@ -226,19 +127,6 @@ class BoardCanvas(tk.Canvas):
             self.canvas_width, self.canvas_height
         )
         komadai_text_size = self.measurements.komadai_text_size
-        
-        self.south_komadai = Komadai(
-            parent=self,
-            controller=self.controller,
-            sente=True,
-            font=("", komadai_text_size)
-        )
-        self.north_komadai = Komadai(
-            parent=self,
-            controller=self.controller,
-            sente=False,
-            font=("", komadai_text_size)
-        )
         try:
             name = config["skins"]["pieces"]
             self.piece_skin = PieceSkin[name]
@@ -255,6 +143,7 @@ class BoardCanvas(tk.Canvas):
     
     def load_piece_images(self, skin):
         sq_w = self.measurements.sq_w
+        kpc_w = self.measurements.komadai_text_size*2
         if skin is PieceSkin.TEXT:
             # Text skin, no need images
             return
@@ -264,14 +153,16 @@ class BoardCanvas(tk.Canvas):
             filename = "0" + piece.CSA + ".png"
             img_path = os.path.join(skin.directory, filename)
             img = Image.open(img_path)
-            photoimage = _resize_image(img, int(sq_w), int(sq_w))
-            self.piece_images_upright[piece] = [img, photoimage]
+            photoimage = _resize_image(img, sq_w, sq_w)
+            komadai_photoimage = _resize_image(img, kpc_w, kpc_w)
+            self.piece_images_upright[piece] = [img, photoimage, komadai_photoimage]
             # inverted image
             filename = "1" + piece.CSA + ".png"
             img_path = os.path.join(skin.directory, filename)
             img = Image.open(img_path)
-            photoimage = _resize_image(img, int(sq_w), int(sq_w))
-            self.piece_images_inverted[piece] = [img, photoimage]
+            photoimage = _resize_image(img, sq_w, sq_w)
+            komadai_photoimage = _resize_image(img, kpc_w, kpc_w)
+            self.piece_images_inverted[piece] = [img, photoimage, komadai_photoimage]
         return
     
     def load_board_images(self, skin):
@@ -282,7 +173,7 @@ class BoardCanvas(tk.Canvas):
             # assumes you want to TILE the image one per square.
             img = Image.open(board_filename)
             # The +1 pixel avoids gaps when tiling
-            photoimage = _resize_image(img, int(sq_w)+1, int(sq_h)+1)
+            photoimage = _resize_image(img, sq_w+1, sq_h+1)
             self.board_images = [img, photoimage]
             return True
         else:
@@ -291,6 +182,7 @@ class BoardCanvas(tk.Canvas):
     def resize_images(self):
         sq_w = self.measurements.sq_w
         sq_h = self.measurements.sq_h
+        kpc_w = self.measurements.komadai_text_size*2
         # resize piece images if using
         if self.piece_skin is not PieceSkin.TEXT:
             for piece in Piece:
@@ -298,18 +190,24 @@ class BoardCanvas(tk.Canvas):
                     continue
                 img = self.piece_images_upright[piece][0]
                 self.piece_images_upright[piece][1] = _resize_image(
-                    img, int(sq_w), int(sq_w) # assume square image
+                    img, sq_w, sq_w # assume square image
+                )
+                self.piece_images_upright[piece][2] = _resize_image(
+                    img, kpc_w, kpc_w # assume square image
                 )
                 # inverted image
                 img = self.piece_images_inverted[piece][0]
                 self.piece_images_inverted[piece][1] = _resize_image(
-                    img, int(sq_w), int(sq_w) # assume square image
+                    img, sq_w, sq_w # assume square image
+                )
+                self.piece_images_inverted[piece][2] = _resize_image(
+                    img, kpc_w, kpc_w # assume square image
                 )
         # resize board image if using
         if self.board_skin.directory:
             img = self.board_images[0]
             self.board_images[1] = _resize_image(
-                img, int(sq_w)+1, int(sq_h)+1 # +1 pixel avoids tiling gaps
+                img, sq_w+1, sq_h+1 # +1 pixel avoids tiling gaps
             )
         return
     
@@ -371,20 +269,56 @@ class BoardCanvas(tk.Canvas):
             )
         return
     
-    def draw_piece(self, x, y, piece, invert=False, is_text=True):
-        sq_text_size = self.measurements.sq_text_size
+    def draw_piece(self, x, y, piece, komadai=False, invert=False, is_text=True, anchor="center"):
+        text_size = self.measurements.komadai_text_size if komadai else self.measurements.sq_text_size
         if piece == Piece.NONE:
             return
         if is_text:
             self.create_text(
                 x, y, text=str(piece.kanji),
-                font=("", sq_text_size),
-                angle=180 if invert else 0
+                font=("", text_size),
+                angle=180 if invert else 0,
+                anchor=anchor
             )
         else:
-            img = (self.piece_images_inverted[piece][1] if invert
-                   else self.piece_images_upright[piece][1])
-            self.create_image(x, y, image=img)
+            idx = 2 if komadai else 1
+            img = (self.piece_images_inverted[piece][idx] if invert
+                   else self.piece_images_upright[piece][idx])
+            self.create_image(x, y, image=img, anchor=anchor)
+        return
+    
+    def draw_komadai(self, x, y, hand, sente=True, align="top"):
+        # draws a komadai with hand pieces, anchored "north" at (x, y).
+        # does its own "anchoring" (align="top" or "bottom")
+        komadai_text_size = self.measurements.komadai_text_size
+        komadai_piece_size = self.measurements.komadai_piece_size
+        is_text = (self.piece_skin is PieceSkin.TEXT)
+        pad = -5 if is_text else 10
+        
+        c_hand = Counter(hand)
+        # work out needed height
+        num_piece_types = len(c_hand.items())
+        if num_piece_types == 0:
+            k_height = 9 * komadai_text_size
+        else:
+            k_height = 5.5*komadai_text_size + num_piece_types*(komadai_piece_size+10)-10
+        if align == "bottom":
+            # adjust the "anchor" point
+            y = y - k_height
+        
+        header_text = "▲\n持\n駒" if sente else "△\n持\n駒"
+        self.create_text(x, y, text=header_text, font=("", komadai_text_size), anchor="n")
+        if not list(c_hand):
+            # Hand is empty, write なし
+            self.create_text(x, y+6*komadai_text_size, text="な\nし", anchor="n", font=("", komadai_text_size))
+            return
+        else:
+            # Hand is not empty
+            n = 0
+            for piece, count in c_hand.items():
+                self.draw_piece(x-0.4*komadai_piece_size, y+6*komadai_text_size+n*(komadai_piece_size+pad), piece=piece, komadai=True, is_text=is_text, anchor="center")
+                self.create_text(x+0.5*komadai_piece_size, y+6*komadai_text_size+n*(komadai_piece_size+pad), text=str(count), font=("", komadai_text_size))
+                n += 1
         return
     
     def draw(self):
@@ -436,21 +370,9 @@ class BoardCanvas(tk.Canvas):
                     is_text=is_text,
                     invert=True
                 )
-        # Draw komadai pieces
-        self.create_window(
-            x_sq(9) + komadai_w*2/3,
-            y_sq(9),
-            anchor="s",
-            window=self.south_komadai
-        )
-        self.create_window(
-            w_pad + komadai_w/3,
-            y_sq(0),
-            anchor="n",
-            window=self.north_komadai
-        )
-        self.south_komadai.update(hand=south_hand, sente=not is_north_sente)
-        self.north_komadai.update(hand=north_hand, sente=is_north_sente)
+        # Draw komadai
+        self.draw_komadai(w_pad + komadai_w/3, y_sq(0), north_hand, sente=is_north_sente, align="top")
+        self.draw_komadai(x_sq(9) + komadai_w*2/3, y_sq(9), south_hand, sente=not is_north_sente, align="bottom")
         return
     
     def apply_skin(self, skin):
@@ -464,9 +386,6 @@ class BoardCanvas(tk.Canvas):
         if skin is not PieceSkin.TEXT:
             self.load_piece_images(skin)
         komadai_text_size = self.measurements.komadai_text_size
-        #TODO: change the size to something more meaningful
-        self.north_komadai.update_skin(komadai_text_size*2)
-        self.south_komadai.update_skin(komadai_text_size*2)
         self.piece_skin = skin
         return
     
@@ -489,8 +408,6 @@ class BoardCanvas(tk.Canvas):
         self.measurements.calculate_sizes(event.width, event.height)
         self.resize_images()
         komadai_text_size = self.measurements.komadai_text_size
-        self.north_komadai.on_resize(komadai_text_size, komadai_text_size*2)
-        self.south_komadai.on_resize(komadai_text_size, komadai_text_size*2)
         # Redraw board after setting new dimensions
         self.draw()
         return
