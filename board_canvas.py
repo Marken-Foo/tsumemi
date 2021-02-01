@@ -1,4 +1,3 @@
-import configparser
 import os
 import tkinter as tk
 
@@ -23,11 +22,21 @@ class BoardSkin(Enum):
 class PieceSkin(Enum):
     TEXT = ("1-kanji text characters", "")
     LIGHT = ("1-kanji light pieces", os.path.relpath(r"static/images/pieces/kanji_light"))
+    INTL = ("Internationalised symbols", os.path.relpath(r"static/images/pieces/international"))
     
     def __init__(self, desc, directory):
         self.desc = desc
         self.directory = directory
         return
+
+
+class CmdApplySkin:
+    # Command pattern
+    def __init__(self, target):
+        self.target = target
+    
+    def execute(self, skin):
+        return self.target.apply_skin(skin)
 
 
 class BoardMeasurements():
@@ -212,7 +221,7 @@ class BoardCanvas(tk.Canvas):
         
         # Specify source of board data
         self.reader = self.controller.model.reader
-        self.config = self.controller.config # code should only read configparser
+        config = self.controller.config # code should only read configparser
         # Initialise measurements, used for many other things
         self.measurements = BoardMeasurements(self.canvas_width, self.canvas_height)
         komadai_text_size = self.measurements.komadai_text_size
@@ -229,16 +238,21 @@ class BoardCanvas(tk.Canvas):
             sente=False,
             font=("", komadai_text_size)
         )
-        
-        piece_skin = self.config["skins"]["pieces"]
-        self.is_skin_text = (piece_skin.upper() == "TEXT")
-        board_skin = self.config["skins"]["board"]
-        self.is_board_image = bool(BoardSkin[board_skin].directory)
-        self.load_piece_images()
-        self.load_board_images()
+        try:
+            name = config["skins"]["pieces"]
+            self.piece_skin = PieceSkin[name]
+        except KeyError:
+            self.piece_skin = PieceSkin.TEXT
+        try:
+            name = config["skins"]["board"]
+            self.board_skin = BoardSkin[name]
+        except KeyError:
+            self.board_skin = BoardSkin.WHITE
+        self.load_piece_images(self.piece_skin)
+        self.load_board_images(self.board_skin)
         return
     
-    def load_piece_images(self):
+    def load_piece_images(self, skin):
         def _load_image(img_path):
             img = Image.open(img_path)
             sq_w = self.measurements.sq_w
@@ -246,29 +260,27 @@ class BoardCanvas(tk.Canvas):
             photoimage = ImageTk.PhotoImage(resized_img)
             return img, photoimage
             
-        piece_skin = self.config["skins"]["pieces"]
-        if self.is_skin_text:
+        if skin is PieceSkin.TEXT:
             # Text skin, no need images
             return
         for piece in Piece:
             if piece == Piece.NONE:
                 continue
             filename = "0" + piece.CSA + ".png"
-            img_path = os.path.join(PieceSkin[piece_skin].directory, filename)
+            img_path = os.path.join(skin.directory, filename)
             img, photoimage = _load_image(img_path)
             self.piece_images_upright[piece] = [img, photoimage]
             # inverted image
             filename = "1" + piece.CSA + ".png"
-            img_path = os.path.join(PieceSkin[piece_skin].directory, filename)
+            img_path = os.path.join(skin.directory, filename)
             img, photoimage = _load_image(img_path)
             self.piece_images_inverted[piece] = [img, photoimage]
         return
     
-    def load_board_images(self):
+    def load_board_images(self, skin):
         sq_w = self.measurements.sq_w
         sq_h = self.measurements.sq_h
-        board_skin = BoardSkin[self.config["skins"]["board"]]
-        board_filename = board_skin.directory
+        board_filename = skin.directory # Nonetype error?
         if board_filename:
             # assumes you want to TILE the image one per square.
             img = Image.open(board_filename)
@@ -276,17 +288,15 @@ class BoardCanvas(tk.Canvas):
             resized_img = img.resize((int(sq_w)+1, int(sq_h)+1))
             photoimage = ImageTk.PhotoImage(resized_img)
             self.board_images = [img, photoimage]
-            self.is_board_image = True
             return True
         else:
-            self.is_board_image = False
             return False
         
     def resize_images(self):
         sq_w = self.measurements.sq_w
         sq_h = self.measurements.sq_h
-        # resize piece images
-        if not self.is_skin_text:
+        # resize piece images if using
+        if self.piece_skin is not PieceSkin.TEXT:
             for piece in Piece:
                 if piece == Piece.NONE:
                     continue
@@ -300,8 +310,8 @@ class BoardCanvas(tk.Canvas):
                 resized_img = img.resize((int(sq_w), int(sq_w))) # assume square image
                 photoimage = ImageTk.PhotoImage(resized_img)
                 self.piece_images_inverted[piece][1] = photoimage
-        # resize board image
-        if self.is_board_image:
+        # resize board image if using
+        if self.board_skin.directory:
             img = self.board_images[0]
             # The +1 pixel avoids gaps when tiling
             resized_img = img.resize((int(sq_w)+1, int(sq_h)+1))
@@ -333,6 +343,7 @@ class BoardCanvas(tk.Canvas):
                 self.create_image(x, y, image=img)
             return
         
+        # Gather north and south side data.
         # Note: if is_upside_down, essentially performs a deep copy,
         # but just "passes by reference" the reader's board if not.
         if self.is_upside_down:
@@ -357,7 +368,7 @@ class BoardCanvas(tk.Canvas):
             col_coords = [str(i) for i in range(9, 0, -1)]
         
         # Draw board
-        board_skin = BoardSkin[self.config["skins"]["board"]]
+        board_skin = self.board_skin
         board_filename = board_skin.directory
         self.board_rect = self.create_rectangle(
             x_sq(0), y_sq(0),
@@ -373,7 +384,7 @@ class BoardCanvas(tk.Canvas):
                     image="",
                     anchor="nw"
                 )
-        if self.is_board_image:
+        if board_filename:
             board_img = self.board_images[1]
             for row in self.board_tiles:
                 for tile in row:
@@ -399,7 +410,7 @@ class BoardCanvas(tk.Canvas):
                 anchor="s"
             )
         # Draw board pieces
-        is_text = self.is_skin_text
+        is_text = (self.piece_skin is PieceSkin.TEXT)
         for row_num, row in enumerate(south_board):
             for col_num, piece in enumerate(row):
                 _draw_piece(
@@ -430,29 +441,34 @@ class BoardCanvas(tk.Canvas):
         self.north_komadai.update(hand=north_hand, sente=is_north_sente)
         return
     
-    def update_piece_skin(self):
-        piece_skin = self.config["skins"]["pieces"]
-        is_text = (piece_skin.upper() == "TEXT")
-        self.is_skin_text = is_text
-        if not is_text:
-            self.load_piece_images()
+    def apply_skin(self, skin):
+        if isinstance(skin, PieceSkin):
+            self.apply_piece_skin(skin)
+        elif isinstance(skin, BoardSkin):
+            self.apply_board_skin(skin)
+        return
+    
+    def apply_piece_skin(self, skin):
+        if skin is not PieceSkin.TEXT:
+            self.load_piece_images(skin)
         komadai_text_size = self.measurements.komadai_text_size
         #TODO: change the size to something more meaningful
         self.north_komadai.update_skin(komadai_text_size*2)
         self.south_komadai.update_skin(komadai_text_size*2)
+        self.piece_skin = skin
         return
     
-    def update_board_skin(self):
+    def apply_board_skin(self, skin):
         sq_w = self.measurements.sq_w
         sq_h = self.measurements.sq_h
         komadai_text_size = self.measurements.komadai_text_size
-        is_loaded = self.load_board_images()
-        board_skin = BoardSkin[self.config["skins"]["board"]]
-        self.itemconfig(self.board_rect, fill=board_skin.colour)
+        is_loaded = self.load_board_images(skin)
+        self.itemconfig(self.board_rect, fill=skin.colour)
         board_img = self.board_images[1] if is_loaded else ""
         for row in self.board_tiles:
             for tile in row:
                 self.itemconfig(tile, image=board_img)
+        self.board_skin = skin
         return
     
     def on_resize(self, event):

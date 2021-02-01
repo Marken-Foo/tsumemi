@@ -9,7 +9,7 @@ import event
 import model
 import timer
 
-from board_canvas import BoardCanvas, PieceSkin, BoardSkin
+from board_canvas import BoardCanvas, CmdApplySkin, PieceSkin, BoardSkin
 from model import ProblemStatus
 from nav_controls import FreeModeNavControls, SpeedrunNavControls
 
@@ -71,21 +71,24 @@ class SettingsWindow(tk.Toplevel):
         piece_palette.grid(column=0, row=0, sticky="EW")
         self.svar_pieces = tk.StringVar(value="TEXT")
         
-        self.rdo_pieces_text = self._add_rdo_pieceskin(piece_palette, PieceSkin.TEXT)
-        self.rdo_pieces_text.grid(column=0, row=0, sticky="W")
-        self.rdo_pieces_light = self._add_rdo_pieceskin(piece_palette, PieceSkin.LIGHT)
-        self.rdo_pieces_light.grid(column=0, row=1, sticky="W")
+        rdo_pieces_text = self._add_rdo_pieceskin(piece_palette, PieceSkin.TEXT)
+        rdo_pieces_text.grid(column=0, row=0, sticky="W")
+        rdo_pieces_light = self._add_rdo_pieceskin(piece_palette, PieceSkin.LIGHT)
+        rdo_pieces_light.grid(column=0, row=1, sticky="W")
+        rdo_pieces_intl = self._add_rdo_pieceskin(piece_palette, PieceSkin.INTL)
+        rdo_pieces_intl.grid(column=0, row=2, sticky="W")
         
         # TODO: Board colour picker???
         board_palette = ttk.LabelFrame(self, text="Board graphics")
         board_palette.grid(column=0, row=1, sticky="EW")
         self.svar_board = tk.StringVar(value="WHITE")
-        self.rdo_board_white = self._add_rdo_boardskin(board_palette, BoardSkin.WHITE)
-        self.rdo_board_white.grid(column=0, row=0, sticky="W")
-        self.rdo_board_brown = self._add_rdo_boardskin(board_palette, BoardSkin.BROWN)
-        self.rdo_board_brown.grid(column=0, row=1, sticky="W")
-        self.rdo_board_wood2 = self._add_rdo_boardskin(board_palette, BoardSkin.WOOD2)
-        self.rdo_board_wood2.grid(column=0, row=2, sticky="W")
+        
+        rdo_board_white = self._add_rdo_boardskin(board_palette, BoardSkin.WHITE)
+        rdo_board_white.grid(column=0, row=0, sticky="W")
+        rdo_board_brown = self._add_rdo_boardskin(board_palette, BoardSkin.BROWN)
+        rdo_board_brown.grid(column=0, row=1, sticky="W")
+        rdo_board_wood2 = self._add_rdo_boardskin(board_palette, BoardSkin.WOOD2)
+        rdo_board_wood2.grid(column=0, row=2, sticky="W")
         
         buttons_frame = ttk.Frame(self)
         buttons_frame.grid(column=0, row=2, sticky="EW")
@@ -105,8 +108,8 @@ class SettingsWindow(tk.Toplevel):
         self.controller.config["skins"] = {"pieces": self.svar_pieces.get(), "board": self.svar_board.get()}
         with open("config.ini", "w") as configfile:
             self.controller.config.write(configfile)
-        self.controller.board.update_piece_skin()
-        self.controller.board.update_board_skin()
+        self.controller.cmd_apply_skin.execute(BoardSkin[self.svar_board.get()])
+        self.controller.cmd_apply_skin.execute(PieceSkin[self.svar_pieces.get()])
         self.controller.display_problem()
         return
     
@@ -373,6 +376,7 @@ class MainWindow:
         )
         self.board.grid(column=0, row=0, sticky="NSEW")
         self.board.bind("<Configure>", self.board.on_resize)
+        self.cmd_apply_skin = CmdApplySkin(self.board)
         
         # Initialise solution text
         self.is_solution_shown = False
