@@ -8,6 +8,12 @@ from PIL import Image, ImageTk
 from kif_parser import KanjiNumber, Piece
 
 
+def _resize_image(img, width, height):
+    # take PIL image, return resized PhotoImage
+    resized_img = img.resize((width, height))
+    return ImageTk.PhotoImage(resized_img)
+
+
 class BoardSkin(Enum):
     WHITE = ("solid white", "white", "")
     BROWN = ("solid brown", "burlywood1", "")
@@ -54,13 +60,6 @@ class BoardMeasurements():
             self.x_sq, self.y_sq
         ) = self.calculate_sizes(width, height)
         return
-    
-    def all_measurements(self):
-        return (
-            self.sq_w, self.sq_h, self.komadai_w, self.w_pad, self.h_pad,
-            self.sq_text_size, self.komadai_text_size, self.coords_text_size,
-            self.x_sq, self.y_sq
-        )
     
     def calculate_sizes(self, canvas_width, canvas_height):
         # Geometry: 9x9 shogi board, flanked by komadai area on either side
@@ -223,7 +222,9 @@ class BoardCanvas(tk.Canvas):
         self.reader = self.controller.model.reader
         config = self.controller.config # code should only read configparser
         # Initialise measurements, used for many other things
-        self.measurements = BoardMeasurements(self.canvas_width, self.canvas_height)
+        self.measurements = BoardMeasurements(
+            self.canvas_width, self.canvas_height
+        )
         komadai_text_size = self.measurements.komadai_text_size
         
         self.south_komadai = Komadai(
@@ -253,13 +254,7 @@ class BoardCanvas(tk.Canvas):
         return
     
     def load_piece_images(self, skin):
-        def _load_image(img_path):
-            img = Image.open(img_path)
-            sq_w = self.measurements.sq_w
-            resized_img = img.resize((int(sq_w), int(sq_w))) # assume square image
-            photoimage = ImageTk.PhotoImage(resized_img)
-            return img, photoimage
-            
+        sq_w = self.measurements.sq_w
         if skin is PieceSkin.TEXT:
             # Text skin, no need images
             return
@@ -268,12 +263,14 @@ class BoardCanvas(tk.Canvas):
                 continue
             filename = "0" + piece.CSA + ".png"
             img_path = os.path.join(skin.directory, filename)
-            img, photoimage = _load_image(img_path)
+            img = Image.open(img_path)
+            photoimage = _resize_image(img, int(sq_w), int(sq_w))
             self.piece_images_upright[piece] = [img, photoimage]
             # inverted image
             filename = "1" + piece.CSA + ".png"
             img_path = os.path.join(skin.directory, filename)
-            img, photoimage = _load_image(img_path)
+            img = Image.open(img_path)
+            photoimage = _resize_image(img, int(sq_w), int(sq_w))
             self.piece_images_inverted[piece] = [img, photoimage]
         return
     
@@ -285,8 +282,7 @@ class BoardCanvas(tk.Canvas):
             # assumes you want to TILE the image one per square.
             img = Image.open(board_filename)
             # The +1 pixel avoids gaps when tiling
-            resized_img = img.resize((int(sq_w)+1, int(sq_h)+1))
-            photoimage = ImageTk.PhotoImage(resized_img)
+            photoimage = _resize_image(img, int(sq_w)+1, int(sq_h)+1)
             self.board_images = [img, photoimage]
             return True
         else:
@@ -301,80 +297,44 @@ class BoardCanvas(tk.Canvas):
                 if piece == Piece.NONE:
                     continue
                 img = self.piece_images_upright[piece][0]
-                resized_img = img.resize((int(sq_w), int(sq_w))) # assume square image
-                photoimage = ImageTk.PhotoImage(resized_img)
-                self.piece_images_upright[piece][1] = photoimage
+                self.piece_images_upright[piece][1] = _resize_image(
+                    img, int(sq_w), int(sq_w) # assume square image
+                )
                 # inverted image
                 img = self.piece_images_inverted[piece][0]
-                sq_w = self.measurements.sq_w
-                resized_img = img.resize((int(sq_w), int(sq_w))) # assume square image
-                photoimage = ImageTk.PhotoImage(resized_img)
-                self.piece_images_inverted[piece][1] = photoimage
+                self.piece_images_inverted[piece][1] = _resize_image(
+                    img, int(sq_w), int(sq_w) # assume square image
+                )
         # resize board image if using
         if self.board_skin.directory:
             img = self.board_images[0]
-            # The +1 pixel avoids gaps when tiling
-            resized_img = img.resize((int(sq_w)+1, int(sq_h)+1))
-            photoimage = ImageTk.PhotoImage(resized_img)
-            self.board_images[1] = photoimage
+            self.board_images[1] = _resize_image(
+                img, int(sq_w)+1, int(sq_h)+1 # +1 pixel avoids tiling gaps
+            )
         return
     
-    def draw(self):
-        # Clear board display - could also keep board and just redraw pieces
-        self.delete("all")
-        reader = self.reader
-        
-        (sq_w, sq_h, komadai_w, w_pad, _, sq_text_size,
-         komadai_text_size, coords_text_size,
-         x_sq, y_sq) = self.measurements.all_measurements()
-        
-        def _draw_piece(x, y, piece, invert=False, is_text=True):
-            if piece == Piece.NONE:
-                return
-            if is_text:
-                self.create_text(
-                    x, y, text=str(piece.kanji),
-                    font=("", sq_text_size),
-                    angle=180 if invert else 0
-                )
-            else:
-                img = (self.piece_images_inverted[piece][1] if invert
-                       else self.piece_images_upright[piece][1])
-                self.create_image(x, y, image=img)
-            return
-        
-        # Gather north and south side data.
-        # Note: if is_upside_down, essentially performs a deep copy,
-        # but just "passes by reference" the reader's board if not.
+    def draw_board(self):
+        # Draws just the board, irrespective of the position.
+        # Assumes board piece images are already loaded.
+        # Komadai not included.
+        x_sq = self.measurements.x_sq
+        y_sq = self.measurements.y_sq
+        coords_text_size = self.measurements.coords_text_size
+        row_coords = [" " + KanjiNumber(i).name for i in range(1, 10, 1)]
+        col_coords = [str(i) for i in range(9, 0, -1)]
         if self.is_upside_down:
-            south_hand = reader.board.gote_hand
-            north_hand = reader.board.sente_hand
-            south_board = reader.board.gote[::-1]
-            north_board = reader.board.sente[::-1]
-            for i, row in enumerate(south_board):
-                south_board[i] = row[::-1]
-            for i, row in enumerate(north_board):
-                north_board[i] = row[::-1]
-            is_north_sente = True
-            row_coords = [" " + KanjiNumber(i).name for i in range(9, 0, -1)]
-            col_coords = [str(i) for i in range(1, 10, 1)]
-        else:
-            south_hand = reader.board.sente_hand
-            north_hand = reader.board.gote_hand
-            south_board = reader.board.sente
-            north_board = reader.board.gote
-            is_north_sente = False
-            row_coords = [" " + KanjiNumber(i).name for i in range(1, 10, 1)]
-            col_coords = [str(i) for i in range(9, 0, -1)]
-        
+            row_coords.reverse()
+            col_coords.reverse()
         # Draw board
         board_skin = self.board_skin
         board_filename = board_skin.directory
+        # Colour board with solid colour
         self.board_rect = self.create_rectangle(
             x_sq(0), y_sq(0),
             x_sq(9), y_sq(9),
             fill=board_skin.colour
         )
+        # Images created and stored so only their image field changes later.
         self.board_tiles = [[None] * 9 for i in range(9)]
         for row_num in range(9):
             for col_num in range(9):
@@ -409,17 +369,69 @@ class BoardCanvas(tk.Canvas):
                 font=("", coords_text_size),
                 anchor="s"
             )
+        return
+    
+    def draw_piece(self, x, y, piece, invert=False, is_text=True):
+        sq_text_size = self.measurements.sq_text_size
+        if piece == Piece.NONE:
+            return
+        if is_text:
+            self.create_text(
+                x, y, text=str(piece.kanji),
+                font=("", sq_text_size),
+                angle=180 if invert else 0
+            )
+        else:
+            img = (self.piece_images_inverted[piece][1] if invert
+                   else self.piece_images_upright[piece][1])
+            self.create_image(x, y, image=img)
+        return
+    
+    def draw(self):
+        # Clear board display - could also keep board and just redraw pieces
+        self.delete("all")
+        reader = self.reader
+        komadai_w = self.measurements.komadai_w
+        w_pad = self.measurements.w_pad
+        x_sq = self.measurements.x_sq
+        y_sq = self.measurements.y_sq
+        
+        # Gather north and south side data.
+        # Note: if is_upside_down, essentially performs a deep copy,
+        # but just "passes by reference" the reader's board if not.
+        south_hand = reader.board.sente_hand
+        north_hand = reader.board.gote_hand
+        south_board = reader.board.sente
+        north_board = reader.board.gote
+        is_north_sente = False
+        
+        if self.is_upside_down:
+            # swap hands
+            north_hand, south_hand = south_hand, north_hand
+            # "rotate" each board 180 degrees, then swap
+            north_board = north_board[::-1]
+            south_board = south_board[::-1]
+            for i, row in enumerate(north_board):
+                north_board[i] = row[::-1]
+            for i, row in enumerate(south_board):
+                south_board[i] = row[::-1]
+            north_board, south_board = south_board, north_board
+            is_north_sente = True
+        
+        # Draw board
+        self.draw_board()
+        
         # Draw board pieces
         is_text = (self.piece_skin is PieceSkin.TEXT)
         for row_num, row in enumerate(south_board):
             for col_num, piece in enumerate(row):
-                _draw_piece(
+                self.draw_piece(
                     x_sq(col_num+0.5), y_sq(row_num+0.5), piece,
                     is_text=is_text
                 )
         for row_num, row in enumerate(north_board):
             for col_num, piece in enumerate(row):
-                _draw_piece(
+                self.draw_piece(
                     x_sq(col_num+0.5), y_sq(row_num+0.5), piece,
                     is_text=is_text,
                     invert=True
