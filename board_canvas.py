@@ -122,59 +122,60 @@ class PieceImages:
         return (self.skin is PieceSkin.TEXT)
     
     def load(self, skin):
-        sq_w = self.measurements.sq_w
-        kpc_w = self.measurements.komadai_piece_size
-        if skin is PieceSkin.TEXT:
+        filepath = skin.directory
+        if filepath:
+            sq_w = self.measurements.sq_w
+            kpc_w = self.measurements.komadai_piece_size
+            for piece in Piece:
+                if piece == Piece.NONE:
+                    continue
+                filename = "0" + piece.CSA + ".png"
+                img_path = os.path.join(skin.directory, filename)
+                img = Image.open(img_path)
+                photoimg = _resize_image(img, sq_w, sq_w)
+                komadai_photoimg = _resize_image(img, kpc_w, kpc_w)
+                self.piece_images_upright[piece] = [
+                    img, photoimg, komadai_photoimg
+                ]
+                # upside-down image
+                filename = "1" + piece.CSA + ".png"
+                img_path = os.path.join(skin.directory, filename)
+                img = Image.open(img_path)
+                photoimg = _resize_image(img, sq_w, sq_w)
+                komadai_photoimg = _resize_image(img, kpc_w, kpc_w)
+                self.piece_images_inverted[piece] = [
+                    img, photoimg, komadai_photoimg
+                ]
+            self.skin = skin # after loading, in case anything goes wrong
+            return
+        else:
             # text skin, no need images
             self.skin = skin
             return
-        for piece in Piece:
-            if piece == Piece.NONE:
-                continue
-            filename = "0" + piece.CSA + ".png"
-            img_path = os.path.join(skin.directory, filename)
-            img = Image.open(img_path)
-            photoimg = _resize_image(img, sq_w, sq_w)
-            komadai_photoimg = _resize_image(img, kpc_w, kpc_w)
-            self.piece_images_upright[piece] = [
-                img, photoimg, komadai_photoimg
-            ]
-            # upside-down image
-            filename = "1" + piece.CSA + ".png"
-            img_path = os.path.join(skin.directory, filename)
-            img = Image.open(img_path)
-            photoimg = _resize_image(img, sq_w, sq_w)
-            komadai_photoimg = _resize_image(img, kpc_w, kpc_w)
-            self.piece_images_inverted[piece] = [
-                img, photoimg, komadai_photoimg
-            ]
-        self.skin = skin # after loading, in case anything goes wrong
-        return
     
     def resize_images(self):
-        sq_w = self.measurements.sq_w
-        kpc_w = self.measurements.komadai_piece_size
         # Resize piece images, if using
-        if self.skin is PieceSkin.TEXT:
-            return
-        for piece in Piece:
-            if piece == Piece.NONE:
-                continue
-            img = self.piece_images_upright[piece][0]
-            self.piece_images_upright[piece][1] = _resize_image(
-                img, sq_w, sq_w # assume square image
-            )
-            self.piece_images_upright[piece][2] = _resize_image(
-                img, kpc_w, kpc_w # assume square image
-            )
-            # inverted image
-            img = self.piece_images_inverted[piece][0]
-            self.piece_images_inverted[piece][1] = _resize_image(
-                img, sq_w, sq_w # assume square image
-            )
-            self.piece_images_inverted[piece][2] = _resize_image(
-                img, kpc_w, kpc_w # assume square image
-            )
+        if self.skin.directory:
+            for piece in Piece:
+                if piece == Piece.NONE:
+                    continue
+                sq_w = self.measurements.sq_w
+                kpc_w = self.measurements.komadai_piece_size
+                img = self.piece_images_upright[piece][0]
+                self.piece_images_upright[piece][1] = _resize_image(
+                    img, sq_w, sq_w # assume square image
+                )
+                self.piece_images_upright[piece][2] = _resize_image(
+                    img, kpc_w, kpc_w # assume square image
+                )
+                # inverted image
+                img = self.piece_images_inverted[piece][0]
+                self.piece_images_inverted[piece][1] = _resize_image(
+                    img, sq_w, sq_w # assume square image
+                )
+                self.piece_images_inverted[piece][2] = _resize_image(
+                    img, kpc_w, kpc_w # assume square image
+                )
         return
 
 
@@ -187,12 +188,12 @@ class BoardImages:
         return
     
     def load(self, skin):
-        sq_w = self.measurements.sq_w
-        sq_h = self.measurements.sq_h
-        board_filename = skin.directory
-        if board_filename:
+        filepath = skin.directory
+        if filepath:
             # assumes you want to TILE the image, one per square
-            img = Image.open(board_filename)
+            sq_w = self.measurements.sq_w
+            sq_h = self.measurements.sq_h
+            img = Image.open(filepath)
             # the +1 pixel avoids gaps when tiling
             photoimg = _resize_image(img, sq_w+1, sq_h+1)
             self.images = [img, photoimg]
@@ -203,10 +204,10 @@ class BoardImages:
             return False
     
     def resize_images(self):
-        sq_w = self.measurements.sq_w
-        sq_h = self.measurements.sq_h
         # resize board image if using
         if self.skin.directory:
+            sq_w = self.measurements.sq_w
+            sq_h = self.measurements.sq_h
             img = self.images[0]
             self.images[1] = _resize_image(
                 img, sq_w+1, sq_h+1 # +1 pixel avoids tiling gaps
@@ -218,8 +219,8 @@ class BoardCanvas(tk.Canvas):
     """The canvas where the shogi position is drawn.
     """
     # Default/current canvas size for board
-    canvas_width = 600
-    canvas_height = 500
+    CANVAS_WIDTH = 600
+    CANVAS_HEIGHT = 500
     
     def __init__(self, parent, controller, *args, **kwargs):
         self.controller = controller
@@ -230,7 +231,7 @@ class BoardCanvas(tk.Canvas):
         config = self.controller.config
         # Initialise measurements, used for many other things
         self.measurements = BoardMeasurements(
-            self.canvas_width, self.canvas_height
+            self.CANVAS_WIDTH, self.CANVAS_HEIGHT
         )
         try:
             name = config["skins"]["pieces"]
@@ -306,11 +307,14 @@ class BoardCanvas(tk.Canvas):
     
     def draw_piece(self, x, y, piece, komadai=False, invert=False,
                    is_text=True, anchor="center"):
-        text_size = (self.measurements.komadai_text_size if komadai
-                     else self.measurements.sq_text_size)
         if piece == Piece.NONE:
             return
         if is_text:
+            text_size = (
+                self.measurements.komadai_text_size
+                if komadai
+                else self.measurements.sq_text_size
+            )
             self.create_text(
                 x, y, text=str(piece.kanji),
                 font=("", text_size),
@@ -319,8 +323,11 @@ class BoardCanvas(tk.Canvas):
             )
         else:
             idx = 2 if komadai else 1
-            img = (self.piece_images.piece_images_inverted[piece][idx] if invert
-                   else self.piece_images.piece_images_upright[piece][idx])
+            img = (
+                self.piece_images.piece_images_inverted[piece][idx]
+                if invert
+                else self.piece_images.piece_images_upright[piece][idx]
+            )
             self.create_image(x, y, image=img, anchor=anchor)
         return
     
@@ -341,7 +348,8 @@ class BoardCanvas(tk.Canvas):
         if align == "bottom":
             # Adjust the "anchor" point
             k_height = (
-                9 * komadai_text_size if num_piece_types == 0
+                9 * komadai_text_size
+                if num_piece_types == 0
                 else 6*komadai_text_size
                      + num_piece_types*(symbol_size+pad)
                      - pad
@@ -471,8 +479,6 @@ class BoardCanvas(tk.Canvas):
         return
     
     def on_resize(self, event):
-        self.canvas_width = event.width
-        self.canvas_height = event.height
         self.measurements.calculate_sizes(event.width, event.height)
         # Resize all images
         self.piece_images.resize_images()

@@ -369,7 +369,7 @@ class MainWindow:
         
         self.board = BoardCanvas(
             parent=self.boardWrapper, controller=self,
-            width=BoardCanvas.canvas_width, height=BoardCanvas.canvas_height,
+            width=BoardCanvas.CANVAS_WIDTH, height=BoardCanvas.CANVAS_HEIGHT,
             bg="white"
         )
         self.board.grid(column=0, row=0, sticky="NSEW")
@@ -381,7 +381,7 @@ class MainWindow:
         self.solution = tk.StringVar(value="Open a folder of problems to display.")
         self.lbl_solution = ttk.Label(
             self.mainframe, textvariable=self.solution,
-            justify="left", wraplength=self.board.canvas_width
+            justify="left", wraplength=self.board.CANVAS_WIDTH
         )
         self.lbl_solution.grid(
             column=0, row=1, sticky="W"
