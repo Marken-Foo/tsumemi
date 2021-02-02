@@ -46,12 +46,91 @@ class CmdApplySkin:
         return self.target.apply_skin(skin)
 
 
+class ImageResizeDict:
+    def __init__(self, update_func):
+        self.update_func = update_func # function returning tuple (width, height)
+        self.width, self.height = update_func()
+        self.raws = {}
+        self.images = {}
+        return
+    
+    def add_image(self, key, image):
+        self.raws[key] = image
+        self.images[key] = _resize_image(image, self.width, self.height)
+        return
+    
+    def resize_images(self):
+        for key in self.raws:
+            self.images[key] = _resize_image(self.raws[key], self.width, self.height)
+        return
+    
+    def update_sizes(self):
+        self.width, self.height = self.update_func()
+        return
+    
+    def get_images(self):
+        return self.images
+
+
+class PieceImgManager:
+    def __init__(self, measurements, skin):
+        def _komadai_piece_size():
+            kpc_w = measurements.komadai_piece_size
+            return kpc_w, kpc_w
+        def _board_piece_size():
+            sq_w = measurements.sq_w
+            return sq_w, sq_w
+        self.upright = ImageResizeDict(_board_piece_size)
+        self.inverted = ImageResizeDict(_board_piece_size)
+        self.komadai_upright = ImageResizeDict(_komadai_piece_size)
+        self.komadai_inverted = ImageResizeDict(_komadai_piece_size)
+        self.measurements = measurements
+        self.load(skin)
+        self.skin = skin
+        return
+    
+    def is_text(self): #ELIMINATE?
+        return (self.skin is PieceSkin.TEXT)
+    
+    def load(self, skin):
+        filepath = skin.directory
+        if filepath:
+            for piece in Piece:
+                if piece == Piece.NONE:
+                    continue
+                filename = "0" + piece.CSA + ".png"
+                img_path = os.path.join(skin.directory, filename)
+                img = Image.open(img_path)
+                self.upright.add_image(piece, img)
+                self.komadai_upright.add_image(piece, img)
+                # upside-down image
+                filename = "1" + piece.CSA + ".png"
+                img_path = os.path.join(skin.directory, filename)
+                img = Image.open(img_path)
+                self.inverted.add_image(piece, img)
+                self.komadai_inverted.add_image(piece, img)
+            self.skin = skin # after loading, in case anything goes wrong
+            return
+        else:
+            # text skin, no need images
+            self.skin = skin
+            return
+    
+    def resize_images(self):
+        if self.skin.directory:
+            imgdicts = self.upright, self.inverted, self.komadai_upright, self.komadai_inverted
+            for imgdict in imgdicts:
+                imgdict.update_sizes()
+                imgdict.resize_images()
+        return
+
+
 class BoardMeasurements:
     # Constant proportions
     COORD_TEXT_IN_SQ = 2/9
     INNER_H_PAD = 30
     INNER_W_PAD = 10
-    KOMADAI_PIECE_RATIO = 4/5 # board piece : komadai piece size ratio
+    KOMADAI_PIECE_RATIO = 4/5 # komadai piece : board piece size ratio
     KOMADAI_TEXT_IN_SQ = 2/5
     KOMADAI_W_IN_SQ = 2
     SQ_ASPECT_RATIO = 11/12
@@ -243,7 +322,7 @@ class BoardCanvas(tk.Canvas):
             board_skin = BoardSkin[name]
         except KeyError:
             board_skin = BoardSkin.WHITE
-        self.piece_images = PieceImages(self.measurements, piece_skin)
+        self.piece_images = PieceImgManager(self.measurements, piece_skin)
         self.board_images = BoardImages(self.measurements, board_skin)
         return
     
@@ -322,12 +401,20 @@ class BoardCanvas(tk.Canvas):
                 anchor=anchor
             )
         else:
-            idx = 2 if komadai else 1
-            img = (
-                self.piece_images.piece_images_inverted[piece][idx]
-                if invert
-                else self.piece_images.piece_images_upright[piece][idx]
-            )
+            # idx = 2 if komadai else 1
+            # img = (
+                # self.piece_images.piece_images_inverted[piece][idx]
+                # if invert
+                # else self.piece_images.piece_images_upright[piece][idx]
+            # )
+            if komadai and invert:
+                img = self.piece_images.komadai_inverted.get_images()[piece]
+            elif komadai and not invert:
+                img = self.piece_images.komadai_upright.get_images()[piece]
+            elif not komadai and invert:
+                img = self.piece_images.inverted.get_images()[piece]
+            else:
+                img = self.piece_images.upright.get_images()[piece]
             self.create_image(x, y, image=img, anchor=anchor)
         return
     
