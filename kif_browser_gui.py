@@ -59,14 +59,12 @@ class Menubar(tk.Menu):
 
 
 class SettingsWindow(tk.Toplevel):
-    # Refactor the values of the settings options into Enums.
     def __init__(self, controller, *args, **kwargs):
         self.controller = controller
         super().__init__(*args, **kwargs)
         
         self.title("Settings")
         
-        # TODO: flesh out this code. It sort of works already.
         piece_palette = ttk.LabelFrame(self, text="Piece graphics")
         piece_palette.grid(column=0, row=0, sticky="EW")
         self.svar_pieces = tk.StringVar(value="TEXT")
