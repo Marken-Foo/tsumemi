@@ -290,8 +290,9 @@ class MainWindow:
             with open("config.ini", "w+") as configfile:
                 # write a default config.ini
                 configfile.write("[skins]\n")
-                configfile.write("pieces = LIGHT\n")
+                configfile.write("pieces = TEXT\n")
                 configfile.write("board = BROWN\n")
+                configfile.write("komadai = WHITE\n")
             with open("config.ini", "r") as configfile:
                 self.config.read_file(configfile)
         self.mainframe = ttk.Frame(self.master)

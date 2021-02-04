@@ -26,7 +26,8 @@ class SettingsWindow(tk.Toplevel):
         ttk.Label(board_palette, text="Board").grid(column=0, row=0, sticky="W")
         ttk.Label(board_palette, text="Komadai (solid colour)").grid(column=1, row=0, sticky="W")
         self.svar_board = tk.StringVar(value="WHITE")
-        self.svar_komadai = tk.StringVar(value="WHITE")rdo_board_skin = []
+        self.svar_komadai = tk.StringVar(value="WHITE")
+        rdo_board_skin = []
         rdo_komadai_skin = []
         for n, skin in enumerate(BoardSkin):
             rdo_board_skin.append(self._add_rdo_boardskin(board_palette, skin))

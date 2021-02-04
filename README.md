@@ -10,11 +10,25 @@ This little bit of Python aims to let shogi players train with their large colle
 
 ## How to install ##
 
-Python 3 is required. You can download an installer for the latest version from the [official website](https://www.python.org/). (Tested with Python 3.8.1 but *should* be compatible with Python 3.5 onwards.)
+Dependencies: Python 3.5 (tested with 3.8.1) or later, TKinter 8.6 or later, Pillow (tested with 8.1.0)
 
-To install, download everything in this repository. To run, make sure you have Python 3 installed on your system, then double click `kif_browser_gui.py` or run it from the command line.
+Download the repo into the working directory of your choice, e.g. `git svn clone https://github.com/Marken-Foo/kif-browser/trunk`.
+
+To run, run kif_browser_gui.py, e.g. `python3 kif_browser_gui`.
 
 Comes with a free set of ten 1-te and ten 3-te problems in the folder `/sample_problems`, composed by Marken Foo.
+
+### Less-technical instructions ###
+
+You'll need Python 3, which will help you run Python (.py) code files on your computer. You can download an installer for the latest version from the [official Python website](https://www.python.org/). It also comes with TKinter.
+
+You'll also need Pillow, which lets Python files deal with images. Once you've installed Python (let it change your PATH variable when installing!), open a console (Command Prompt, Windows Powershell, Mac Terminal, Bash, etc). Type `pip install Pillow` and press enter. This should install Pillow.
+
+Finally, download everything in this repository. You can go to the [main page of this repository](https://github.com/Marken-Foo/kif-browser), click the green "Code" at the top right of the file list, and you can download everything as a zip file.
+
+(If you're a bit more familiar with the command line and if you have git, just run `git svn clone https://github.com/Marken-Foo/kif-browser/trunk` in the working directory of your choice.)
+
+Finally, to run the program, double click `kif_browser_gui.py` or run it from the command line with Python.
 
 ## How to use ##
 
@@ -36,7 +50,13 @@ The "Start speedrun" button will enter **speedrun mode**, where you can go throu
 
 For each problem, once you have solved it you can choose *Show solution* to check your answer and select whether you got it right or wrong (the timer will be paused while doing so). If you cannot solve the problem, you can choose to *Skip* to the next problem instead.
 
-Your time splits for each problem are displayed in the panel on the right.
+Your time splits and correct/wrong/skip/unattempted status for each problem are displayed in the panel on the right.
+
+### Customise appearance ###
+
+Go to "Settings > Settings..." and a window will pop up, allowing you to choose the piece and board graphics you like. Included are several sets of [boards and pieces by Ka-hu](https://github.com/Ka-hu/shogi-pieces/).
+
+Internationalised pieces are included.
 
 ## Feedback ##
 
@@ -46,4 +66,7 @@ This is just a small bit of code to try making something convenient. If you enco
 
 This project is licensed under the GPLv3.
 
-Aside from the solid colours and plain text board, this project uses [pieces and boards by Ka-hu](https://github.com/Ka-hu/shogi-pieces/) (piece .png files created from .svg files) (licensed under CC-BY-4.0)
+Boards and pieces by [Ka-hu](https://github.com/Ka-hu/shogi-pieces/) (piece .png files created from .svg files), licensed under CC-BY-4.0.
+
+- Boards: tile_wood1 through to tile_wood6, tile_stone, tile_military and tile_military2
+- Pieces: kanji_light, kanji_brown, kanji_red and international

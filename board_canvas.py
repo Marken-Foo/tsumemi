@@ -12,7 +12,15 @@ from kif_parser import KanjiNumber, Piece
 class BoardSkin(Enum):
     WHITE = ("solid white", "white", None)
     BROWN = ("solid brown", "burlywood1", None)
+    WOOD1 = ("Wood1", "#d29a00", os.path.relpath(r"static/images/boards/tile_wood1.png"))
     WOOD2 = ("Wood2", "#fbcd77", os.path.relpath(r"static/images/boards/tile_wood2.png"))
+    WOOD3 = ("Wood3", "#c98e52", os.path.relpath(r"static/images/boards/tile_wood3.png"))
+    WOOD4 = ("Wood4", "#d5b45a", os.path.relpath(r"static/images/boards/tile_wood4.png"))
+    WOOD5 = ("Wood5", "#ffdf8f", os.path.relpath(r"static/images/boards/tile_wood5.png"))
+    WOOD6 = ("Wood6", "#f4ca64", os.path.relpath(r"static/images/boards/tile_wood6.png"))
+    STONE = ("Stone", "#b8b9af", os.path.relpath(r"static/images/boards/tile_stone.png"))
+    MILITARY = ("Military", "#a06b3a", os.path.relpath(r"static/images/boards/tile_military.png"))
+    MILITARY2 = ("Military2", "#bd7b32", os.path.relpath(r"static/images/boards/tile_military2.png"))
     
     def __init__(self, desc, colour, path):
         self.desc = desc
@@ -23,6 +31,8 @@ class BoardSkin(Enum):
 class PieceSkin(Enum):
     TEXT = ("1-kanji text characters", None)
     LIGHT = ("1-kanji light pieces", os.path.relpath(r"static/images/pieces/kanji_light"))
+    BROWN = ("1-kanji brown pieces", os.path.relpath(r"static/images/pieces/kanji_brown"))
+    REDWOOD = ("1-kanji red wood pieces", os.path.relpath(r"static/images/pieces/kanji_red_wood"))
     INTL = ("Internationalised symbols", os.path.relpath(r"static/images/pieces/international"))
     
     def __init__(self, desc, path):
