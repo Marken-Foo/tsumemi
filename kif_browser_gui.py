@@ -1,14 +1,18 @@
+import configparser
 import os
 import tkinter as tk
 
+from functools import partial
 from tkinter import filedialog, messagebox, ttk
 
 import event
 import model
 import timer
 
-from board_canvas import BoardCanvas
+from board_canvas import BoardCanvas, PieceSkin, BoardSkin
 from model import ProblemStatus
+from nav_controls import FreeModeNavControls, SpeedrunNavControls
+from settings_window import SettingsWindow
 
 
 class Menubar(tk.Menu):
@@ -16,8 +20,15 @@ class Menubar(tk.Menu):
         self.controller = controller
         super().__init__(parent, *args, **kwargs)
         
+        # Set cascades
         menu_file = tk.Menu(self)
         self.add_cascade(menu=menu_file, label="File")
+        menu_settings = tk.Menu(self)
+        self.add_cascade(menu=menu_settings, label="Settings")
+        menu_help = tk.Menu(self)
+        self.add_cascade(menu=menu_help, label="Help")
+        
+        # File
         menu_file.add_command(
             label="Open folder...",
             command=self.controller.open_folder,
@@ -29,110 +40,22 @@ class Menubar(tk.Menu):
             command=self.controller.open_folder_recursive,
             accelerator="Ctrl+Shift+O",
         )
-        
-        menu_help = tk.Menu(self)
-        self.add_cascade(menu=menu_help, label="Help")
-        #menu_help.add_command(label="Help", command=None)
+        # Settings
+        menu_settings.add_command(
+            label="Settings...",
+            command=lambda: SettingsWindow(controller=self.controller)
+        )
+        # Help
         menu_help.add_command(
             label="About kif-browser",
-            command=lambda: messagebox.showinfo(
+            command=partial(
+                messagebox.showinfo,
                 title="About kif-browser",
                 message="Written in Python 3 for the shogi community. KIF files sold separately."
             )
         )
-        
+        # Bind to main window
         parent["menu"] = self
-        return
-
-
-class NavControls(ttk.Frame):
-    def __init__(self, parent, controller, *args, **kwargs):
-        self.controller = controller
-        super().__init__(parent, *args, **kwargs)
-     
-    def _add_btn_prev(self, text="< Prev"):
-        return ttk.Button(self, text=text, command=self.controller.prev_file)
-    
-    def _add_btn_next(self, text="Next >"):
-        return ttk.Button(self, text=text, command=self.controller.next_file)
-    
-    def _add_btn_toggle_solution(self, text="Show/hide solution"):
-        return ttk.Button(
-            self, text=text, command=self.controller.toggle_solution
-        )
-    
-    def _add_btn_view_solution(self, text="Show solution"):
-        return ttk.Button(
-            self, text=text, command=self.controller.view_solution
-        )
-    
-    def _add_btn_skip(self, text="Skip"):
-        return ttk.Button(self, text=text, command=self.controller.skip)
-    
-    def _add_btn_correct(self, text="Correct"):
-        return ttk.Button(self, text=text, command=self.controller.mark_correct)
-    
-    def _add_btn_wrong(self, text="Wrong"):
-        return ttk.Button(self, text=text, command=self.controller.mark_wrong)
-    
-    def _add_chk_upside_down(self, text="Upside-down mode"):
-        want_upside_down = tk.BooleanVar(value=False)
-        return ttk.Checkbutton(
-            self, text="Upside-down mode",
-            command=lambda: self.controller.flip_board(want_upside_down.get()),
-            variable=want_upside_down, onvalue=True, offvalue=False
-        )
-
-
-class FreeModeNavControls(NavControls):
-    def __init__(self, parent, controller, *args, **kwargs):
-        super().__init__(parent, controller, *args, **kwargs)
-        # Make buttons to navigate, show/hide solution, upside-down mode
-        btn_prev = self._add_btn_prev()
-        btn_prev.grid(column=0, row=0, sticky="E")
-        btn_toggle_solution = self._add_btn_toggle_solution()
-        btn_toggle_solution.grid(column=1, row=0, sticky="S")
-        btn_next = self._add_btn_next()
-        btn_next.grid(column=2, row=0, sticky="W")
-        chk_upside_down = self._add_chk_upside_down()
-        chk_upside_down.grid(column=0, row=1, columnspan=3)
-        for child in self.winfo_children():
-            child.grid_configure(padx=5, pady=5)
-        return
-
-
-class SpeedrunNavControls(NavControls):
-    def __init__(self, parent, controller, *args, **kwargs):
-        super().__init__(parent, controller, *args, **kwargs)
-        # Initialise all nav options
-        self.btn_view_solution = self._add_btn_view_solution()
-        self.btn_view_solution.grid(column=0, row=0, sticky="E")
-        self.btn_skip = self._add_btn_skip()
-        self.btn_skip.grid(column=1, row=0, sticky="W")
-        self.btn_correct = self._add_btn_correct()
-        self.btn_correct.grid(column=0, row=0, sticky="E")
-        self.btn_wrong = self._add_btn_wrong()
-        self.btn_wrong.grid(column=1, row=0, sticky="W")
-        self.chk_upside_down = self._add_chk_upside_down()
-        self.chk_upside_down.grid(column=0, row=1, columnspan=3)
-        for child in self.winfo_children():
-            child.grid_configure(padx=5, pady=5)
-            
-        self.show_sol_skip() # Hide only after calling grid_configure
-        return
-     
-    def show_correct_wrong(self):
-        self.btn_view_solution.grid_remove()
-        self.btn_skip.grid_remove()
-        self.btn_correct.grid()
-        self.btn_wrong.grid()
-        return
-    
-    def show_sol_skip(self):
-        self.btn_view_solution.grid()
-        self.btn_skip.grid()
-        self.btn_correct.grid_remove()
-        self.btn_wrong.grid_remove()
         return
 
 
@@ -189,9 +112,11 @@ class TimerPane(ttk.Frame):
         
         # Basic timer
         self.timer = timer.SplitTimer()
-        # The Label will update itself via Observer pattern when refactored.
-        self.timer_display = TimerDisplay(parent=self,
-                                          controller=self.controller)
+        # Display updates automatically by watching timer (Observer pattern).
+        self.timer_display = TimerDisplay(
+            parent=self,
+            controller=self.controller
+        )
         self.timer_display.grid(
             column=0, row=0, columnspan=3
         )
@@ -281,8 +206,8 @@ class ProblemsView(ttk.Treeview, event.IObserver):
         self.delete(*self.get_children())
         for problem in problems:
             filename = os.path.basename(problem.filepath)
-            time_str = "-" if problem.time is None \
-                       else timer.sec_to_str(problem.time)
+            time_str = ("-" if problem.time is None
+                        else timer.sec_to_str(problem.time))
             status_str = self.status_strings[problem.status]
             self.insert(
                 "", "end",
@@ -291,8 +216,11 @@ class ProblemsView(ttk.Treeview, event.IObserver):
             )
         return
     
-    def get_selection_idx(self, event):
-        return self.index(self.selection()[0])
+    def get_idx_on_click(self, event):
+        if self.identify_region(event.x, event.y) == "cell":
+            return self.index(self.identify_row(event.y))
+        else:
+            return None
 
 
 class ProblemListPane(ttk.Frame):
@@ -328,7 +256,7 @@ class ProblemListPane(ttk.Frame):
         self.btn_speedrun.grid_remove()
         self.btn_abort_speedrun = ttk.Button(
             self, text="Abort speedrun",
-            command=controller.abort
+            command=controller.abort_speedrun
         )
         self.btn_abort_speedrun.grid(column=0, row=2)
         self.btn_abort_speedrun.grid_remove()
@@ -353,11 +281,24 @@ class MainWindow:
         self.master.rowconfigure(0, weight=1)
         self.master.title("KIF folder browser")
         
+        # Create settings file if none exists
+        self.config = configparser.ConfigParser(dict_type=dict)
+        try:
+            with open("config.ini", "r") as configfile:
+                self.config.read_file(configfile)
+        except FileNotFoundError:
+            with open("config.ini", "w+") as configfile:
+                # write a default config.ini
+                configfile.write("[skins]\n")
+                configfile.write("pieces = TEXT\n")
+                configfile.write("board = BROWN\n")
+                configfile.write("komadai = WHITE\n")
+            with open("config.ini", "r") as configfile:
+                self.config.read_file(configfile)
         self.mainframe = ttk.Frame(self.master)
         self.mainframe.grid(column=0, row=0, sticky="NSEW")
         self.mainframe.columnconfigure(0, weight=1)
         self.mainframe.columnconfigure(1, weight=1)
-        self.mainframe.columnconfigure(2, weight=1)
         self.mainframe.rowconfigure(0, weight=1)
         
         # Make menubar
@@ -372,7 +313,7 @@ class MainWindow:
         
         self.board = BoardCanvas(
             parent=self.boardWrapper, controller=self,
-            width=BoardCanvas.canvas_width, height=BoardCanvas.canvas_height,
+            width=BoardCanvas.CANVAS_WIDTH, height=BoardCanvas.CANVAS_HEIGHT,
             bg="white"
         )
         self.board.grid(column=0, row=0, sticky="NSEW")
@@ -383,7 +324,7 @@ class MainWindow:
         self.solution = tk.StringVar(value="Open a folder of problems to display.")
         self.lbl_solution = ttk.Label(
             self.mainframe, textvariable=self.solution,
-            justify="left", wraplength=self.board.canvas_width
+            justify="left", wraplength=self.board.CANVAS_WIDTH
         )
         self.lbl_solution.grid(
             column=0, row=1, sticky="W"
@@ -414,21 +355,21 @@ class MainWindow:
         # Problem list
         self.problem_list_pane = ProblemListPane(parent=self.mainframe,
                                                  controller=self)
-        self.problem_list_pane.grid(column=1, row=0)
+        self.problem_list_pane.grid(column=1, row=0, sticky="NSEW")
+        self.problem_list_pane.columnconfigure(0, weight=1)
+        self.problem_list_pane.rowconfigure(0, weight=1)
         self.problem_list_pane.grid_configure(padx=5, pady=5)
         # Observer pattern; treeview updates itself when model updates
         tvw = self.problem_list_pane.tvw
         self.model.prob_buffer.add_observer(tvw)
         # Double click to go to problem - throws exception on Double-1 heading
         tvw.bind("<Double-1>",
-                 lambda e: self.go_to_file(idx=tvw.get_selection_idx(e)))
+                 lambda e: self.go_to_file(idx=tvw.get_idx_on_click(e)))
         
         # Keyboard shortcuts
-        self.master.bind("<Key-h>", self.toggle_solution)
-        self.master.bind("<Left>", self.prev_file)
-        self.master.bind("<Right>", self.next_file)
-        self.master.bind("<Control-o>", self.open_folder)
-        self.master.bind("<Control-Shift-O>", self.open_folder_recursive)
+        self.bindings = Bindings(self)
+        self.bindings.bind_shortcuts(self.master, self.bindings.MASTER_SHORTCUTS)
+        self.bindings.bind_shortcuts(self.master, self.bindings.FREE_SHORTCUTS)
         return
         
     def display_problem(self):
@@ -456,19 +397,15 @@ class MainWindow:
         return
     
     def next_file(self, event=None):
-        res = self.model.open_next_file()
-        if res:
-            self.display_problem()
-        return res
+        return self.go_to_file(fn=self.model.open_next_file, event=event)
     
     def prev_file(self, event=None):
-        res = self.model.open_prev_file()
-        if res:
-            self.display_problem()
-        return res
+        return self.go_to_file(fn=self.model.open_prev_file, event=event)
     
-    def go_to_file(self, idx, event=None):
-        res = self.model.open_file(idx)
+    def go_to_file(self, idx=0, fn=None, event=None):
+        if fn is None:
+            fn = partial(self.model.open_file, idx)
+        res = fn()
         if res:
             self.display_problem()
         return res
@@ -521,19 +458,14 @@ class MainWindow:
         self.nav_controls.grid()
         self.problem_list_pane.btn_speedrun.grid_remove()
         self.problem_list_pane.btn_abort_speedrun.grid()
-        
-        # Unbind keyboard shortcuts
-        self.master.unbind("<Key-h>")
-        self.master.unbind("<Left>")
-        self.master.unbind("<Right>")
-        
         # Set application state
+        self.bindings.unbind_shortcuts(self.master, self.bindings.FREE_SHORTCUTS)
         self.go_to_file(idx=0)
         self.reset_timer()
         self.start_timer()
         return
         
-    def abort(self):
+    def abort_speedrun(self):
         # Abort speedrun, go back to free browsing
         # Make UI changes
         self.nav_controls.grid_remove()
@@ -541,12 +473,8 @@ class MainWindow:
         self.nav_controls.grid()
         self.problem_list_pane.btn_speedrun.grid()
         self.problem_list_pane.btn_abort_speedrun.grid_remove()
-        
-        # Rebind keyboard shortcuts
-        self.master.bind("<Key-h>", self.toggle_solution)
-        self.master.bind("<Left>", self.prev_file)
-        self.master.bind("<Right>", self.next_file)
-        
+        # Set application state
+        self.bindings.bind_shortcuts(self.master, self.bindings.FREE_SHORTCUTS)
         self.stop_timer()
         return
     
@@ -588,7 +516,41 @@ class MainWindow:
             title="End of folder",
             message="You have reached the end of the speedrun."
         )
-        self.abort()
+        self.abort_speedrun()
+        return
+
+
+class Bindings:
+    # Just to group all shortcut bindings together for convenience.
+    def __init__(self, controller):
+        self.controller = controller
+    
+        self.MASTER_SHORTCUTS = {
+            "<Control-o>": self.controller.open_folder,
+            "<Control-O>": self.controller.open_folder,
+            "<Control-Shift-O>": self.controller.open_folder_recursive,
+            "<Control-Shift-o>": self.controller.open_folder_recursive
+        }
+        
+        self.FREE_SHORTCUTS = {
+            "<Key-h>": self.controller.toggle_solution,
+            "<Key-H>": self.controller.toggle_solution,
+            "<Left>": self.controller.prev_file,
+            "<Right>": self.controller.next_file
+        }
+        
+        self.SPEEDRUN_SHORTCUTS = {}
+    
+    @staticmethod
+    def bind_shortcuts(target, shortcuts):
+        for keypress, command in shortcuts.items():
+            target.bind(keypress, command)
+        return
+    
+    @staticmethod
+    def unbind_shortcuts(target, shortcuts):
+        for keypress in shortcuts.keys():
+            target.unbind(keypress)
         return
 
 
@@ -610,4 +572,5 @@ if __name__ == "__main__":
     root = tk.Tk()
     main_window = MainWindow(root)
     apply_theme_fix()
+    root.minsize(width=400, height=200) # stopgap vs canvas overshrinking bug
     root.mainloop()
