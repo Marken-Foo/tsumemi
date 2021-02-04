@@ -9,9 +9,10 @@ import event
 import model
 import timer
 
-from board_canvas import BoardCanvas, CmdApplySkin, PieceSkin, BoardSkin
+from board_canvas import BoardCanvas, PieceSkin, BoardSkin
 from model import ProblemStatus
 from nav_controls import FreeModeNavControls, SpeedrunNavControls
+from settings_window import SettingsWindow
 
 
 class Menubar(tk.Menu):
@@ -56,64 +57,6 @@ class Menubar(tk.Menu):
         # Bind to main window
         parent["menu"] = self
         return
-
-
-class SettingsWindow(tk.Toplevel):
-    def __init__(self, controller, *args, **kwargs):
-        self.controller = controller
-        super().__init__(*args, **kwargs)
-        
-        self.title("Settings")
-        
-        piece_palette = ttk.LabelFrame(self, text="Piece graphics")
-        piece_palette.grid(column=0, row=0, sticky="EW")
-        self.svar_pieces = tk.StringVar(value="TEXT")
-        
-        rdo_pieces_text = self._add_rdo_pieceskin(piece_palette, PieceSkin.TEXT)
-        rdo_pieces_text.grid(column=0, row=0, sticky="W")
-        rdo_pieces_light = self._add_rdo_pieceskin(piece_palette, PieceSkin.LIGHT)
-        rdo_pieces_light.grid(column=0, row=1, sticky="W")
-        rdo_pieces_intl = self._add_rdo_pieceskin(piece_palette, PieceSkin.INTL)
-        rdo_pieces_intl.grid(column=0, row=2, sticky="W")
-        
-        # TODO: Board colour picker???
-        board_palette = ttk.LabelFrame(self, text="Board graphics")
-        board_palette.grid(column=0, row=1, sticky="EW")
-        self.svar_board = tk.StringVar(value="WHITE")
-        
-        rdo_board_white = self._add_rdo_boardskin(board_palette, BoardSkin.WHITE)
-        rdo_board_white.grid(column=0, row=0, sticky="W")
-        rdo_board_brown = self._add_rdo_boardskin(board_palette, BoardSkin.BROWN)
-        rdo_board_brown.grid(column=0, row=1, sticky="W")
-        rdo_board_wood2 = self._add_rdo_boardskin(board_palette, BoardSkin.WOOD2)
-        rdo_board_wood2.grid(column=0, row=2, sticky="W")
-        
-        buttons_frame = ttk.Frame(self)
-        buttons_frame.grid(column=0, row=2, sticky="EW")
-        btn_okay = ttk.Button(buttons_frame, text="OK", command=self.save_and_quit)
-        btn_okay.grid(column=0, row=2)
-        btn_apply = ttk.Button(buttons_frame, text="Apply", command=self.save)
-        btn_apply.grid(column=1, row=2)
-        return
-    
-    def _add_rdo_boardskin(self, parent, skin):
-        return ttk.Radiobutton(parent, text=skin.desc, variable=self.svar_board, value=skin.name)
-    
-    def _add_rdo_pieceskin(self, parent, skin):
-        return ttk.Radiobutton(parent, text=skin.desc, variable=self.svar_pieces, value=skin.name)
-    
-    def save(self):
-        self.controller.config["skins"] = {"pieces": self.svar_pieces.get(), "board": self.svar_board.get()}
-        with open("config.ini", "w") as configfile:
-            self.controller.config.write(configfile)
-        self.controller.cmd_apply_skin.execute(BoardSkin[self.svar_board.get()])
-        self.controller.cmd_apply_skin.execute(PieceSkin[self.svar_pieces.get()])
-        self.controller.display_problem()
-        return
-    
-    def save_and_quit(self):
-        self.save()
-        self.destroy()
 
 
 class TimerDisplay(ttk.Label, event.IObserver):
@@ -374,7 +317,6 @@ class MainWindow:
         )
         self.board.grid(column=0, row=0, sticky="NSEW")
         self.board.bind("<Configure>", self.board.on_resize)
-        self.cmd_apply_skin = CmdApplySkin(self.board)
         
         # Initialise solution text
         self.is_solution_shown = False

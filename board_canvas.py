@@ -1,6 +1,7 @@
 import os
 import tkinter as tk
 
+from abc import ABC, abstractmethod
 from collections import Counter
 from enum import Enum
 from PIL import Image, ImageTk
@@ -11,7 +12,7 @@ from kif_parser import KanjiNumber, Piece
 class BoardSkin(Enum):
     WHITE = ("solid white", "white", None)
     BROWN = ("solid brown", "burlywood1", None)
-    WOOD2 = ("Wood2", "", os.path.relpath(r"static/images/boards/tile_wood2.png"))
+    WOOD2 = ("Wood2", "#fbcd77", os.path.relpath(r"static/images/boards/tile_wood2.png"))
     
     def __init__(self, desc, colour, path):
         self.desc = desc
@@ -28,15 +29,6 @@ class PieceSkin(Enum):
         self.desc = desc
         self.path = path
         return
-
-
-class CmdApplySkin:
-    # Command pattern??
-    def __init__(self, target):
-        self.target = target
-    
-    def execute(self, skin):
-        return self.target.apply_skin(skin)
 
 
 class ImgResizer:
@@ -77,7 +69,20 @@ class ImgResizer:
         return self.images
 
 
-class PieceImgManager:
+class ImgManager(ABC):
+    def has_images(self):
+        return self.skin.path is not None
+    
+    @abstractmethod
+    def load(self, skin):
+        pass
+    
+    @abstractmethod
+    def resize_images(self):
+        pass
+
+
+class PieceImgManager(ImgManager):
     def __init__(self, measurements, skin):
         def _komadai_piece_size():
             kpc_w = measurements.komadai_piece_size
@@ -145,7 +150,7 @@ class PieceImgManager:
             return self.komadai_inverted.get_dict()
 
 
-class BoardImgManager:
+class BoardImgManager(ImgManager):
     def __init__(self, measurements, skin):
         def _board_sq_size():
             sq_w = measurements.sq_w
@@ -157,9 +162,6 @@ class BoardImgManager:
         self.load(skin)
         self.skin = skin
         return
-    
-    def has_images(self):
-        return (self.skin.path is not None)
     
     def load(self, skin):
         filepath = skin.path
@@ -281,8 +283,14 @@ class BoardCanvas(tk.Canvas):
             board_skin = BoardSkin[name]
         except KeyError:
             board_skin = BoardSkin.WHITE
+        try:
+            name = config["skins"]["komadai"]
+            komadai_skin = BoardSkin[name]
+        except KeyError:
+            komadai_skin = BoardSkin.WHITE
         self.piece_images = PieceImgManager(self.measurements, piece_skin)
         self.board_images = BoardImgManager(self.measurements, board_skin)
+        self.komadai_skin = komadai_skin
         return
     
     def draw_board(self):
@@ -381,16 +389,24 @@ class BoardCanvas(tk.Canvas):
         
         c_hand = Counter(hand)
         num_piece_types = len(c_hand.items())
+        k_height = (
+            mochigoma_heading_size + 2*komadai_char_height
+            if num_piece_types == 0
+            else mochigoma_heading_size
+                 + num_piece_types*(symbol_size+pad)
+                 - pad
+        )
         if align == "bottom":
             # Adjust the "anchor" point
-            k_height = (
-                mochigoma_heading_size + 2*komadai_char_height
-                if num_piece_types == 0
-                else mochigoma_heading_size
-                     + num_piece_types*(symbol_size+pad)
-                     - pad
-            )
             y = y - k_height
+        
+        # Draw the komadai base
+        rect = self.create_rectangle(
+            x-komadai_piece_size, y,
+            x+komadai_piece_size, y+k_height,
+            fill=self.komadai_skin.colour,
+            outline=""
+        )
         
         header_text = "▲\n持\n駒" if sente else "△\n持\n駒"
         self.create_text(
@@ -408,7 +424,7 @@ class BoardCanvas(tk.Canvas):
                 font=("", komadai_text_size),
                 anchor="n"
             )
-            return
+            return rect
         else:
             # Hand is not empty
             for n, (piece, count) in enumerate(c_hand.items()):
@@ -432,7 +448,7 @@ class BoardCanvas(tk.Canvas):
                     font=("", komadai_text_size),
                     anchor="center"
                 )
-        return
+        return rect
     
     def draw(self):
         """Draw complete board with komadai and pieces.
@@ -486,14 +502,14 @@ class BoardCanvas(tk.Canvas):
                     invert=True
                 )
         # Draw komadai
-        self.draw_komadai(
+        self.north_komadai_rect = self.draw_komadai(
             w_pad + komadai_w/2,
             y_sq(0),
             north_hand,
             sente=is_north_sente,
             align="top"
         )
-        self.draw_komadai(
+        self.south_komadai_rect = self.draw_komadai(
             x_sq(9) + 2*coords_text_size + komadai_w/2,
             y_sq(9),
             south_hand,
@@ -502,18 +518,27 @@ class BoardCanvas(tk.Canvas):
         )
         return
     
-    def apply_skin(self, skin):
-        if isinstance(skin, PieceSkin):
-            self.piece_images.load(skin)
-        elif isinstance(skin, BoardSkin):
-            self.itemconfig(self.board_rect, fill=skin.colour)
-            self.board_images.load(skin)
-            board_img = (
-                self.board_images.get_dict()["board"]
-                if skin.path
-                else ""
-            )
+    def apply_piece_skin(self, skin):
+        self.piece_images.load(skin)
         return
+    
+    def apply_board_skin(self, skin):
+        self.itemconfig(self.board_rect, fill=skin.colour)
+        self.board_images.load(skin)
+        board_img = (
+            self.board_images.get_dict()["board"]
+            if skin.path
+            else ""
+        )
+        return
+    
+    def apply_komadai_skin(self, skin):
+        # Can only figure out how to apply solid colours for now
+        self.itemconfig(self.north_komadai_rect, fill=skin.colour)
+        self.itemconfig(self.south_komadai_rect, fill=skin.colour)
+        self.komadai_skin = skin
+        return
+    
     
     def on_resize(self, event):
         # Callback for when the canvas itself is resized
