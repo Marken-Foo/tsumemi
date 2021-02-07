@@ -4,7 +4,8 @@ import re
 from enum import Enum
 from random import shuffle
 
-from tsumemi.src.tsumemi.event import Emitter, ProbListEvent, ProbStatusEvent, ProbTimeEvent
+import tsumemi.src.tsumemi.event as event
+
 from tsumemi.src.tsumemi.kif_parser import KifReader
 
 
@@ -12,8 +13,26 @@ class ProblemStatus(Enum):
     NONE = 0; CORRECT = 1; WRONG = 2; SKIP = 3
 
 
+class ProbListEvent(event.Event):
+    def __init__(self, prob_list):
+        self.prob_list = prob_list
+
+
+class ProbStatusEvent(event.Event):
+    def __init__(self, prob_idx, status):
+        self.idx = prob_idx
+        self.status = status
+
+
+class ProbTimeEvent(event.Event):
+    def __init__(self, prob_idx, time):
+        self.idx = prob_idx
+        self.time = time
+
+
 class Problem:
-    '''Data class representing one tsume problem.'''
+    """Data class representing one tsume problem.
+    """
     def __init__(self, filepath):
         self.filepath = filepath
         self.time = None
@@ -29,6 +48,8 @@ class Problem:
 
 
 class CmdSortProbList:
+    """"Command object to call for a problem list to be sorted.
+    """
     def __init__(self, prob_list):
         self.prob_list = prob_list
         return
@@ -46,7 +67,11 @@ class CmdSortProbList:
         return self.prob_list.randomise()
 
 
-class ProblemList(Emitter):
+class ProblemList(event.Emitter):
+    """Represent a sortable list of problems with a "pointer" to the
+    current active problem. Also stores metadata about problem like
+    solve time and status.
+    """
     @staticmethod
     def natural_sort_key(str, _nsre=re.compile(r'(\d+)')):
         return [int(c) if c.isdigit() else c.lower() for c in _nsre.split(str)]
@@ -152,7 +177,9 @@ class ProblemList(Emitter):
 
 
 class Model():
-    # Following MVC principles, this is the data model of the program.
+    """Main data model of program, following MVC principles. Manages
+    reading problems from file and maintaining the problem list.
+    """
     def __init__(self):
         self.prob_buffer = ProblemList()
         self.directory = None # not currently used meaningfully

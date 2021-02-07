@@ -1,7 +1,7 @@
 import unittest
 
-from tsumemi.src.tsumemi import event
 from tsumemi.src.tsumemi.model import Problem, ProblemList, ProblemStatus
+from tsumemi.src.tsumemi.model import ProbListEvent, ProbStatusEvent, ProbTimeEvent
 
 
 class TestProblemList(unittest.TestCase):
@@ -69,15 +69,15 @@ class TestProblemList(unittest.TestCase):
         self.assertEqual(self.problem_list.problems.index(prob), self.problem_list.curr_prob_idx)
     
     def verify_status_event(self):
-        self.assertTrue(isinstance(self.event, event.ProbStatusEvent))
+        self.assertTrue(isinstance(self.event, ProbStatusEvent))
         self.assertEqual(self.event.status, self.problem_list.curr_prob.status)
     
     def verify_time_event(self):
-        self.assertTrue(isinstance(self.event, event.ProbTimeEvent))
+        self.assertTrue(isinstance(self.event, ProbTimeEvent))
         self.assertEqual(self.event.time, self.problem_list.curr_prob.time)
     
     def verify_list_event(self):
-        self.assertTrue(isinstance(self.event, event.ProbListEvent))
+        self.assertTrue(isinstance(self.event, ProbListEvent))
         self.assertEqual(self.event.prob_list, self.problem_list.problems)
     
     def test_clear(self):

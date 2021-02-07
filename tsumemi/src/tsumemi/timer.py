@@ -3,16 +3,18 @@ import time
 from itertools import accumulate
 from math import fsum
 
-from tsumemi.src.tsumemi.event import Emitter, TimerStartEvent, TimerStopEvent, TimerSplitEvent
+import tsumemi.src.tsumemi.event as event
 
 
 def sec_to_hms(seconds):
     # Take time in seconds, return tuple of (hours, minutes, seconds).
     return (int(seconds // 3600), int((seconds % 3600) // 60), seconds % 60)
 
+
 def _two_digits(num):
     # Take num, make integer part two chars (clock display), return string
     return "0" + str(num) if num < 10 else str(num)
+
 
 def sec_to_str(seconds, places=1):
     hms = list(sec_to_hms(seconds))
@@ -20,14 +22,26 @@ def sec_to_str(seconds, places=1):
     return ":".join([_two_digits(i) for i in hms])
 
 
+class TimerStartEvent(event.Event):
+    pass
+
+
+class TimerStopEvent(event.Event):
+    pass
+
+
+class TimerSplitEvent(event.Event):
+    def __init__(self, lap_time):
+        self.time = lap_time
+
+
 class SplitTimer:
-    '''
-    Split timer class. Works like a speedrunning split timer.
-    Stores "lap times", and split times must be calculated from these.
-    Split time = time elapsed since beginning, lap time = time between splits.
-    e.g. If I take splits at 0:30, 1:00, 1:30 and 2:00,
-    I have 4 splits (those four), and 4 lap times (each lap is 30 seconds).
-    The logic for this class is vaguely "state-based", if that helps.
+    '''Class that works like a speedrunning split timer.
+    Stores "lap times"; split times must be calculated from these.
+    Split time = time elapsed since beginning.
+    Lap time = time between splits.
+    e.g. If I take splits at 0:30, 1:00, 1:30 and 2:00, I have 4 splits
+    (those four), and 4 lap times (each lap is 30 seconds).
     '''
     
     def __init__(self):
@@ -98,7 +112,10 @@ class SplitTimer:
         return accumulate(self.lap_times)
 
 
-class Timer(Emitter):
+class Timer(event.Emitter):
+    """Wrapper for the SplitTimer class, with normal stopwatch
+    functions. Emits events to be observed by GUI displays of
+    the timer (or for other purposes)."""
     def __init__(self):
         self.clock = SplitTimer()
         self.observers = []
@@ -137,7 +154,8 @@ class Timer(Emitter):
 
 
 class CmdReadTimer:
-    # Command pattern
+    """Command object to let other objects ask for a timer's time.
+    """
     def __init__(self, timer):
         self.timer = timer
     

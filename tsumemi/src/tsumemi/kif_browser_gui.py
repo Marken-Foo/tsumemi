@@ -10,7 +10,6 @@ import tsumemi.src.tsumemi.model as model
 import tsumemi.src.tsumemi.timer as timer
 
 from tsumemi.src.tsumemi.board_canvas import BoardCanvas, PieceSkin, BoardSkin
-from tsumemi.src.tsumemi.model import ProblemStatus
 from tsumemi.src.tsumemi.nav_controls import FreeModeNavControls, SpeedrunNavControls
 from tsumemi.src.tsumemi.settings_window import SettingsWindow, CONFIG_PATH
 
@@ -65,8 +64,8 @@ class TimerDisplay(ttk.Label, event.IObserver):
         super().__init__(parent, *args, **kwargs)
         
         self.NOTIFY_ACTIONS = {
-            event.TimerStartEvent: self._on_start,
-            event.TimerStopEvent: self._on_stop
+            timer.TimerStartEvent: self._on_start,
+            timer.TimerStopEvent: self._on_stop
         }
         # we assume the observed timer is in reset state, initialise to match
         self.is_running = False
@@ -153,15 +152,15 @@ class ProblemsView(ttk.Treeview, event.IObserver):
         super().__init__(parent, *args, **kwargs)
         
         self.NOTIFY_ACTIONS = {
-            event.ProbStatusEvent: self.set_status,
-            event.ProbTimeEvent: self.set_time,
-            event.ProbListEvent: self.refresh_view
+            model.ProbStatusEvent: self.set_status,
+            model.ProbTimeEvent: self.set_time,
+            model.ProbListEvent: self.refresh_view
         }
         self.status_strings = {
-            ProblemStatus.NONE: "",
-            ProblemStatus.SKIP: "-",
-            ProblemStatus.CORRECT: "O",
-            ProblemStatus.WRONG: "X"
+            model.ProblemStatus.NONE: "",
+            model.ProblemStatus.SKIP: "-",
+            model.ProblemStatus.CORRECT: "O",
+            model.ProblemStatus.WRONG: "X"
         }
         
         self["columns"] = ("filename", "time", "status")
@@ -480,7 +479,7 @@ class MainWindow:
     
     def skip(self):
         self.split_timer()
-        self.model.set_status(ProblemStatus.SKIP)
+        self.model.set_status(model.ProblemStatus.SKIP)
         if not self.next_file():
             self.end_of_folder()
         return
@@ -493,7 +492,7 @@ class MainWindow:
         return
     
     def mark_correct(self):
-        self.model.set_status(ProblemStatus.CORRECT)
+        self.model.set_status(model.ProblemStatus.CORRECT)
         if not self.next_file():
             self.end_of_folder()
             return
@@ -502,7 +501,7 @@ class MainWindow:
         return
     
     def mark_wrong(self):
-        self.model.set_status(ProblemStatus.WRONG)
+        self.model.set_status(model.ProblemStatus.WRONG)
         if not self.next_file():
             self.end_of_folder()
             return
