@@ -1,4 +1,4 @@
-# KIF browser #
+# Tsumemi 詰め見 - KIF browser #
 
 Navigate through a folder of tsumeshogi problems with ease. For each problem, see the board position and view the solution when done solving.
 
@@ -12,7 +12,7 @@ This little bit of Python aims to let shogi players train with their large colle
 
 Dependencies: Python 3.5 (tested with 3.8.1) or later, TKinter 8.6 or later, Pillow (tested with 8.1.0)
 
-Download the repo into the working directory of your choice, e.g. `git svn clone https://github.com/Marken-Foo/kif-browser/trunk`.
+Download the repo into the working directory of your choice, e.g. `git svn clone https://github.com/Marken-Foo/tsumemi/trunk` (Git SVN) or `git clone https://github.com/Marken-Foo/tsumemi.git` (Git).
 
 To open the program, either run tsumemi.py (make sure it's in the same directory as the top-level tsumemi folder), or run the tsumemi top-level package from the command line with `python3 -m tsumemi`.
 
@@ -26,7 +26,7 @@ You'll also need Pillow, which lets Python files deal with images. Once you've i
 
 (If you have issues with the above steps, you can consult the first two sections of some [documentation on how to install python packages](https://packaging.python.org/tutorials/installing-packages/).
 
-Download everything in this repository. You can go to the [main page of this repository](https://github.com/Marken-Foo/kif-browser), click the green "Code" at the top right of the file list, and you can download everything as a zip file.
+Download everything in this repository. You can go to the [main page of this repository](https://github.com/Marken-Foo/tsumemi), click the green "Code" at the top right of the file list, and you can download everything as a zip file.
 
 Finally, to run the program, double click on `tsumemi.py`.
 
