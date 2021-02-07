@@ -1,7 +1,7 @@
 import unittest
 
-from tsumemi.src.tsumemi.model import Problem, ProblemList, ProblemStatus
-from tsumemi.src.tsumemi.model import ProbListEvent, ProbStatusEvent, ProbTimeEvent
+from tsumemi.src.tsumemi.problem_list import Problem, ProblemList, ProblemStatus
+from tsumemi.src.tsumemi.problem_list import ProbListEvent, ProbStatusEvent, ProbTimeEvent
 
 
 class TestProblemList(unittest.TestCase):

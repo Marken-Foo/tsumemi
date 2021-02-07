@@ -7,6 +7,7 @@ from tkinter import filedialog, messagebox, ttk
 
 import tsumemi.src.tsumemi.event as event
 import tsumemi.src.tsumemi.model as model
+import tsumemi.src.tsumemi.problem_list as plist
 import tsumemi.src.tsumemi.timer as timer
 
 from tsumemi.src.tsumemi.board_canvas import BoardCanvas, PieceSkin, BoardSkin
@@ -152,15 +153,15 @@ class ProblemsView(ttk.Treeview, event.IObserver):
         super().__init__(parent, *args, **kwargs)
         
         self.NOTIFY_ACTIONS = {
-            model.ProbStatusEvent: self.set_status,
-            model.ProbTimeEvent: self.set_time,
-            model.ProbListEvent: self.refresh_view
+            plist.ProbStatusEvent: self.set_status,
+            plist.ProbTimeEvent: self.set_time,
+            plist.ProbListEvent: self.refresh_view
         }
         self.status_strings = {
-            model.ProblemStatus.NONE: "",
-            model.ProblemStatus.SKIP: "-",
-            model.ProblemStatus.CORRECT: "O",
-            model.ProblemStatus.WRONG: "X"
+            plist.ProblemStatus.NONE: "",
+            plist.ProblemStatus.SKIP: "-",
+            plist.ProblemStatus.CORRECT: "O",
+            plist.ProblemStatus.WRONG: "X"
         }
         
         self["columns"] = ("filename", "time", "status")
@@ -271,7 +272,7 @@ class MainWindow:
         self.model = model.Model()
         self.timer = timer.Timer()
         self.cmd_read_timer = timer.CmdReadTimer(self.timer)
-        self.cmd_sort_pbuf = model.CmdSortProbList(self.model.prob_buffer)
+        self.cmd_sort_pbuf = plist.CmdSortProbList(self.model.prob_buffer)
         # tkinter stuff, set up the main window
         # Reference to tk.Tk() root object
         self.master = master
@@ -479,7 +480,7 @@ class MainWindow:
     
     def skip(self):
         self.split_timer()
-        self.model.set_status(model.ProblemStatus.SKIP)
+        self.model.set_status(plist.ProblemStatus.SKIP)
         if not self.next_file():
             self.end_of_folder()
         return
@@ -492,7 +493,7 @@ class MainWindow:
         return
     
     def mark_correct(self):
-        self.model.set_status(model.ProblemStatus.CORRECT)
+        self.model.set_status(plist.ProblemStatus.CORRECT)
         if not self.next_file():
             self.end_of_folder()
             return
@@ -501,7 +502,7 @@ class MainWindow:
         return
     
     def mark_wrong(self):
-        self.model.set_status(model.ProblemStatus.WRONG)
+        self.model.set_status(plist.ProblemStatus.WRONG)
         if not self.next_file():
             self.end_of_folder()
             return
