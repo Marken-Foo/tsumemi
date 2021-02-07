@@ -1,0 +1,1 @@
+from tsumemi.src.tsumemi.kif_browser_gui import run

@@ -5,14 +5,14 @@ import tkinter as tk
 from functools import partial
 from tkinter import filedialog, messagebox, ttk
 
-import event
-import model
-import timer
+import tsumemi.src.tsumemi.event as event
+import tsumemi.src.tsumemi.model as model
+import tsumemi.src.tsumemi.timer as timer
 
-from board_canvas import BoardCanvas, PieceSkin, BoardSkin
-from model import ProblemStatus
-from nav_controls import FreeModeNavControls, SpeedrunNavControls
-from settings_window import SettingsWindow
+from tsumemi.src.tsumemi.board_canvas import BoardCanvas, PieceSkin, BoardSkin
+from tsumemi.src.tsumemi.model import ProblemStatus
+from tsumemi.src.tsumemi.nav_controls import FreeModeNavControls, SpeedrunNavControls
+from tsumemi.src.tsumemi.settings_window import SettingsWindow, CONFIG_PATH
 
 
 class Menubar(tk.Menu):
@@ -284,16 +284,16 @@ class MainWindow:
         # Create settings file if none exists
         self.config = configparser.ConfigParser(dict_type=dict)
         try:
-            with open("config.ini", "r") as configfile:
+            with open(CONFIG_PATH, "r") as configfile:
                 self.config.read_file(configfile)
         except FileNotFoundError:
-            with open("config.ini", "w+") as configfile:
+            with open(CONFIG_PATH, "w+") as configfile:
                 # write a default config.ini
                 configfile.write("[skins]\n")
                 configfile.write("pieces = TEXT\n")
                 configfile.write("board = BROWN\n")
                 configfile.write("komadai = WHITE\n")
-            with open("config.ini", "r") as configfile:
+            with open(CONFIG_PATH, "r") as configfile:
                 self.config.read_file(configfile)
         self.mainframe = ttk.Frame(self.master)
         self.mainframe.grid(column=0, row=0, sticky="NSEW")
@@ -554,7 +554,7 @@ class Bindings:
         return
 
 
-if __name__ == "__main__":
+def run():
     def apply_theme_fix():
         # Fix from pyIDM on GitHub:
         # https://github.com/pyIDM/PyIDM/issues/128#issuecomment-655477524

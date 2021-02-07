@@ -14,7 +14,7 @@ Dependencies: Python 3.5 (tested with 3.8.1) or later, TKinter 8.6 or later, Pil
 
 Download the repo into the working directory of your choice, e.g. `git svn clone https://github.com/Marken-Foo/kif-browser/trunk`.
 
-To run, run kif_browser_gui.py, e.g. `python3 kif_browser_gui`.
+To open the program, either run tsumemi.py (make sure it's in the same directory as the top-level tsumemi folder), or run the tsumemi top-level package from the command line with `python3 -m tsumemi`.
 
 Comes with a free set of ten 1-te and ten 3-te problems in the folder `/sample_problems`, composed by Marken Foo.
 
@@ -24,11 +24,11 @@ You'll need Python 3, which will help you run Python (.py) code files on your co
 
 You'll also need Pillow, which lets Python files deal with images. Once you've installed Python (let it change your PATH variable when installing!), open a console (Command Prompt, Windows Powershell, Mac Terminal, Bash, etc). Type `pip install Pillow` and press enter. This should install Pillow.
 
-Finally, download everything in this repository. You can go to the [main page of this repository](https://github.com/Marken-Foo/kif-browser), click the green "Code" at the top right of the file list, and you can download everything as a zip file.
+(If you have issues with the above steps, you can consult the first two sections of some [documentation on how to install python packages](https://packaging.python.org/tutorials/installing-packages/).
 
-(If you're a bit more familiar with the command line and if you have git, just run `git svn clone https://github.com/Marken-Foo/kif-browser/trunk` in the working directory of your choice.)
+Download everything in this repository. You can go to the [main page of this repository](https://github.com/Marken-Foo/kif-browser), click the green "Code" at the top right of the file list, and you can download everything as a zip file.
 
-Finally, to run the program, double click `kif_browser_gui.py` or run it from the command line with Python.
+Finally, to run the program, double click on `tsumemi.py`.
 
 ## How to use ##
 

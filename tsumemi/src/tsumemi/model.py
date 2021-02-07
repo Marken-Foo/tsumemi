@@ -4,8 +4,8 @@ import re
 from enum import Enum
 from random import shuffle
 
-from event import Emitter, ProbListEvent, ProbStatusEvent, ProbTimeEvent
-from kif_parser import KifReader
+from tsumemi.src.tsumemi.event import Emitter, ProbListEvent, ProbStatusEvent, ProbTimeEvent
+from tsumemi.src.tsumemi.kif_parser import KifReader
 
 
 class ProblemStatus(Enum):

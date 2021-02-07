@@ -1,8 +1,12 @@
+import os
 import tkinter as tk
 
 from tkinter import ttk
 
-from board_canvas import BoardSkin, PieceSkin
+from tsumemi.src.tsumemi.board_canvas import BoardSkin, PieceSkin
+
+
+CONFIG_PATH = os.path.relpath(r"tsumemi/resources/config.ini")
 
 
 class SettingsWindow(tk.Toplevel):
@@ -58,7 +62,7 @@ class SettingsWindow(tk.Toplevel):
             "board": self.svar_board.get(),
             "komadai": self.svar_komadai.get()
         }
-        with open("config.ini", "w") as configfile:
+        with open(CONFIG_PATH, "w") as configfile:
             self.controller.config.write(configfile)
         # tell the board what skins to use
         self.controller.board.apply_board_skin(BoardSkin[self.svar_board.get()])

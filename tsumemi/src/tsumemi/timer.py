@@ -3,7 +3,7 @@ import time
 from itertools import accumulate
 from math import fsum
 
-from event import Emitter, TimerStartEvent, TimerStopEvent, TimerSplitEvent
+from tsumemi.src.tsumemi.event import Emitter, TimerStartEvent, TimerStopEvent, TimerSplitEvent
 
 
 def sec_to_hms(seconds):

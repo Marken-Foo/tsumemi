@@ -3,11 +3,11 @@ import unittest
 from io import StringIO
 from time import sleep
 
-import event
-import timer
+from tsumemi.src.tsumemi import event
+from tsumemi.src.tsumemi import timer
 
-from kif_parser import KifReader, Piece
-from model import Problem, ProblemList, ProblemStatus
+from tsumemi.src.tsumemi.kif_parser import KifReader, Piece
+from tsumemi.src.tsumemi.model import Problem, ProblemList, ProblemStatus
 
 
 class TestProblemList(unittest.TestCase):
@@ -407,5 +407,5 @@ class TestKifReader(unittest.TestCase):
         self.assertEqual(gote, answer_gote)
 
 
-if __name__ == "__main__":
+def run():
     unittest.main()
