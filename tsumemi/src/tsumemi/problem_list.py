@@ -1,9 +1,9 @@
 import re
 
-import tsumemi.src.tsumemi.event as event
-
 from enum import Enum
 from random import shuffle
+
+import tsumemi.src.tsumemi.event as event
 
 
 class ProblemStatus(Enum):
