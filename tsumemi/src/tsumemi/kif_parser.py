@@ -135,6 +135,7 @@ class KifReader:
             hand_line = handle.readline().lstrip().rstrip()
         hand_pieces = []
         hand_str = hand_line.split("：", maxsplit=1)[1] # full-width colon
+        hand_str = hand_str.lstrip().rstrip()
         if hand_str == "なし":
             return hand_pieces
         hand = re.split("　| ", hand_str) # full-width or half-width space
