@@ -10,6 +10,14 @@ This little bit of Python aims to let shogi players train with their large colle
 
 ## How to install ##
 
+### From binary ###
+
+For Windows 10 users, you can download a zipped file from the [Releases](https://github.com/Marken-Foo/tsumemi/releases/) tab.
+
+To use, unzip the folder somewhere and run the tsumemi.exe executable file inside.
+
+### From source ###
+
 Dependencies: Python 3.5 (tested with 3.8.1) or later, TKinter 8.6 or later, Pillow (tested with 8.1.0)
 
 Download the repo into the working directory of your choice, e.g. `git svn clone https://github.com/Marken-Foo/tsumemi/trunk` (Git SVN) or `git clone https://github.com/Marken-Foo/tsumemi.git` (Git).
@@ -18,7 +26,7 @@ To open the program, either run tsumemi.py (make sure it's in the same directory
 
 Comes with a free set of ten 1-te and ten 3-te problems in the folder `/sample_problems`, composed by Marken Foo.
 
-### Less-technical instructions ###
+### Less-technical instructions - from source ###
 
 You'll need Python 3, which will help you run Python (.py) code files on your computer. You can download an installer for the latest version from the [official Python website](https://www.python.org/). It also comes with TKinter.
 
