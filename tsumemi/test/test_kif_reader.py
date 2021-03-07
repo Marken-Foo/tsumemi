@@ -1,6 +1,7 @@
 import unittest
 
 from io import StringIO
+from os.path import relpath
 
 from tsumemi.src.tsumemi.kif_parser import KifReader, Piece
 
@@ -36,7 +37,7 @@ class TestKifReader(unittest.TestCase):
             hand.extend([type] * num)
         return hand
     
-    def test_read_hand_line(self):
+    def test_read_hand_line_halfwidth(self):
         # half-width space, trailing space
         line = "後手の持駒：飛 角 金二 銀三 桂四 香四 歩十六 "
         answer = self.make_hand([1, 1, 2, 3, 4, 4, 16])
