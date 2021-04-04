@@ -1,0 +1,231 @@
+﻿#KIF version=2.0 encoding=UTF-8
+開始日時：2020/11/22
+場所：81Dojo
+持ち時間：15分+60秒
+手合割：平手
+先手：hatuyukiuk
+後手：Illya
+手数----指手---------消費時間--
+   1 ７六歩(77)        ( 0:12/00:00:12)
+   2 ３四歩(33)        ( 0:10/00:00:10)
+   3 ２六歩(27)        ( 0:46/00:00:58)
+   4 ８四歩(83)        ( 0:12/00:00:22)
+*P25 here would have been possible to go for an aigakari or yokofudori type of opening as well.
+   5 ６六歩(67)        ( 2:38/00:03:36)
+   6 ３二金(41)        ( 0:11/00:00:33)
+*P85 was more pointed. This keeps options open for sente.
+   7 ６八銀(79)        ( 0:10/00:03:46)
+   8 ８五歩(84)        ( 0:02/00:00:35)
+   9 ７七銀(68)        ( 0:02/00:03:48)
+*Signalling Yagura.
+*
+  10 ５四歩(53)        ( 0:08/00:00:43)
+  11 ５六歩(57)        ( 0:06/00:03:54)
+*Good, avoid having P55 vanguard taken by gote.
+  12 ６二銀(71)        ( 0:04/00:00:47)
+  13 ５八金(49)        ( 0:19/00:04:13)
+  14 ４二銀(31)        ( 0:02/00:00:49)
+  15 ６七金(58)        ( 0:01/00:04:14)
+  16 ５二金(61)        ( 0:17/00:01:06)
+  17 ７八金(69)        ( 0:02/00:04:16)
+  18 ６四歩(63)        ( 0:09/00:01:15)
+*Something started to go weird here. This is not the Yagura I am familiar with.
+*
+  19 ６九玉(59)        ( 0:02/00:04:18)
+  20 ５三銀(62)        ( 0:11/00:01:26)
+*This is already dubious maybe. It becomes quite awkward for gote to develop the bishop effectively, as there are now 3 pieces on the 31-97 diagonal. I don't think gote can go for Yagura anymore.
+  21 ７九角(88)        ( 0:13/00:04:31)
+  22 ４一玉(51)        ( 0:23/00:01:49)
+  23 ３八銀(39)        ( 0:13/00:04:44)
+*Indicating maybe a bougin. P25 first is also possible to keep options with the silver.
+  24 ７四歩(73)        ( 1:00/00:02:49)
+  25 ６八角(79)        ( 0:02/00:04:46)
+  26 ７三桂(81)        ( 0:07/00:02:56)
+*Gote is trying to make the best of an awkward situation by playing sensible moves while deferring the question of the castle and bishop.
+  27 ７九玉(69)        ( 0:06/00:04:52)
+  28 ９四歩(93)        ( 0:07/00:03:03)
+*A waiting move. At this point I couldn't see how to proceed, as my bishop on 22 likely had to stay there to be useful. That pretty much fixes my generals in place, and I seem to be stuck in this weird crab-ish castle.
+  29 ８八玉(79)        ( 0:35/00:05:27)
+*This is a mistake. As gote's game plan was all about making the B22 useful along the long diagonal, this king move walks right into its scope, while the N73 earlier had the idea of P65 attacking.
+*
+*
+  30 ６五歩(64)        ( 1:25/00:04:28)
+*I took the chance happily. The king was safer on 79 here. Sometimes even in normal Yagura games you may want to keep the king back for a while if it's not necessary to get fully castled.
+  31 ４六角(68)        ( 0:46/00:06:13)
+*This was somewhat annoying. Now my gold has to get pulled out.
+  32 ６三金(52)        ( 1:21/00:05:49)
+*I figured that supporting the S64 advance was better than keeping shape with G62.
+  33 ６五歩(66)        ( 0:37/00:06:50)
+  34 ８六歩(85)        ( 0:04/00:05:53)
+  35 同　歩(87)        ( 0:19/00:07:09)
+  36 同　飛(82)        ( 0:01/00:05:54)
+  37 ８七歩打           ( 0:17/00:07:26)
+  38 ８一飛(86)        ( 0:02/00:05:56)
+*Now gote achieved a pawn trade, and retreated the rook to 81 smoothly. The knight is thus unpinned and ready to take on 65 (part of the plan I saw with G62/G63).
+  39 ２五歩(26)        ( 0:36/00:08:02)
+  40 ７五歩(74)        ( 1:56/00:07:52)
+*This was a hard decision to make (hence spending 2 minutes). I considered taking N65 immediately, but if I could get the push-sac P75 first, even better. The problem is that sente doesn't have to take the offered pawn.
+  41 同　歩(76)        ( 2:02/00:10:04)
+  42 ６五桂(73)        ( 0:30/00:08:22)
+*With the additional push-sac on the 7th file, I felt like the attack could lead somewhere, even if it wasn't clear yet.
+  43 ６六銀(77)        ( 0:06/00:10:10)
+  44 ６四銀(53)        ( 0:42/00:09:04)
+*I tried playing slowly. I was looking at some sacrifices with P86 joining pawn followed by Bx66, but wasn't sure it would work in my favour. (Computer thinks it does.)
+  45 ７六金(67)        ( 1:44/00:11:54)
+  46 ３一玉(41)        ( 1:52/00:10:56)
+*I thought that there would have been some further attacking move, but didn't see anything. So I took the chance to get the king safer, away from any future bishop drop checks.
+  47 １六歩(17)        ( 0:58/00:12:52)
+*This was really slow - I was happy to get a free move like that. Sente should really try to start attacking, or at least creating some potential for future attacking moves.
+  48 ５三金(63)        ( 1:52/00:12:48)
+*This was a bit of a silly idea. I wanted to make Bx66 work, but 48 Bx66 didn't work immediately, so this was a strange way to prepare it (and bring the gold back towards the king for now). 73 is left unguarded, but I judged a bishop promotion there would be slower compared to whatever attack I could conjure.
+*
+  49 ２七銀(38)        ( 0:35/00:13:27)
+*This bougin is now extremely slow, and it covers the rook's vision of 24 as well. It does open the rook to defend the second rank though. Regardless, I think sente is in huge trouble now.
+  50 ６六角(22)        ( 1:09/00:13:57)
+  51 同　金(76)        ( 0:25/00:13:52)
+  52 ５七銀打           ( 0:01/00:13:58)
+*The next sequence is forced, and I didn't like my position so much after that, but it still felt like I had an advantage.
+  53 ６五金(66)        ( 1:55/00:15:47)
+  54 ４六銀成(57)       ( 0:11/00:14:09)
+  55 ６四金(65)        ( 0:55/00:16:42)
+  56 同　金(53)        ( 0:06/00:14:15)
+  57 ４六歩(47)        ( 0:37/00:17:19)
+  58 ３九角打           ( 1:38/00:15:53)
+*It was very hard to decide on an attacking followup, as I had traded off most of my attacking pieces now, and the gold on 64 is floating and dangerously close to becoming a spectator.
+  59 ６八飛(28)        ( 1:00/00:18:19)
+  60 ６七歩打           ( 0:25/00:16:18)
+*I didn't like Bx75+ P'76 somehow, but it was probably fine.
+  61 同　飛(68)        ( 0:56/00:19:15)
+  62 ７五角成(39)       ( 0:59/00:17:17)
+*Sente now has a lot of possibilities to consider.
+*
+  63 ６六角打           ( 0:55/00:20:10)
+*This didn't seem good. I can still control the long diagonal.
+*
+  64 同　馬(75)        ( 0:27/00:17:44)
+  65 同　飛(67)        ( 0:48/00:20:58)
+  66 ２二角打           ( 1:00/00:18:44)
+*I was hesitating between all three bishop drops (22, 33, 44) and barely made a move in time. This one creates a wall for my king, but stays back from any attempts to gain tempo with N'45 or P45.
+  67 ６七歩打           ( 0:03/00:21:01)
+*A severe mistake. Once again, shutting the diagonal that was the source of all the pain was correct.
+  68 ６五歩打           ( 0:07/00:18:51)
+*A rook for a pawn - this is almost certainly winning now for gote. Your remaining chances are with promoting pieces on the left, harassing my rook and hoping I'm not fast and accurate enough. Sente is losing.
+  69 ４五桂打           ( 0:57/00:21:58)
+  70 ６六歩(65)        ( 0:06/00:18:57)
+  71 同　歩(67)        ( 0:51/00:22:49)
+  72 同　角(22)        ( 0:40/00:19:37)
+  73 ７七銀打           ( 0:41/00:23:30)
+  74 ４四角(66)        ( 0:49/00:20:26)
+  75 ６五歩打           ( 0:55/00:24:25)
+  76 ７六歩打           ( 0:59/00:21:25)
+  77 ６四歩(65)        ( 0:59/00:25:24)
+  78 ７七歩成(76)       ( 0:03/00:21:28)
+  79 同　金(78)        ( 0:53/00:26:17)
+  80 ７六歩打           ( 0:42/00:22:10)
+  81 ９八玉(88)        ( 0:55/00:27:12)
+  82 ７七歩成(76)       ( 0:28/00:22:38)
+  83 同　桂(89)        ( 0:02/00:27:14)
+  84 ８九銀打           ( 0:11/00:22:49)
+  85 投了             ( 0:41/00:27:55)
+まで84手で後手の勝ち
+
+変化：75手
+  75 ６六歩打           ( 0:00/00:23:30)
+
+変化：74手
+  74 同　角成(66)       ( 0:00/00:19:37)
+  75 同　金(78)        ( 0:00/00:23:30)
+  76 ７六歩打           ( 0:00/00:19:37)
+
+変化：67手
+  67 ５五桂打           ( 0:00/00:20:58)
+*The best option, shutting the diagonal with minimal material loss and giving you some time to construct a defence.
+  68 同　金(64)        ( 0:00/00:18:44)
+  69 ６二飛成(66)       ( 0:00/00:20:58)
+  70 ６六金(55)        ( 0:00/00:18:44)
+*The gold had been earmarked as an attacking piece ever since it recaptured on 64, so this kind of approach could have happened.
+
+変化：63手
+  63 ７六歩打           ( 0:00/00:19:15)
+*This looked cute. Trying to defend by dropping (a silver/pawn) on 77 with tempo. Gote doesn't have quite enough attack yet to bust through, so taking time for defence is certainly plausible.
+
+変化：63手
+  63 ６六銀打           ( 0:00/00:19:15)
+*I thought this might have been possible too, although the silver on 66 could start floating precariously if the rook is harassed. Computer doesn't like this one.
+*
+*
+  64 ７六馬(75)        ( 0:00/00:17:17)
+
+変化：62手
+  62 ６六歩打           ( 0:00/00:16:18)
+*I also considered this, but being in fugire hurts my chances to continue. Gx75 would be nice as a followup if I had the time to do so, but it wasn't clear if there was.
+
+変化：60手
+  60 ７五角成(39)       ( 0:00/00:15:53)
+  61 ７六歩打           ( 0:00/00:18:19)
+  62 ６七歩打           ( 0:00/00:15:53)
+*I didn't have time to think if this was sente enough to justify promoting the bishop first.
+
+変化：48手
+  48 ７五銀(64)        ( 0:00/00:10:56)
+*I missed this one.
+
+変化：48手
+  48 ６六角(22)        ( 0:00/00:10:56)
+*Doesn't work immediately.
+  49 同　金(76)        ( 0:00/00:12:52)
+  50 ５七銀打           ( 0:00/00:10:56)
+  51 ７二角打           ( 0:00/00:12:52)
+*The hole on 72 is why I couldn't play 48 Bx66.
+
+変化：47手
+  47 ２四歩(25)        ( 0:00/00:11:54)
+  48 同　歩(23)        ( 0:00/00:10:56)
+*Even if the followup isn't clear, making the push-sac on the 2nd file first is necessary for almost any sort of attack, so might as well play it, then think. To drop on 23? To take with the rook? Whatever the case, this was needed.
+
+変化：44手
+  44 ８六歩打           ( 0:00/00:08:22)
+  45 同　歩(87)        ( 0:00/00:10:10)
+  46 ６六角(22)        ( 0:00/00:08:22)
+  47 同　金(67)        ( 0:00/00:10:10)
+  48 ８六飛(81)        ( 0:00/00:08:22)
+  49 ８七歩打           ( 0:00/00:10:10)
+  50 ６六飛(86)        ( 0:00/00:08:22)
+  51 ６七歩打           ( 0:00/00:10:10)
+  52 ５六飛(66)        ( 0:00/00:08:22)
+*I got to this position in my head, but somehow missed that P'57 could just be taken by Nx+.
+
+変化：41手
+  41 ５五歩(56)        ( 0:00/00:08:02)
+*Something like just closing the diagonal temporarily was what I was thinking. Gote's attack loses a little bit of steam.
+
+変化：41手
+  41 ２四歩(25)        ( 0:00/00:08:02)
+*The computer suggests this, which is a pretty fierce line.
+  42 同　歩(23)        ( 0:00/00:07:52)
+  43 ２三歩打           ( 0:00/00:08:02)
+*Disturbing gote's piece formation. Counterattacks by sente later on will be that much stronger.
+
+変化：29手
+  29 ２五歩(26)        ( 0:00/00:04:52)
+*The king is safe on 71 for now. Here gote should ignore the push, and accept the pawn trade as it comes.
+  30 ９五歩(94)        ( 0:00/00:03:03)
+  31 ２四歩(25)        ( 0:00/00:04:52)
+  32 同　歩(23)        ( 0:00/00:03:03)
+  33 同　角(68)        ( 0:00/00:04:52)
+  34 ２三歩打           ( 0:00/00:03:03)
+  35 ４六角(24)        ( 0:00/00:04:52)
+*Sente has acquired a pawn in hand. Developing with S27, P36, N37 and such is indicated.
+
+変化：31手
+  31 ２七銀(38)        ( 0:00/00:04:52)
+*Sente doesn't have to trade immediately either - getting the silver in play is also necessary soon.
+
+変化：18手
+  18 ７四歩(73)        ( 0:00/00:01:06)
+*This is what I am more familiar with. Natural development of the bishop on 64 is possible, along with jumping a knight or putting the silver on 73 to 84/64.
+
+変化：6手
+   6 ８五歩(84)        ( 0:00/00:00:22)
+*This would have asked sente what the plan was. Almost certainly B77 is the move (gangi ideas, maybe even a feint furibisha?), but I didn't want to drag you too far out of your comfort zone.
+
