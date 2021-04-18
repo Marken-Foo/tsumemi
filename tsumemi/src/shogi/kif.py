@@ -6,7 +6,7 @@ import typing
 from enum import IntEnum
 from typing import Dict, Sequence
 
-from tsumemi.src.shogi.basetypes import GameTermination, Koma, Move, Side, TerminationMove
+from tsumemi.src.shogi.basetypes import GameTermination, Koma, Move, Side, Square, TerminationMove
 from tsumemi.src.shogi.basetypes import HAND_TYPES, KTYPE_FROM_KANJI
 from tsumemi.src.shogi.game import Game
 
@@ -115,7 +115,7 @@ class GameBuilderPVis(ParserVisitor):
             hand_str = line.split("：")[1]
             hand = re.split("　| ", hand_str)
             for entry in hand:
-                koma = KTYPE_FROM_KANJI[entry[0]]
+                ktype = KTYPE_FROM_KANJI[entry[0]]
                 if len(entry) == 1:
                     count = 1
                 elif len(entry) == 2:
@@ -123,22 +123,22 @@ class GameBuilderPVis(ParserVisitor):
                 elif len(entry) == 3:
                     # e.g. 十八 = 18; max for a shogi position should be 18 (pawns)
                     count = int(KanjiNumber[entry[1]]) + int(KanjiNumber[entry[2]])
-                res.append((koma, count))
+                res.append((ktype, count))
             return res
-        for koma, count in read_hand(line_gote_hand):
-            pos.set_hand_koma_count(Side.GOTE, koma, count)
-        for koma, count in read_hand(line_sente_hand):
-            pos.set_hand_koma_count(Side.SENTE, koma, count)
+        for ktype, count in read_hand(line_gote_hand):
+            pos.set_hand_koma_count(Side.GOTE, ktype, count)
+        for ktype, count in read_hand(line_sente_hand):
+            pos.set_hand_koma_count(Side.SENTE, ktype, count)
         
         # Board
         for r_idx, line in enumerate(lines[3:-2]):
             rank_str = line.split("|")[1]
             rank = [rank_str[i:i+2] for i in range(0, len(rank_str), 2)]
             for c_idx, pc_str in enumerate(rank):
-                koma = KTYPE_FROM_KANJI[pc_str[1]]
-                if pc_str[0] == "v":
-                    koma = koma.gote()
-                pos.set_koma(koma, col=9-c_idx, row=r_idx+1)
+                ktype = KTYPE_FROM_KANJI[pc_str[1]]
+                side = Side.GOTE if pc_str[0] == "v" else Side.SENTE
+                koma = Koma.make(side, ktype)
+                pos.set_koma(koma, Square.from_cr(col_num=9-c_idx, row_num=r_idx+1))
         movetree.start_pos = pos.to_sfen()
         return
     
@@ -170,19 +170,19 @@ class GameBuilderPVis(ParserVisitor):
                 m = re.search(KIF_MOVE_REGEX, movestr)
                 if m is None:
                     raise ValueError("KIF move regex failed to match movestr: " + movestr)
-                sq_dest = m.group("sq_dest")
+                dest = m.group("sq_dest")
                 komastr = m.group("koma")
                 drop_prom = m.group("drop_prom")
                 sq_origin = m.group("sq_origin")
                 # Find destination square
-                if sq_dest == "同　":
+                if dest == "同　":
                     end_sq = reader.game.curr_node.move.end_sq
-                    captured = reader.game.position.get_koma(idx=end_sq)
+                    captured = reader.game.position.get_koma(sq=end_sq)
                 else:
-                    col = int(sq_dest[0])
-                    row = int(KanjiNumber[sq_dest[1]])
-                    end_sq = 10*col + row
-                    captured = reader.game.position.get_koma(idx=end_sq)
+                    col = int(dest[0])
+                    row = int(KanjiNumber[dest[1]])
+                    end_sq = Square.from_cr(col, row)
+                    captured = reader.game.position.get_koma(sq=end_sq)
                 try:
                     ktype = KTYPE_FROM_KANJI[komastr]
                 except KeyError as e:
@@ -190,11 +190,11 @@ class GameBuilderPVis(ParserVisitor):
                     raise KeyError("Unknown koma encountered: " + komastr) from e
                 # Find origin square
                 if drop_prom != "打":
-                    start_sq = int(sq_origin)
+                    start_sq = Square.from_coord(int(sq_origin))
                 else:
                     if ktype not in HAND_TYPES:
                         raise ValueError("Koma " + str(ktype) + " cannot be dropped")
-                    start_sq = 110 + ktype # outside the mailbox range
+                    start_sq = Square.HAND # Not NONE, not on board
                 # Identify if promotion
                 is_promotion = (drop_prom == "成")
                 # Construct Move

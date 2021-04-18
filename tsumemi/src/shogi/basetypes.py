@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from enum import Enum, EnumMeta, IntFlag
+from enum import Enum, EnumMeta, IntEnum, IntFlag
 from typing import Dict, Set, Tuple
 
 
@@ -197,10 +197,48 @@ CODE_FROM_TERMINATION: Dict[GameTermination, int] = {
 }
 
 
+class Square(IntEnum):
+    """Represents a square on the shogi board, or a piecetype in hand.
+    Integers are indices assuming a 13 row, 11 col padded mailbox.
+    """
+    NONE = 0
+    HAND = 1
+    b11, b12, b13, b14, b15, b16, b17, b18, b19 = range(15, 24)
+    b21, b22, b23, b24, b25, b26, b27, b28, b29 = range(28, 37)
+    b31, b32, b33, b34, b35, b36, b37, b38, b39 = range(41, 50)
+    b41, b42, b43, b44, b45, b46, b47, b48, b49 = range(54, 63)
+    b51, b52, b53, b54, b55, b56, b57, b58, b59 = range(67, 76)
+    b61, b62, b63, b64, b65, b66, b67, b68, b69 = range(80, 89)
+    b71, b72, b73, b74, b75, b76, b77, b78, b79 = range(93, 102)
+    b81, b82, b83, b84, b85, b86, b87, b88, b89 = range(106, 115)
+    b91, b92, b93, b94, b95, b96, b97, b98, b99 = range(119, 128)
+    
+    def __str__(self) -> str:
+        col, row = self.get_cr()
+        return str(10*col+row)
+    
+    @classmethod
+    def from_cr(cls, col_num: int, row_num: int) -> Square:
+        return cls(13*col_num+row_num+1)
+    
+    @classmethod
+    def from_coord(cls, coord: int) -> Square:
+        return cls.from_cr(col_num=int(coord/10), row_num=coord%10)
+    
+    def get_cr(self) -> Tuple[int, int]:
+        col = int((self-1) / 13)
+        row = (int(self)-1) % 13
+        return col, row
+    
+    def is_board(self) -> bool:
+        return self.name.startswith("b")
+
+
 class Move:
     """Represents one shogi move.
     """
-    def __init__(self, start_sq: int = 0, end_sq: int = 0,
+    def __init__(self, start_sq: Square = Square.NONE,
+            end_sq: Square = Square.NONE,
             is_promotion: bool = False,
             koma: Koma = Koma.NONE, captured: Koma = Koma.NONE
             ) -> None:
@@ -210,7 +248,7 @@ class Move:
         self.side = koma.side()
         self.koma = koma
         self.captured = captured
-        self.is_drop = self.start_sq > 110
+        self.is_drop = self.start_sq == Square.HAND
         return
     
     def __str__(self) -> str:
@@ -221,9 +259,9 @@ class Move:
     
     def to_bin(self) -> int:
         return (
-            self.start_sq & 0b1111111
-            | (self.end_sq & 0b1111111) << 7
-            | self.is_promotion & 0b1 << 14
+            self.start_sq & 0b11111111
+            | (self.end_sq & 0b11111111) << 8
+            | self.is_promotion & 0b1 << 16
         )
     
     def to_text(self) -> str:

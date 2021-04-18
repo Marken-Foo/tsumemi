@@ -16,6 +16,11 @@ def read_file(filename, reader, visitor):
 
 
 class TestReadKifu(unittest.TestCase):
+    def test_1(self):
+        reader = KifReader()
+        visitor = GameBuilderPVis()
+        read_file(r"./tsumemi/test/test_kifus/1.kif", reader, visitor)
+    
     def test_game(self):
         reader = KifReader()
         visitor = GameBuilderPVis()

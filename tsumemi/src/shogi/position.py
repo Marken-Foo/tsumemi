@@ -3,25 +3,25 @@ from __future__ import annotations
 import re
 
 from enum import IntEnum
-from typing import TYPE_CHECKING, Dict, List, Optional, Set
+from typing import TYPE_CHECKING, Dict, List, Set, Tuple
 
 if TYPE_CHECKING:
     from tsumemi.src.shogi.basetypes import Move
 
-from tsumemi.src.shogi.basetypes import Koma, KomaType, Side
+from tsumemi.src.shogi.basetypes import Koma, KomaType, Side, Square
 from tsumemi.src.shogi.basetypes import HAND_TYPES, KOMA_FROM_SFEN, KOMA_TYPES, SFEN_FROM_KOMA
 
 
 class Dir(IntEnum):
     # Direction; for use with board representation in Position
     N = -1
-    NE = -11
-    E = -10
-    SE = -9
+    NE = -14
+    E = -13
+    SE = -12
     S = 1
-    SW = 11
-    W = 10
-    NW = 9
+    SW = 14
+    W = 13
+    NW = 12
 
 
 class Position:
@@ -29,24 +29,20 @@ class Position:
     move, and pieces in hand.
     
     Board representation used is mailbox: a 1D array interpreted as a
-    9x9 array with padding on the S, E, and W edges. Indices 11-19,
-    21-29, ..., 91-99 are the actual board squares, corresponding to
-    normal shogi notation.
+    9x9 array with padding.
     """
     def __init__(self) -> None:
         # mailbox representation
-        self.board = [Koma.NONE] * 110 # 9x9 with padding on S, E, W edges
+        self.board = [Koma.NONE] * 143 # 11 columns, 13 rows
         self.reset()
         return
     
     def reset(self) -> None:
-        for i in range(110):
-            self.board[i] = Koma.NONE
-        for i in range(10):
-            # place sentinel values
+        for i in range(143):
             self.board[i] = Koma.INVALID
-            self.board[100+i] = Koma.INVALID
-            self.board[i*10] = Koma.INVALID
+        for col_num in range(1, 10):
+            for row_num in range(1, 10):
+                self.board[self._to_idx(col_num, row_num)] = Koma.NONE
         # Piece lists/sets
         self.koma_sets: List[Dict[Koma, Set[int]]] = [{koma: set() for koma in KOMA_TYPES} for side in range(2)] # 14 komatypes for each side
         # Hand order is NONE-FU-KY-KE-GI-KI-KA-HI, NONE is unused
@@ -57,12 +53,15 @@ class Position:
         self.movenum = 1
         return
     
+    def _to_idx(self, col_num: int, row_num: int) -> int:
+        return 13*col_num + row_num+1
+    
     def __str__(self) -> str:
         rows = []
         for row_num in range(1, 10, 1):
             row = []
             for col_num in range(9, 0, -1):
-                row.append(str(self.board[10*col_num + row_num]))
+                row.append(str(self.board[self._to_idx(col_num, row_num)]))
             rows.append("".join(row))
         board = "\n".join(rows)
         elems = [
@@ -73,33 +72,19 @@ class Position:
         ]
         return "\n".join(elems)
     
-    def set_koma(self, koma: Koma,
-            col: Optional[int] = None, row: Optional[int] = None,
-            idx: Optional[int] = None
-            ) -> None:
-        # row and col should be between 1-9 (standard shogi notation)
-        if idx is not None:
-            self.board[idx] = koma
-        elif col is not None and row is not None:
-            self.board[col*10 + row] = koma
+    def set_koma(self, koma: Koma, sq: Square) -> None:
+        self.board[sq] = koma
         return
     
-    def get_koma(self, col: Optional[int] = None, row: Optional[int] = None,
-            idx: Optional[int] = None
-            ) -> Koma:
-        if idx is not None:
-            return self.board[idx]
-        elif col is not None and row is not None:
-            return self.board[col*10 + row]
-        else:
-            return Koma.INVALID
+    def get_koma(self, sq: Square) -> Koma:
+        return self.board[sq]
     
     def get_hand(self, side: Side) -> List[int]:
         return self.hand_sente if side is Side.SENTE else self.hand_gote
     
-    def set_hand_koma_count(self, side: Side, koma: Koma, count: int) -> None:
+    def set_hand_koma_count(self, side: Side, ktype: KomaType, count: int) -> None:
         target = self.get_hand(side)
-        target[koma] = count
+        target[ktype] = count
         return
     
     def inc_hand_koma(self, side: Side, ktype: KomaType) -> None:
@@ -121,17 +106,17 @@ class Position:
             return
         elif move.is_drop:
             self.dec_hand_koma(move.side, KomaType.get(move.koma))
-            self.set_koma(move.koma, idx=move.end_sq)
+            self.set_koma(move.koma, move.end_sq)
             self.turn = self.turn.switch()
             self.movenum += 1
             return
         else:
-            self.set_koma(Koma.NONE, idx=move.start_sq)
+            self.set_koma(Koma.NONE, move.start_sq)
             if move.captured != Koma.NONE:
                 self.inc_hand_koma(move.side, KomaType.get(move.captured).unpromote())
             self.set_koma(
                 move.koma.promote() if move.is_promotion else move.koma,
-                idx=move.end_sq
+                move.end_sq
             )
             self.movenum += 1
             return
@@ -140,7 +125,7 @@ class Position:
         if move.is_null():
             return
         elif move.is_drop:
-            self.set_koma(Koma.NONE, idx=move.end_sq)
+            self.set_koma(Koma.NONE, move.end_sq)
             self.inc_hand_koma(move.side, KomaType.get(move.koma))
             self.turn = self.turn.switch()
             self.movenum -= 1
@@ -148,8 +133,8 @@ class Position:
         else:
             if move.captured != Koma.NONE:
                 self.dec_hand_koma(move.side, KomaType.get(move.captured).unpromote())
-            self.set_koma(move.captured, idx=move.end_sq)
-            self.set_koma(move.koma, idx=move.start_sq)
+            self.set_koma(move.captured, move.end_sq)
+            self.set_koma(move.koma, move.start_sq)
             self.movenum -= 1
             return
     
@@ -176,7 +161,7 @@ class Position:
                     if promo:
                         koma = koma.promote()
                         promo = False
-                    self.set_koma(koma, col=col_num, row=i+1)
+                    self.set_koma(koma, Square.from_cr(col_num=col_num, row_num=i+1))
                     col_num -= 1
         # Hand
         it_hands = re.findall(r"(\d*)([plnsgbrPLNSGBR])", hands)
@@ -197,8 +182,7 @@ class Position:
             blanks = 0
             row = []
             for col_num in range(9, 0, -1):
-                idx = 10*col_num + row_num
-                koma = self.board[idx]
+                koma = self.board[self._to_idx(col_num, row_num)]
                 if koma is Koma.NONE:
                     blanks += 1
                 else:
