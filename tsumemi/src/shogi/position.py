@@ -42,9 +42,11 @@ class Position:
             self.board[i] = Koma.INVALID
         for col_num in range(1, 10):
             for row_num in range(1, 10):
-                self.board[self._to_idx(col_num, row_num)] = Koma.NONE
-        # Piece lists/sets
-        self.koma_sets: List[Dict[Koma, Set[int]]] = [{koma: set() for koma in KOMA_TYPES} for side in range(2)] # 14 komatypes for each side
+                self.board[self.cr_to_idx(col_num, row_num)] = Koma.NONE
+        # Koma set; indexed by side and komatype, contents are indices of where they are located on the board.
+        koma_sente: Dict[Koma, Set[int]] = {Koma.make(Side.SENTE, ktype): set() for ktype in KOMA_TYPES}
+        koma_gote: Dict[Koma, Set[int]] = {Koma.make(Side.GOTE, ktype): set() for ktype in KOMA_TYPES}
+        self.koma_sets: Dict[Koma, Set[int]] = {**koma_sente, **koma_gote}
         # Hand order is NONE-FU-KY-KE-GI-KI-KA-HI, NONE is unused
         # int is number of copies of piece
         self.hand_sente = [0, 0, 0, 0, 0, 0, 0, 0]
@@ -53,15 +55,33 @@ class Position:
         self.movenum = 1
         return
     
-    def _to_idx(self, col_num: int, row_num: int) -> int:
+    def sq_to_idx(self, sq: Square) -> int:
+        # Everything that comes from a Square should go through this
+        return self.cr_to_idx(*(sq.get_cr()))
+    
+    def idx_to_sq(self, idx: int) -> Square:
+        col = (idx-1) // 13
+        row = (idx-1) % 13
+        return Square.from_cr(col, row)
+    
+    def cr_to_idx(self, col_num: int, row_num: int) -> int:
         return 13*col_num + row_num+1
     
+    def is_idx_in_zone(self, idx: int, side: Side) -> bool:
+        row = (idx-1) % 13
+        if side == Side.SENTE:
+            return True if row in (1, 2, 3) else False
+        else:
+            return True if row in (7, 8, 9) else False
+    
     def __str__(self) -> str:
+        """Return visual text representation of position.
+        """
         rows = []
         for row_num in range(1, 10, 1):
             row = []
             for col_num in range(9, 0, -1):
-                row.append(str(self.board[self._to_idx(col_num, row_num)]))
+                row.append(str(self.board[self.cr_to_idx(col_num, row_num)]))
             rows.append("".join(row))
         board = "\n".join(rows)
         elems = [
@@ -73,11 +93,16 @@ class Position:
         return "\n".join(elems)
     
     def set_koma(self, koma: Koma, sq: Square) -> None:
-        self.board[sq] = koma
+        prev_koma = self.get_koma(sq)
+        self.board[self.sq_to_idx(sq)] = koma
+        if koma != Koma.NONE and koma != Koma.INVALID:
+            self.koma_sets[koma].add(self.sq_to_idx(sq))
+        if prev_koma != Koma.NONE and prev_koma != Koma.INVALID:
+            self.koma_sets[prev_koma].discard(self.sq_to_idx(sq))
         return
     
     def get_koma(self, sq: Square) -> Koma:
-        return self.board[sq]
+        return self.board[self.sq_to_idx(sq)]
     
     def get_hand(self, side: Side) -> List[int]:
         return self.hand_sente if side is Side.SENTE else self.hand_gote
@@ -101,7 +126,17 @@ class Position:
         target = self.get_hand(side)
         return not any(target)
     
+    def create_move(self, sq1: Square, sq2: Square, is_promotion: bool = False) -> Move:
+        """Creates a move from two squares. Move may not necessarily
+        be legal or even valid.
+        """
+        return Move(start_sq=sq1, end_sq=sq2, is_promotion=is_promotion,
+            koma=self.get_koma(sq1), captured=self.get_koma(sq2)
+        )
+    
     def make_move(self, move: Move) -> None:
+        """Makes a move on the board.
+        """
         if move.is_null():
             return
         elif move.is_drop:
@@ -122,6 +157,7 @@ class Position:
             return
     
     def unmake_move(self, move: Move) -> None:
+        """Unplays/retracts a move from the board."""
         if move.is_null():
             return
         elif move.is_drop:
@@ -182,7 +218,7 @@ class Position:
             blanks = 0
             row = []
             for col_num in range(9, 0, -1):
-                koma = self.board[self._to_idx(col_num, row_num)]
+                koma = self.board[self.cr_to_idx(col_num, row_num)]
                 if koma is Koma.NONE:
                     blanks += 1
                 else:

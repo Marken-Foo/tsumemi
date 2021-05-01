@@ -144,9 +144,11 @@ HAND_TYPES: Tuple[
 )
 
 
-KOMA_TYPES: Set[Koma] = {
-    Koma.FU, Koma.KY, Koma.KE, Koma.GI, Koma.KI, Koma.KA, Koma.HI, Koma.OU,
-    Koma.TO, Koma.NY, Koma.NK, Koma.NG, Koma.UM, Koma.RY
+KOMA_TYPES: Set[KomaType] = {
+    KomaType.FU, KomaType.KY, KomaType.KE, KomaType.GI,
+    KomaType.KI, KomaType.KA, KomaType.HI, KomaType.OU,
+    KomaType.TO, KomaType.NY, KomaType.NK, KomaType.NG,
+    KomaType.UM, KomaType.RY
 }
 
 
@@ -199,19 +201,18 @@ CODE_FROM_TERMINATION: Dict[GameTermination, int] = {
 
 class Square(IntEnum):
     """Represents a square on the shogi board, or a piecetype in hand.
-    Integers are indices assuming a 13 row, 11 col padded mailbox.
     """
     NONE = 0
-    HAND = 1
-    b11, b12, b13, b14, b15, b16, b17, b18, b19 = range(15, 24)
-    b21, b22, b23, b24, b25, b26, b27, b28, b29 = range(28, 37)
-    b31, b32, b33, b34, b35, b36, b37, b38, b39 = range(41, 50)
-    b41, b42, b43, b44, b45, b46, b47, b48, b49 = range(54, 63)
-    b51, b52, b53, b54, b55, b56, b57, b58, b59 = range(67, 76)
-    b61, b62, b63, b64, b65, b66, b67, b68, b69 = range(80, 89)
-    b71, b72, b73, b74, b75, b76, b77, b78, b79 = range(93, 102)
-    b81, b82, b83, b84, b85, b86, b87, b88, b89 = range(106, 115)
-    b91, b92, b93, b94, b95, b96, b97, b98, b99 = range(119, 128)
+    HAND = 82
+    b11, b12, b13, b14, b15, b16, b17, b18, b19 = range(1, 10)
+    b21, b22, b23, b24, b25, b26, b27, b28, b29 = range(10, 19)
+    b31, b32, b33, b34, b35, b36, b37, b38, b39 = range(19, 28)
+    b41, b42, b43, b44, b45, b46, b47, b48, b49 = range(28, 37)
+    b51, b52, b53, b54, b55, b56, b57, b58, b59 = range(37, 46)
+    b61, b62, b63, b64, b65, b66, b67, b68, b69 = range(46, 55)
+    b71, b72, b73, b74, b75, b76, b77, b78, b79 = range(55, 64)
+    b81, b82, b83, b84, b85, b86, b87, b88, b89 = range(64, 73)
+    b91, b92, b93, b94, b95, b96, b97, b98, b99 = range(73, 82)
     
     def __str__(self) -> str:
         col, row = self.get_cr()
@@ -219,15 +220,15 @@ class Square(IntEnum):
     
     @classmethod
     def from_cr(cls, col_num: int, row_num: int) -> Square:
-        return cls(13*col_num+row_num+1)
+        return cls(9*col_num-9+row_num)
     
     @classmethod
     def from_coord(cls, coord: int) -> Square:
         return cls.from_cr(col_num=int(coord/10), row_num=coord%10)
     
     def get_cr(self) -> Tuple[int, int]:
-        col = int((self-1) / 13)
-        row = (int(self)-1) % 13
+        col = (self-1)// 9 + 1
+        row = (self-1) % 9 + 1
         return col, row
     
     def is_board(self) -> bool:
