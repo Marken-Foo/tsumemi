@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import functools
 
-from typing import List, Tuple
+from typing import Callable, List, Tuple
 
 from tsumemi.src.shogi.basetypes import Koma, KomaType, Move, Side, Square
 from tsumemi.src.shogi.position import Dir, Position
@@ -22,26 +22,41 @@ class Rules:
     def generate_legal_moves(self, pos: Position) -> List[Move]:
         pass
     
-    def _generate_line_idxs(self, pos: Position, side: Side, start_idx: int, dir: Dir) -> List[int]:
-        targets = []
-        target = start_idx + dir
-        target_koma = pos.board[target]
-        while target_koma == Koma.NONE:
-            targets.append(target)
-            target += dir
-            target_koma = pos.board[target]
-        if target_koma != Koma.INVALID and target_koma.side != side:
-            targets.append(target)
-        return targets
+    def _generate_line_idxs(self, pos: Position, side: Side, start_idx: int,
+            dir: Dir
+        ) -> List[int]:
+        """Generate a list of target destination square indices,
+        assuming a koma at location start_idx that moves in a line
+        along the direction dir.
+        """
+        res = []
+        dest = start_idx + dir
+        dest_koma = pos.board[dest]
+        while dest_koma == Koma.NONE:
+            res.append(dest)
+            dest += dir
+            dest_koma = pos.board[dest]
+        if dest_koma != Koma.INVALID and dest_koma.side() != side:
+            res.append(dest)
+        return res
     
-    def _move(self, pos: Position, start_idx: int, end_idx: int, side: Side, ktype: KomaType, is_promotion=False) -> Move:
+    def _move(self, pos: Position, start_idx: int, end_idx: int, side: Side,
+            ktype: KomaType, is_promotion=False
+        ) -> Move:
+        """Construct a Move given the relevant inputs. Convenient.
+        """
         return Move(
             start_sq=pos.idx_to_sq(start_idx), end_sq=pos.idx_to_sq(end_idx),
             koma=Koma.make(side, ktype), captured=pos.board[end_idx],
             is_promotion=is_promotion
         )
     
-    def generate_moves(self, pos: Position, side: Side, ktype: KomaType, dest_generator, promotion_constrainer) -> List[Move]:
+    def generate_moves(self, pos: Position, side: Side, ktype: KomaType,
+            dest_generator: Callable[[Position, int, Side], List[int]],
+            promotion_constrainer: Callable[
+                [Position, Side, int, int], List[Tuple[int, int, bool]]
+            ]
+        ) -> List[Move]:
         """Given a koma type (ktype), how it moves (dest_generator),
         and promotion constraints (promotion_constrainer), returns a
         list of all valid moves by that koma type (not counting drops)
@@ -90,7 +105,9 @@ class Rules:
             start_idx+Dir.W, start_idx+Dir.NW
         )
     
-    def generate_dests_steps(self, pos: Position, start_idx: int, side: Side, steps) -> List[int]:
+    def generate_dests_steps(self, pos: Position, start_idx: int, side: Side,
+            steps: Callable[[int, Side], Tuple[int, ...]]
+        ) -> List[int]:
         res = []
         targets = steps(start_idx, side)
         for target in targets:
@@ -102,25 +119,29 @@ class Rules:
                 res.append(target)
         return res
     
-    def generate_dests_ky(self, pos: Position, start_idx: int, side: Side) -> List[int]:
+    def generate_dests_ky(self, pos: Position, start_idx: int, side: Side
+        ) -> List[int]:
         forward = Dir.S if side == Side.GOTE else Dir.N
         return self._generate_line_idxs(pos, side, start_idx, forward)
     
-    def generate_dests_ka(self, pos: Position, start_idx: int, side: Side) -> List[int]:
+    def generate_dests_ka(self, pos: Position, start_idx: int, side: Side
+        ) -> List[int]:
         ne = self._generate_line_idxs(pos, side, start_idx, Dir.NE)
         se = self._generate_line_idxs(pos, side, start_idx, Dir.SE)
         nw = self._generate_line_idxs(pos, side, start_idx, Dir.NW)
         sw = self._generate_line_idxs(pos, side, start_idx, Dir.SW)
         return ne + se + nw + sw
     
-    def generate_dests_hi(self, pos: Position, start_idx: int, side: Side) -> List[int]:
+    def generate_dests_hi(self, pos: Position, start_idx: int, side: Side
+        ) -> List[int]:
         n = self._generate_line_idxs(pos, side, start_idx, Dir.N)
         s = self._generate_line_idxs(pos, side, start_idx, Dir.S)
         e = self._generate_line_idxs(pos, side, start_idx, Dir.E)
         w = self._generate_line_idxs(pos, side, start_idx, Dir.W)
         return n + s + e + w
     
-    def generate_dests_um(self, pos: Position, start_idx: int, side: Side) -> List[int]:
+    def generate_dests_um(self, pos: Position, start_idx: int, side: Side
+        ) -> List[int]:
         kaku = self.generate_dests_ka(pos, start_idx, side)
         wazir = [
             start_idx+Dir.N, start_idx+Dir.S,
@@ -128,7 +149,8 @@ class Rules:
         ]
         return kaku + wazir
     
-    def generate_dests_ry(self, pos: Position, start_idx: int, side: Side) -> List[int]:
+    def generate_dests_ry(self, pos: Position, start_idx: int, side: Side
+        ) -> List[int]:
         hisha = self.generate_dests_hi(pos, start_idx, side)
         alfil = [
             start_idx+Dir.NE, start_idx+Dir.SE,
@@ -136,7 +158,9 @@ class Rules:
         ]
         return hisha + alfil
     
-    def constrain_promotions_ky(self, pos: Position, side: Side, start_idx: int, end_idx: int) -> List[Tuple[int, int, bool]]:
+    def constrain_promotions_ky(self, pos: Position, side: Side,
+            start_idx: int, end_idx: int
+        ) -> List[Tuple[int, int, bool]]:
         res: List[Tuple[int, int, bool]] = []
         must_promote = (
             (side == Side.SENTE and pos.idx_to_r(end_idx) == 1)
@@ -151,7 +175,9 @@ class Rules:
                 res.append((start_idx, end_idx, True))
         return res
     
-    def constrain_promotions_ke(self, pos: Position, side: Side, start_idx: int, end_idx: int) -> List[Tuple[int, int, bool]]:
+    def constrain_promotions_ke(self, pos: Position, side: Side,
+            start_idx: int, end_idx: int
+        ) -> List[Tuple[int, int, bool]]:
         res: List[Tuple[int, int, bool]] = []
         must_promote = (
             (side == Side.SENTE and pos.idx_to_r(end_idx) in (1, 2))
@@ -166,36 +192,27 @@ class Rules:
                 res.append((start_idx, end_idx, True))
         return res
     
-    def constrain_promotable(self, pos: Position, side: Side, start_idx: int, end_idx: int) -> List[Tuple[int, int, bool]]:
+    def constrain_promotable(self, pos: Position, side: Side,
+            start_idx: int, end_idx: int
+        ) -> List[Tuple[int, int, bool]]:
         """Identify promotion and non-promotion moves for pieces that
         are not forced to promote and can move in and out of the
         promotion zone.
         """
         res: List[Tuple[int, int, bool]] = []
-        must_promote = False
         can_promote = pos.is_idx_in_zone(start_idx, side) or pos.is_idx_in_zone(end_idx, side)
-        if must_promote:
+        res.append((start_idx, end_idx, False))
+        if can_promote:
             res.append((start_idx, end_idx, True))
-        else:
-            res.append((start_idx, end_idx, False))
-            if can_promote:
-                res.append((start_idx, end_idx, True))
         return res
     
-    def constrain_unpromotable(self, pos: Position, side: Side, start_idx: int, end_idx: int) -> List[Tuple[int, int, bool]]:
+    def constrain_unpromotable(self, pos: Position, side: Side,
+            start_idx: int, end_idx: int
+        ) -> List[Tuple[int, int, bool]]:
         """Identify promotion and non-promotion moves for pieces that
         cannot promote.
         """
-        res: List[Tuple[int, int, bool]] = []
-        must_promote = False
-        can_promote = False
-        if must_promote:
-            res.append((start_idx, end_idx, True))
-        else:
-            res.append((start_idx, end_idx, False))
-            if can_promote:
-                res.append((start_idx, end_idx, True))
-        return res
+        return [(start_idx, end_idx, False),]
     
     def generate_moves_fu(self, pos: Position, side: Side) -> List[Move]:
         # FU and KY use the same promotion constraints
