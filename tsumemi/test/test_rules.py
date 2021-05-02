@@ -16,6 +16,17 @@ class TestMoveGeneration(unittest.TestCase):
         self.position.set_koma(Koma.FU, Square.b57)
         self.position.set_koma(Koma.vFU, Square.b18)
         self.position.set_koma(Koma.vFU, Square.b91)
-        mvlist = self.rules.generate_pawn_moves(Side.GOTE, self.position)
+        self.position.set_koma(Koma.vFU, Square.b33)
+        self.position.set_koma(Koma.vFU, Square.b66)
+        mvlist = self.rules.generate_moves_fu(pos=self.position, side=Side.GOTE)
+        for move in mvlist:
+            print(move)
+    
+    def test_lance_moves(self):
+        self.position.set_koma(Koma.KY, Square.b34)
+        self.position.set_koma(Koma.KY, Square.b57)
+        self.position.set_koma(Koma.vKY, Square.b18)
+        self.position.set_koma(Koma.vKY, Square.b91)
+        mvlist = self.rules.generate_moves_ky(Side.SENTE, self.position)
         for move in mvlist:
             print(move)

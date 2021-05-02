@@ -60,15 +60,21 @@ class Position:
         return self.cr_to_idx(*(sq.get_cr()))
     
     def idx_to_sq(self, idx: int) -> Square:
-        col = (idx-1) // 13
-        row = (idx-1) % 13
+        col = self.idx_to_c(idx)
+        row = self.idx_to_r(idx)
         return Square.from_cr(col, row)
     
     def cr_to_idx(self, col_num: int, row_num: int) -> int:
         return 13*col_num + row_num+1
     
+    def idx_to_c(self, idx: int) -> int:
+        return (idx-1) // 13
+    
+    def idx_to_r(self, idx: int) -> int:
+        return (idx-1) % 13
+    
     def is_idx_in_zone(self, idx: int, side: Side) -> bool:
-        row = (idx-1) % 13
+        row = self.idx_to_r(idx)
         if side == Side.SENTE:
             return True if row in (1, 2, 3) else False
         else:

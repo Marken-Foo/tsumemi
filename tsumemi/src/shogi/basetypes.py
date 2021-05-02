@@ -79,7 +79,6 @@ class Koma(IntFlag):
     NG = PROMOTED + GI
     UM = PROMOTED + KA
     RY = PROMOTED + HI
-    SENTE = 0
     GOTE = 1 << 4
     vFU = FU | GOTE
     vKY = KY | GOTE
