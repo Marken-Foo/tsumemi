@@ -237,11 +237,12 @@ class Square(IntEnum):
 class Move:
     """Represents one shogi move.
     """
-    def __init__(self, start_sq: Square = Square.NONE,
+    def __init__(
+            self, start_sq: Square = Square.NONE,
             end_sq: Square = Square.NONE,
             is_promotion: bool = False,
             koma: Koma = Koma.NONE, captured: Koma = Koma.NONE
-            ) -> None:
+        ) -> None:
         self.start_sq = start_sq
         self.end_sq = end_sq
         self.is_promotion = is_promotion

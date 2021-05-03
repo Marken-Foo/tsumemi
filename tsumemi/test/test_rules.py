@@ -38,3 +38,17 @@ class TestMoveGeneration(unittest.TestCase):
         # check answers
         self.assertEqual(mvset_sente, set(sente_moves))
         self.assertEqual(mvset_gote, set(gote_moves))
+    
+    def test_knight_moves(self):
+        sfen = "N7N/4N1n2/9/5N3/n2n1N2N/3n5/9/2N1n4/n7n b - 1"
+        # answer keys
+        sente_moves = ["N23(15)", "N23(15)+", "N32(44)+", "N53(45)", "N53(45)+", "N33(45)", "N33(45)+", "N66(78)", "N86(78)"]
+        gote_moves = ["N24(32)", "N44(32)", "N57(65)", "N57(65)+", "N77(65)", "N77(65)+", "N78(66)+", "N87(95)", "N87(95)+"]
+        self.position.from_sfen(sfen)
+        mvlist_sente = self.rules.generate_moves_ke(pos=self.position, side=Side.SENTE)
+        mvlist_gote = self.rules.generate_moves_ke(pos=self.position, side=Side.GOTE)
+        mvset_sente = set([move.to_latin() for move in mvlist_sente])
+        mvset_gote = set([move.to_latin() for move in mvlist_gote])
+        # check answers
+        self.assertEqual(mvset_sente, set(sente_moves))
+        self.assertEqual(mvset_gote, set(gote_moves))

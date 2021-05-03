@@ -4,7 +4,7 @@ import functools
 
 from typing import Callable, List, Tuple
 
-from tsumemi.src.shogi.basetypes import Koma, KomaType, Move, Side, Square
+from tsumemi.src.shogi.basetypes import Koma, KomaType, Move, Side
 from tsumemi.src.shogi.position import Dir, Position
 
 
@@ -15,15 +15,15 @@ class Rules:
     def is_legal(self, mv: Move, pos: Position) -> bool:
         side = pos.turn
         pos.make_move(mv)
-        ans = self.is_suicide(side, pos)
+        ans = self.is_suicide(pos, side)
         pos.unmake_move(mv)
         return ans
     
     def generate_legal_moves(self, pos: Position) -> List[Move]:
         pass
     
-    def _generate_line_idxs(self, pos: Position, side: Side, start_idx: int,
-            dir: Dir
+    def _generate_line_idxs(
+            self, pos: Position, side: Side, start_idx: int, dir: Dir
         ) -> List[int]:
         """Generate a list of target destination square indices,
         assuming a koma at location start_idx that moves in a line
@@ -40,7 +40,8 @@ class Rules:
             res.append(dest)
         return res
     
-    def _move(self, pos: Position, start_idx: int, end_idx: int, side: Side,
+    def _move(
+            self, pos: Position, start_idx: int, end_idx: int, side: Side,
             ktype: KomaType, is_promotion=False
         ) -> Move:
         """Construct a Move given the relevant inputs. Convenient.
@@ -51,7 +52,8 @@ class Rules:
             is_promotion=is_promotion
         )
     
-    def generate_moves(self, pos: Position, side: Side, ktype: KomaType,
+    def generate_moves(
+            self, pos: Position, side: Side, ktype: KomaType,
             dest_generator: Callable[[Position, int, Side], List[int]],
             promotion_constrainer: Callable[
                 [Position, Side, int, int], List[Tuple[int, int, bool]]
@@ -105,26 +107,30 @@ class Rules:
             start_idx+Dir.W, start_idx+Dir.NW
         )
     
-    def generate_dests_steps(self, pos: Position, start_idx: int, side: Side,
+    def generate_dests_steps(
+            self, pos: Position, start_idx: int, side: Side,
             steps: Callable[[int, Side], Tuple[int, ...]]
         ) -> List[int]:
         res = []
         targets = steps(start_idx, side)
         for target in targets:
             target_koma = pos.board[target]
-            is_valid_target = ((target_koma != Koma.INVALID)
-                and (target_koma == Koma.NONE or target_koma.side != side)
+            is_valid_target = (
+                (target_koma != Koma.INVALID)
+                and (target_koma == Koma.NONE or target_koma.side() != side)
             )
             if is_valid_target:
                 res.append(target)
         return res
     
-    def generate_dests_ky(self, pos: Position, start_idx: int, side: Side
+    def generate_dests_ky(
+            self, pos: Position, start_idx: int, side: Side
         ) -> List[int]:
         forward = Dir.S if side == Side.GOTE else Dir.N
         return self._generate_line_idxs(pos, side, start_idx, forward)
     
-    def generate_dests_ka(self, pos: Position, start_idx: int, side: Side
+    def generate_dests_ka(
+            self, pos: Position, start_idx: int, side: Side
         ) -> List[int]:
         ne = self._generate_line_idxs(pos, side, start_idx, Dir.NE)
         se = self._generate_line_idxs(pos, side, start_idx, Dir.SE)
@@ -132,7 +138,8 @@ class Rules:
         sw = self._generate_line_idxs(pos, side, start_idx, Dir.SW)
         return ne + se + nw + sw
     
-    def generate_dests_hi(self, pos: Position, start_idx: int, side: Side
+    def generate_dests_hi(
+            self, pos: Position, start_idx: int, side: Side
         ) -> List[int]:
         n = self._generate_line_idxs(pos, side, start_idx, Dir.N)
         s = self._generate_line_idxs(pos, side, start_idx, Dir.S)
@@ -140,7 +147,8 @@ class Rules:
         w = self._generate_line_idxs(pos, side, start_idx, Dir.W)
         return n + s + e + w
     
-    def generate_dests_um(self, pos: Position, start_idx: int, side: Side
+    def generate_dests_um(
+            self, pos: Position, start_idx: int, side: Side
         ) -> List[int]:
         kaku = self.generate_dests_ka(pos, start_idx, side)
         wazir = [
@@ -149,7 +157,8 @@ class Rules:
         ]
         return kaku + wazir
     
-    def generate_dests_ry(self, pos: Position, start_idx: int, side: Side
+    def generate_dests_ry(
+            self, pos: Position, start_idx: int, side: Side
         ) -> List[int]:
         hisha = self.generate_dests_hi(pos, start_idx, side)
         alfil = [
@@ -158,8 +167,8 @@ class Rules:
         ]
         return hisha + alfil
     
-    def constrain_promotions_ky(self, pos: Position, side: Side,
-            start_idx: int, end_idx: int
+    def constrain_promotions_ky(
+            self, pos: Position, side: Side, start_idx: int, end_idx: int
         ) -> List[Tuple[int, int, bool]]:
         res: List[Tuple[int, int, bool]] = []
         must_promote = (
@@ -175,8 +184,8 @@ class Rules:
                 res.append((start_idx, end_idx, True))
         return res
     
-    def constrain_promotions_ke(self, pos: Position, side: Side,
-            start_idx: int, end_idx: int
+    def constrain_promotions_ke(
+            self, pos: Position, side: Side, start_idx: int, end_idx: int
         ) -> List[Tuple[int, int, bool]]:
         res: List[Tuple[int, int, bool]] = []
         must_promote = (
@@ -192,8 +201,8 @@ class Rules:
                 res.append((start_idx, end_idx, True))
         return res
     
-    def constrain_promotable(self, pos: Position, side: Side,
-            start_idx: int, end_idx: int
+    def constrain_promotable(
+            self, pos: Position, side: Side, start_idx: int, end_idx: int
         ) -> List[Tuple[int, int, bool]]:
         """Identify promotion and non-promotion moves for pieces that
         are not forced to promote and can move in and out of the
@@ -206,8 +215,8 @@ class Rules:
             res.append((start_idx, end_idx, True))
         return res
     
-    def constrain_unpromotable(self, pos: Position, side: Side,
-            start_idx: int, end_idx: int
+    def constrain_unpromotable(
+            self, pos: Position, side: Side, start_idx: int, end_idx: int
         ) -> List[Tuple[int, int, bool]]:
         """Identify promotion and non-promotion moves for pieces that
         cannot promote.
@@ -223,14 +232,14 @@ class Rules:
             promotion_constrainer=self.constrain_promotions_ky
         )
     
-    def generate_moves_ky(self, side: Side, pos: Position) -> List[Move]:
+    def generate_moves_ky(self, pos: Position, side: Side) -> List[Move]:
         return self.generate_moves(
             pos=pos, side=side, ktype=KomaType.KY,
             dest_generator=self.generate_dests_ky,
             promotion_constrainer=self.constrain_promotions_ky
         )
     
-    def generate_moves_ke(self, side: Side, pos: Position) -> List[Move]:
+    def generate_moves_ke(self, pos: Position, side: Side) -> List[Move]:
         step_gen = functools.partial(self.generate_dests_steps, steps=self.steps_ke)
         return self.generate_moves(
             pos=pos, side=side, ktype=KomaType.KE,
@@ -238,7 +247,7 @@ class Rules:
             promotion_constrainer=self.constrain_promotions_ke
         )
     
-    def generate_moves_gi(self, side: Side, pos: Position) -> List[Move]:
+    def generate_moves_gi(self, pos: Position, side: Side) -> List[Move]:
         step_gen = functools.partial(self.generate_dests_steps, steps=self.steps_gi)
         return self.generate_moves(
             pos=pos, side=side, ktype=KomaType.GI,
@@ -246,7 +255,7 @@ class Rules:
             promotion_constrainer=self.constrain_promotable
         )
     
-    def generate_moves_ki(self, side: Side, pos: Position) -> List[Move]:
+    def generate_moves_ki(self, pos: Position, side: Side) -> List[Move]:
         step_gen = functools.partial(self.generate_dests_steps, steps=self.steps_ki)
         return self.generate_moves(
             pos=pos, side=side, ktype=KomaType.KI,
@@ -254,21 +263,21 @@ class Rules:
             promotion_constrainer=self.constrain_promotable
         )
     
-    def generate_moves_ka(self, side: Side, pos: Position) -> List[Move]:
+    def generate_moves_ka(self, pos: Position, side: Side) -> List[Move]:
         return self.generate_moves(
             pos=pos, side=side, ktype=KomaType.KA,
             dest_generator=self.generate_dests_ka,
             promotion_constrainer=self.constrain_promotable
         )
     
-    def generate_moves_hi(self, side: Side, pos: Position) -> List[Move]:
+    def generate_moves_hi(self, pos: Position, side: Side) -> List[Move]:
         return self.generate_moves(
             pos=pos, side=side, ktype=KomaType.HI,
             dest_generator=self.generate_dests_hi,
             promotion_constrainer=self.constrain_promotable
         )
     
-    def generate_moves_ou(self, side: Side, pos: Position) -> List[Move]:
+    def generate_moves_ou(self, pos: Position, side: Side) -> List[Move]:
         step_gen = functools.partial(self.generate_dests_steps, steps=self.steps_ou)
         return self.generate_moves(
             pos=pos, side=side, ktype=KomaType.OU,
@@ -276,7 +285,7 @@ class Rules:
             promotion_constrainer=self.constrain_unpromotable
         )
     
-    def generate_moves_to(self, side: Side, pos: Position) -> List[Move]:
+    def generate_moves_to(self, pos: Position, side: Side) -> List[Move]:
         step_gen = functools.partial(self.generate_dests_steps, steps=self.steps_ki)
         return self.generate_moves(
             pos=pos, side=side, ktype=KomaType.TO,
@@ -284,7 +293,7 @@ class Rules:
             promotion_constrainer=self.constrain_unpromotable
         )
     
-    def generate_moves_ny(self, side: Side, pos: Position) -> List[Move]:
+    def generate_moves_ny(self, pos: Position, side: Side) -> List[Move]:
         step_gen = functools.partial(self.generate_dests_steps, steps=self.steps_ki)
         return self.generate_moves(
             pos=pos, side=side, ktype=KomaType.NY,
@@ -292,7 +301,7 @@ class Rules:
             promotion_constrainer=self.constrain_unpromotable
         )
     
-    def generate_moves_nk(self, side: Side, pos: Position) -> List[Move]:
+    def generate_moves_nk(self, pos: Position, side: Side) -> List[Move]:
         step_gen = functools.partial(self.generate_dests_steps, steps=self.steps_ki)
         return self.generate_moves(
             pos=pos, side=side, ktype=KomaType.NK,
@@ -300,7 +309,7 @@ class Rules:
             promotion_constrainer=self.constrain_unpromotable
         )
     
-    def generate_moves_ng(self, side: Side, pos: Position) -> List[Move]:
+    def generate_moves_ng(self, pos: Position, side: Side) -> List[Move]:
         step_gen = functools.partial(self.generate_dests_steps, steps=self.steps_ki)
         return self.generate_moves(
             pos=pos, side=side, ktype=KomaType.NG,
@@ -308,22 +317,22 @@ class Rules:
             promotion_constrainer=self.constrain_unpromotable
         )
     
-    def generate_moves_um(self, side: Side, pos: Position) -> List[Move]:
+    def generate_moves_um(self, pos: Position, side: Side) -> List[Move]:
         return self.generate_moves(
             pos=pos, side=side, ktype=KomaType.UM,
             dest_generator=self.generate_dests_um,
             promotion_constrainer=self.constrain_unpromotable
         )
     
-    def generate_moves_ry(self, side: Side, pos: Position) -> List[Move]:
+    def generate_moves_ry(self, pos: Position, side: Side) -> List[Move]:
         return self.generate_moves(
             pos=pos, side=side, ktype=KomaType.RY,
             dest_generator=self.generate_dests_ry,
             promotion_constrainer=self.constrain_unpromotable
         )
     
-    def generate_drop_moves(self, side: Side, pos: Position) -> List[Move]:
+    def generate_drop_moves(self, pos: Position, side: Side) -> List[Move]:
         pass
     
-    def is_suicide(self, side: Side, pos: Position) -> bool:
+    def is_suicide(self, pos: Position, side: Side) -> bool:
         pass
