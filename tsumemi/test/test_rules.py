@@ -52,3 +52,17 @@ class TestMoveGeneration(unittest.TestCase):
         # check answers
         self.assertEqual(mvset_sente, set(sente_moves))
         self.assertEqual(mvset_gote, set(gote_moves))
+    
+    def test_silver_moves(self):
+        sfen = "8S/7s1/7S1/6S2/9/6s2/7s1/7S1/8s b - 1"
+        # answer keys
+        sente_moves = ["S22(11)", "S22(11)+", "S22(23)", "S22(23)+", "S12(23)", "S12(23)+", "S32(23)", "S32(23)+", "S14(23)", "S14(23)+", "S33(34)", "S33(34)+", "S43(34)", "S43(34)+", "S25(34)", "S45(34)", "S17(28)", "S27(28)", "S37(28)", "S19(28)", "S39(28)"]
+        gote_moves = ["S28(19)", "S28(19)+", "S28(27)", "S28(27)+", "S18(27)", "S18(27)+", "S38(27)", "S38(27)+", "S16(27)", "S16(27)+", "S37(36)", "S37(36)+", "S47(36)", "S47(36)+", "S25(36)", "S45(36)", "S13(22)", "S23(22)", "S33(22)", "S11(22)", "S31(22)"]
+        self.position.from_sfen(sfen)
+        mvlist_sente = self.rules.generate_moves_gi(pos=self.position, side=Side.SENTE)
+        mvlist_gote = self.rules.generate_moves_gi(pos=self.position, side=Side.GOTE)
+        mvset_sente = set([move.to_latin() for move in mvlist_sente])
+        mvset_gote = set([move.to_latin() for move in mvlist_gote])
+        # check answers
+        self.assertEqual(mvset_sente, set(sente_moves))
+        self.assertEqual(mvset_gote, set(gote_moves))
