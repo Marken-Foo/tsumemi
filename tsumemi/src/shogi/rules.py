@@ -349,13 +349,35 @@ class Rules:
         for ktype in HAND_TYPES:
             if hand[ktype] != 0:
                 # generate a drop, constrain illegal drops (kei/fu/kyou/nifu)
-                if ktype == KomaType.FU or ktype == KomaType.KY:
-                    pass
-                if ktype == KomaType.KE:
-                    pass
+                valid_idxs = []
                 for end_idx in empty_idxs:
+                    if ktype == KomaType.FU:
+                        row_num = pos.idx_to_r(end_idx)
+                        if ((side == Side.SENTE) and (row_num == 1)) or ((side == Side.GOTE) and (row_num == 9)):
+                            continue
+                        # nifu
+                        col = pos.idx_to_c(end_idx)
+                        is_nifu = False
+                        for row in range(1, 10, 1):
+                            idx = pos.cr_to_idx(col, row)
+                            if pos.board[idx] == Koma.make(side, KomaType.FU):
+                                is_nifu = True
+                                break
+                        if not is_nifu:
+                            valid_idxs.append(end_idx)
+                    if ktype == KomaType.KY:
+                        if ((side == Side.SENTE) and (row_num == 1)) or ((side == Side.GOTE) and (row_num == 9)):
+                            continue
+                        else:
+                            valid_idxs.append(end_idx)
+                    if ktype == KomaType.KE:
+                        if ((side == Side.SENTE) and ((row_num == 1) or (row_num == 2))) or ((side == Side.GOTE) and ((row_num == 9) or (row_num == 8))):
+                            continue
+                        else:
+                            valid_idxs.append(end_idx)
+                for idx in valid_idxs:
                     move = self._drop(
-                        pos=pos, end_idx=end_idx, side=side, ktype=ktype
+                        pos=pos, end_idx=idx, side=side, ktype=ktype
                     )
                     mvlist.append(move)
         return mvlist
