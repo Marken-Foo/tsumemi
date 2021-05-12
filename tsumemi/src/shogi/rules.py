@@ -4,7 +4,7 @@ import functools
 
 from typing import Callable, List, Tuple
 
-from tsumemi.src.shogi.basetypes import Koma, KomaType, Move, Side
+from tsumemi.src.shogi.basetypes import Koma, KomaType, Move, Side, Square, HAND_TYPES
 from tsumemi.src.shogi.position import Dir, Position
 
 
@@ -50,6 +50,14 @@ class Rules:
             start_sq=pos.idx_to_sq(start_idx), end_sq=pos.idx_to_sq(end_idx),
             koma=Koma.make(side, ktype), captured=pos.board[end_idx],
             is_promotion=is_promotion
+        )
+    
+    def _drop(
+            self, pos: Position, end_idx: int, side: Side, ktype: KomaType
+        ) -> Move:
+        return Move(
+            start_sq=Square.HAND, end_sq=pos.idx_to_sq(end_idx),
+            koma=Koma.make(side, ktype)
         )
     
     def generate_moves(
@@ -260,7 +268,7 @@ class Rules:
         return self.generate_moves(
             pos=pos, side=side, ktype=KomaType.KI,
             dest_generator=step_gen,
-            promotion_constrainer=self.constrain_promotable
+            promotion_constrainer=self.constrain_unpromotable
         )
     
     def generate_moves_ka(self, pos: Position, side: Side) -> List[Move]:
@@ -332,7 +340,25 @@ class Rules:
         )
     
     def generate_drop_moves(self, pos: Position, side: Side) -> List[Move]:
-        pass
+        hand = pos.hand_sente if side == Side.SENTE else pos.hand_gote
+        mvlist = []
+        empty_idxs = []
+        for idx, koma in enumerate(pos.board):
+            if koma == Koma.NONE:
+                empty_idxs.append(idx)
+        for ktype in HAND_TYPES:
+            if hand[ktype] != 0:
+                # generate a drop, constrain illegal drops (kei/fu/kyou/nifu)
+                if ktype == KomaType.FU or ktype == KomaType.KY:
+                    pass
+                if ktype == KomaType.KE:
+                    pass
+                for end_idx in empty_idxs:
+                    move = self._drop(
+                        pos=pos, end_idx=end_idx, side=side, ktype=ktype
+                    )
+                    mvlist.append(move)
+        return mvlist
     
     def is_suicide(self, pos: Position, side: Side) -> bool:
         pass

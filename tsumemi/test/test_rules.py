@@ -66,3 +66,45 @@ class TestMoveGeneration(unittest.TestCase):
         # check answers
         self.assertEqual(mvset_sente, set(sente_moves))
         self.assertEqual(mvset_gote, set(gote_moves))
+    
+    def test_gold_moves(self):
+        sfen = "8G/7G1/7g1/9/9/9/7G1/7g1/8g b - 1"
+        # answer keys
+        sente_moves = ["G12(11)", "G21(11)", "G31(22)", "G21(22)", "G32(22)", "G12(22)", "G23(22)", "G36(27)", "G26(27)", "G16(27)", "G37(27)", "G17(27)", "G28(27)"]
+        gote_moves = ["G18(19)", "G29(19)", "G39(28)", "G29(28)", "G38(28)", "G18(28)", "G27(28)", "G34(23)", "G24(23)", "G14(23)", "G33(23)", "G13(23)", "G22(23)"]
+        self.position.from_sfen(sfen)
+        mvlist_sente = self.rules.generate_moves_ki(pos=self.position, side=Side.SENTE)
+        mvlist_gote = self.rules.generate_moves_ki(pos=self.position, side=Side.GOTE)
+        mvset_sente = set([move.to_latin() for move in mvlist_sente])
+        mvset_gote = set([move.to_latin() for move in mvlist_gote])
+        # check answers
+        self.assertEqual(mvset_sente, set(sente_moves))
+        self.assertEqual(mvset_gote, set(gote_moves))
+    
+    def test_bishop_moves(self):
+        sfen = "9/7P1/9/5B3/9/3b5/9/1p7/9 b - 1"
+        # answer keys
+        sente_moves = ["B71(44)", "B71(44)+", "B62(44)", "B62(44)+", "B53(44)", "B53(44)+", "B33(44)", "B33(44)+", "B55(44)", "B66(44)", "B35(44)", "B26(44)", "B17(44)"]
+        gote_moves = ["B39(66)", "B39(66)+", "B48(66)", "B48(66)+", "B57(66)", "B57(66)+", "B77(66)", "B77(66)+", "B55(66)", "B44(66)", "B75(66)", "B84(66)", "B93(66)"]
+        self.position.from_sfen(sfen)
+        mvlist_sente = self.rules.generate_moves_ka(pos=self.position, side=Side.SENTE)
+        mvlist_gote = self.rules.generate_moves_ka(pos=self.position, side=Side.GOTE)
+        mvset_sente = set([move.to_latin() for move in mvlist_sente])
+        mvset_gote = set([move.to_latin() for move in mvlist_gote])
+        # check answers
+        self.assertEqual(mvset_sente, set(sente_moves))
+        self.assertEqual(mvset_gote, set(gote_moves))
+    
+    def test_rook_moves(self):
+        sfen = "9/3p5/9/9/2Pr1Rp2/9/9/5P3/9 b - 1"
+        # answer keys
+        sente_moves = ["R41(45)", "R41(45)+", "R42(45)", "R42(45)+", "R43(45)", "R43(45)+", "R44(45)", "R55(45)", "R65(45)", "R35(45)", "R46(45)", "R47(45)"]
+        gote_moves = ["R69(65)", "R69(65)+", "R68(65)", "R68(65)+", "R67(65)", "R67(65)+", "R66(65)", "R55(65)", "R45(65)", "R75(65)", "R64(65)", "R63(65)"]
+        self.position.from_sfen(sfen)
+        mvlist_sente = self.rules.generate_moves_hi(pos=self.position, side=Side.SENTE)
+        mvlist_gote = self.rules.generate_moves_hi(pos=self.position, side=Side.GOTE)
+        mvset_sente = set([move.to_latin() for move in mvlist_sente])
+        mvset_gote = set([move.to_latin() for move in mvlist_gote])
+        # check answers
+        self.assertEqual(mvset_sente, set(sente_moves))
+        self.assertEqual(mvset_gote, set(gote_moves))
