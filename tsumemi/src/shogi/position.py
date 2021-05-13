@@ -32,8 +32,10 @@ class Position:
     9x9 array with padding.
     """
     def __init__(self) -> None:
-        # mailbox representation
-        self.board = [Koma.NONE] * 143 # 11 columns, 13 rows
+        # mailbox representation; 11 cols, 13 rows (2-square padding)
+        self.board: List[Koma] = [Koma.INVALID] * 143
+        # indices of squares containing Koma.NONE (empty squares)
+        self.empty_idxs: Set[int] = set()
         self.reset()
         return
     
@@ -42,7 +44,9 @@ class Position:
             self.board[i] = Koma.INVALID
         for col_num in range(1, 10):
             for row_num in range(1, 10):
-                self.board[self.cr_to_idx(col_num, row_num)] = Koma.NONE
+                idx = self.cr_to_idx(col_num, row_num)
+                self.board[idx] = Koma.NONE
+                self.empty_idxs.add(idx)
         # Koma set; indexed by side and komatype, contents are indices of where they are located on the board.
         koma_sente: Dict[Koma, Set[int]] = {Koma.make(Side.SENTE, ktype): set() for ktype in KOMA_TYPES}
         koma_gote: Dict[Koma, Set[int]] = {Koma.make(Side.GOTE, ktype): set() for ktype in KOMA_TYPES}
@@ -100,11 +104,15 @@ class Position:
     
     def set_koma(self, koma: Koma, sq: Square) -> None:
         prev_koma = self.get_koma(sq)
-        self.board[self.sq_to_idx(sq)] = koma
-        if koma != Koma.NONE and koma != Koma.INVALID:
-            self.koma_sets[koma].add(self.sq_to_idx(sq))
+        idx = self.sq_to_idx(sq)
+        self.board[idx] = koma
+        if koma == Koma.NONE:
+            self.empty_idxs.add(idx)
+        elif koma != Koma.INVALID:
+            self.koma_sets[koma].add(idx)
+            self.empty_idxs.discard(idx)
         if prev_koma != Koma.NONE and prev_koma != Koma.INVALID:
-            self.koma_sets[prev_koma].discard(self.sq_to_idx(sq))
+            self.koma_sets[prev_koma].discard(idx)
         return
     
     def get_koma(self, sq: Square) -> Koma:

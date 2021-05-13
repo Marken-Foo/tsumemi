@@ -55,12 +55,15 @@ class Rules:
     def _drop(
             self, pos: Position, end_idx: int, side: Side, ktype: KomaType
         ) -> Move:
+        """Construct a Move representing a drop, given the relevant
+        inputs. Convenient.
+        """
         return Move(
             start_sq=Square.HAND, end_sq=pos.idx_to_sq(end_idx),
             koma=Koma.make(side, ktype)
         )
     
-    def generate_moves(
+    def generate_moves_base(
             self, pos: Position, side: Side, ktype: KomaType,
             dest_generator: Callable[[Position, int, Side], List[int]],
             promotion_constrainer: Callable[
@@ -234,14 +237,14 @@ class Rules:
     def generate_moves_fu(self, pos: Position, side: Side) -> List[Move]:
         # FU and KY use the same promotion constraints
         step_gen = functools.partial(self.generate_dests_steps, steps=self.steps_fu)
-        return self.generate_moves(
+        return self.generate_moves_base(
             pos=pos, side=side, ktype=KomaType.FU,
             dest_generator=step_gen,
             promotion_constrainer=self.constrain_promotions_ky
         )
     
     def generate_moves_ky(self, pos: Position, side: Side) -> List[Move]:
-        return self.generate_moves(
+        return self.generate_moves_base(
             pos=pos, side=side, ktype=KomaType.KY,
             dest_generator=self.generate_dests_ky,
             promotion_constrainer=self.constrain_promotions_ky
@@ -249,7 +252,7 @@ class Rules:
     
     def generate_moves_ke(self, pos: Position, side: Side) -> List[Move]:
         step_gen = functools.partial(self.generate_dests_steps, steps=self.steps_ke)
-        return self.generate_moves(
+        return self.generate_moves_base(
             pos=pos, side=side, ktype=KomaType.KE,
             dest_generator=step_gen,
             promotion_constrainer=self.constrain_promotions_ke
@@ -257,7 +260,7 @@ class Rules:
     
     def generate_moves_gi(self, pos: Position, side: Side) -> List[Move]:
         step_gen = functools.partial(self.generate_dests_steps, steps=self.steps_gi)
-        return self.generate_moves(
+        return self.generate_moves_base(
             pos=pos, side=side, ktype=KomaType.GI,
             dest_generator=step_gen,
             promotion_constrainer=self.constrain_promotable
@@ -265,21 +268,21 @@ class Rules:
     
     def generate_moves_ki(self, pos: Position, side: Side) -> List[Move]:
         step_gen = functools.partial(self.generate_dests_steps, steps=self.steps_ki)
-        return self.generate_moves(
+        return self.generate_moves_base(
             pos=pos, side=side, ktype=KomaType.KI,
             dest_generator=step_gen,
             promotion_constrainer=self.constrain_unpromotable
         )
     
     def generate_moves_ka(self, pos: Position, side: Side) -> List[Move]:
-        return self.generate_moves(
+        return self.generate_moves_base(
             pos=pos, side=side, ktype=KomaType.KA,
             dest_generator=self.generate_dests_ka,
             promotion_constrainer=self.constrain_promotable
         )
     
     def generate_moves_hi(self, pos: Position, side: Side) -> List[Move]:
-        return self.generate_moves(
+        return self.generate_moves_base(
             pos=pos, side=side, ktype=KomaType.HI,
             dest_generator=self.generate_dests_hi,
             promotion_constrainer=self.constrain_promotable
@@ -287,7 +290,7 @@ class Rules:
     
     def generate_moves_ou(self, pos: Position, side: Side) -> List[Move]:
         step_gen = functools.partial(self.generate_dests_steps, steps=self.steps_ou)
-        return self.generate_moves(
+        return self.generate_moves_base(
             pos=pos, side=side, ktype=KomaType.OU,
             dest_generator=step_gen,
             promotion_constrainer=self.constrain_unpromotable
@@ -295,7 +298,7 @@ class Rules:
     
     def generate_moves_to(self, pos: Position, side: Side) -> List[Move]:
         step_gen = functools.partial(self.generate_dests_steps, steps=self.steps_ki)
-        return self.generate_moves(
+        return self.generate_moves_base(
             pos=pos, side=side, ktype=KomaType.TO,
             dest_generator=step_gen,
             promotion_constrainer=self.constrain_unpromotable
@@ -303,7 +306,7 @@ class Rules:
     
     def generate_moves_ny(self, pos: Position, side: Side) -> List[Move]:
         step_gen = functools.partial(self.generate_dests_steps, steps=self.steps_ki)
-        return self.generate_moves(
+        return self.generate_moves_base(
             pos=pos, side=side, ktype=KomaType.NY,
             dest_generator=step_gen,
             promotion_constrainer=self.constrain_unpromotable
@@ -311,7 +314,7 @@ class Rules:
     
     def generate_moves_nk(self, pos: Position, side: Side) -> List[Move]:
         step_gen = functools.partial(self.generate_dests_steps, steps=self.steps_ki)
-        return self.generate_moves(
+        return self.generate_moves_base(
             pos=pos, side=side, ktype=KomaType.NK,
             dest_generator=step_gen,
             promotion_constrainer=self.constrain_unpromotable
@@ -319,67 +322,59 @@ class Rules:
     
     def generate_moves_ng(self, pos: Position, side: Side) -> List[Move]:
         step_gen = functools.partial(self.generate_dests_steps, steps=self.steps_ki)
-        return self.generate_moves(
+        return self.generate_moves_base(
             pos=pos, side=side, ktype=KomaType.NG,
             dest_generator=step_gen,
             promotion_constrainer=self.constrain_unpromotable
         )
     
     def generate_moves_um(self, pos: Position, side: Side) -> List[Move]:
-        return self.generate_moves(
+        return self.generate_moves_base(
             pos=pos, side=side, ktype=KomaType.UM,
             dest_generator=self.generate_dests_um,
             promotion_constrainer=self.constrain_unpromotable
         )
     
     def generate_moves_ry(self, pos: Position, side: Side) -> List[Move]:
-        return self.generate_moves(
+        return self.generate_moves_base(
             pos=pos, side=side, ktype=KomaType.RY,
             dest_generator=self.generate_dests_ry,
             promotion_constrainer=self.constrain_unpromotable
         )
     
-    def generate_drop_moves(self, pos: Position, side: Side) -> List[Move]:
+    def generate_drop_moves(self, pos: Position, side: Side, ktype: KomaType) -> List[Move]:
+        if ktype not in HAND_TYPES:
+            return []
+        mvlist: List[Move] = []
         hand = pos.hand_sente if side == Side.SENTE else pos.hand_gote
-        mvlist = []
-        empty_idxs = []
-        for idx, koma in enumerate(pos.board):
-            if koma == Koma.NONE:
-                empty_idxs.append(idx)
-        for ktype in HAND_TYPES:
-            if hand[ktype] != 0:
-                # generate a drop, constrain illegal drops (kei/fu/kyou/nifu)
-                valid_idxs = []
-                for end_idx in empty_idxs:
-                    if ktype == KomaType.FU:
-                        row_num = pos.idx_to_r(end_idx)
-                        if ((side == Side.SENTE) and (row_num == 1)) or ((side == Side.GOTE) and (row_num == 9)):
-                            continue
-                        # nifu
-                        col = pos.idx_to_c(end_idx)
-                        is_nifu = False
-                        for row in range(1, 10, 1):
-                            idx = pos.cr_to_idx(col, row)
-                            if pos.board[idx] == Koma.make(side, KomaType.FU):
-                                is_nifu = True
-                                break
-                        if not is_nifu:
-                            valid_idxs.append(end_idx)
-                    if ktype == KomaType.KY:
-                        if ((side == Side.SENTE) and (row_num == 1)) or ((side == Side.GOTE) and (row_num == 9)):
-                            continue
-                        else:
-                            valid_idxs.append(end_idx)
-                    if ktype == KomaType.KE:
-                        if ((side == Side.SENTE) and ((row_num == 1) or (row_num == 2))) or ((side == Side.GOTE) and ((row_num == 9) or (row_num == 8))):
-                            continue
-                        else:
-                            valid_idxs.append(end_idx)
-                for idx in valid_idxs:
-                    move = self._drop(
-                        pos=pos, end_idx=idx, side=side, ktype=ktype
-                    )
-                    mvlist.append(move)
+        if hand[ktype] == 0:
+            return mvlist
+        for end_idx in pos.empty_idxs:
+            if ktype == KomaType.FU:
+                row_num = pos.idx_to_r(end_idx)
+                if ((side == Side.SENTE) and (row_num == 1)) or ((side == Side.GOTE) and (row_num == 9)):
+                    continue
+                # nifu
+                col = pos.idx_to_c(end_idx)
+                is_nifu = False
+                for row in range(1, 10, 1):
+                    idx = pos.cr_to_idx(col, row)
+                    if pos.board[idx] == Koma.make(side, KomaType.FU):
+                        is_nifu = True
+                if is_nifu:
+                    continue
+            elif ktype == KomaType.KY:
+                row_num = pos.idx_to_r(end_idx)
+                if ((side == Side.SENTE) and (row_num == 1)) or ((side == Side.GOTE) and (row_num == 9)):
+                    continue
+            elif ktype == KomaType.KE:
+                row_num = pos.idx_to_r(end_idx)
+                if ((side == Side.SENTE) and ((row_num == 1) or (row_num == 2))) or ((side == Side.GOTE) and ((row_num == 9) or (row_num == 8))):
+                    continue
+            move = self._drop(
+                pos=pos, end_idx=end_idx, side=side, ktype=ktype
+            )
+            mvlist.append(move)
         return mvlist
     
     def is_suicide(self, pos: Position, side: Side) -> bool:
