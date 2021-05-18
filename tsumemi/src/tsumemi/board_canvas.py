@@ -6,10 +6,15 @@ from collections import Counter
 from enum import Enum
 from PIL import Image, ImageTk
 
-from tsumemi.src.tsumemi.kif_parser import KanjiNumber, Piece
+from tsumemi.src.shogi.basetypes import Koma, KomaType, Side, KANJI_FROM_KTYPE
+from tsumemi.src.shogi.kif import KanjiNumber
+from tsumemi.src.tsumemi.kif_parser import Piece
+
 
 BOARD_IMAGES_PATH = os.path.relpath(r"tsumemi/resources/images/boards") 
 PIECE_IMAGES_PATH = os.path.relpath(r"tsumemi/resources/images/pieces")
+
+
 
 class BoardSkin(Enum):
     WHITE = ("solid white", "white", None)
@@ -44,9 +49,10 @@ class PieceSkin(Enum):
 
 
 class ImgResizer:
-    """Take PIL Image and store it along with a resized ImageTk.PhotoImage.
-    Manage resized dimensions via function passed in constructor.
-    Responsible for resizing images to correct dimensions.
+    """Take PIL Image and store it alongside a resized
+    ImageTk.PhotoImage. Manage resized dimensions via function passed
+    in constructor. Responsible for resizing images to correct
+    dimensions.
     """
     def __init__(self, update_func):
         self.update_func = update_func # function returns tuple (width, height)
@@ -117,20 +123,20 @@ class PieceImgManager(ImgManager):
     def load(self, skin):
         filepath = skin.path
         if filepath:
-            for piece in Piece:
-                if piece is Piece.NONE:
+            for ktype in KomaType:
+                if ktype == KomaType.NONE:
                     continue
-                filename = "0" + piece.CSA + ".png"
+                filename = "0" + ktype.to_csa() + ".png"
                 img_path = os.path.join(skin.path, filename)
                 img = Image.open(img_path)
-                self.upright.add_image(piece, img)
-                self.komadai_upright.add_image(piece, img)
+                self.upright.add_image(ktype, img)
+                self.komadai_upright.add_image(ktype, img)
                 # upside-down image
-                filename = "1" + piece.CSA + ".png"
+                filename = "1" + ktype.to_csa() + ".png"
                 img_path = os.path.join(skin.path, filename)
                 img = Image.open(img_path)
-                self.inverted.add_image(piece, img)
-                self.komadai_inverted.add_image(piece, img)
+                self.inverted.add_image(ktype, img)
+                self.komadai_inverted.add_image(ktype, img)
             self.skin = skin
             return
         else:
@@ -361,9 +367,9 @@ class BoardCanvas(tk.Canvas):
             )
         return
     
-    def draw_piece(self, x, y, piece, komadai=False, invert=False,
+    def draw_koma(self, x, y, koma, komadai=False, invert=False,
                    is_text=True, anchor="center"):
-        if piece is Piece.NONE:
+        if koma == koma.NONE:
             return
         if is_text:
             text_size = (
@@ -372,7 +378,7 @@ class BoardCanvas(tk.Canvas):
                 else self.measurements.sq_text_size
             )
             self.create_text(
-                x, y, text=str(piece.kanji),
+                x, y, text=str(KANJI_FROM_KTYPE[KomaType.get(koma)]),
                 font=("", text_size),
                 angle=180 if invert else 0,
                 anchor=anchor
@@ -381,7 +387,7 @@ class BoardCanvas(tk.Canvas):
             piece_dict = self.piece_images.get_dict(
                 invert=invert, komadai=komadai
             )
-            img = piece_dict[piece]
+            img = piece_dict[KomaType.get(koma)]
             self.create_image(x, y, image=img, anchor=anchor)
         return
     
@@ -445,10 +451,10 @@ class BoardCanvas(tk.Canvas):
                     + n*(symbol_size+pad)
                     + symbol_size/2 # for the anchor="center"
                 )
-                self.draw_piece(
+                self.draw_koma(
                     x-0.4*komadai_piece_size,
                     y+y_offset,
-                    piece=piece,
+                    koma = piece,
                     komadai=True,
                     is_text=is_text,
                     anchor="center"
@@ -468,6 +474,7 @@ class BoardCanvas(tk.Canvas):
         # Clear board display - could also keep board and just redraw pieces
         self.delete("all")
         reader = self.reader
+        position = self.reader.game.position
         komadai_w = self.measurements.komadai_w
         coords_text_size = self.measurements.coords_text_size
         w_pad = self.measurements.w_pad
@@ -477,57 +484,68 @@ class BoardCanvas(tk.Canvas):
         # Gather north and south side data.
         # Note: if is_upside_down, essentially performs a deep copy,
         # but just "passes by reference" the reader's board if not.
-        south_hand = reader.board.sente_hand
-        north_hand = reader.board.gote_hand
-        south_board = reader.board.sente
-        north_board = reader.board.gote
+        south_hand = position.hand_sente
+        north_hand = position.hand_gote
+        # south_hand = reader.board.sente_hand
+        # north_hand = reader.board.gote_hand
+        # south_board = reader.board.sente
+        # north_board = reader.board.gote
         is_north_sente = False
         
-        if self.is_upside_down:
+        # if self.is_upside_down:
             # swap hands
-            north_hand, south_hand = south_hand, north_hand
+            # north_hand, south_hand = south_hand, north_hand
             # "rotate" each board 180 degrees, then swap
-            north_board = north_board[::-1]
-            south_board = south_board[::-1]
-            for i, row in enumerate(north_board):
-                north_board[i] = row[::-1]
-            for i, row in enumerate(south_board):
-                south_board[i] = row[::-1]
-            north_board, south_board = south_board, north_board
-            is_north_sente = True
+            # north_board = north_board[::-1]
+            # south_board = south_board[::-1]
+            # for i, row in enumerate(north_board):
+                # north_board[i] = row[::-1]
+            # for i, row in enumerate(south_board):
+                # south_board[i] = row[::-1]
+            # north_board, south_board = south_board, north_board
+            # is_north_sente = True
         
         # Draw board
         self.draw_board()
         # Draw board pieces
         is_text = not self.piece_images.has_images()
-        for row_num, row in enumerate(south_board):
-            for col_num, piece in enumerate(row):
-                self.draw_piece(
-                    x_sq(col_num+0.5), y_sq(row_num+0.5), piece,
-                    is_text=is_text
+        for koma, kset in position.koma_sets.items():
+            for idx in kset:
+                col_num = position.idx_to_c(idx)
+                row_num = position.idx_to_r(idx)
+                self.draw_koma(
+                    x_sq(9-col_num+0.5), y_sq(row_num-1+0.5), koma,
+                    is_text=is_text, invert=(koma.side()==Side.GOTE)
                 )
-        for row_num, row in enumerate(north_board):
-            for col_num, piece in enumerate(row):
-                self.draw_piece(
-                    x_sq(col_num+0.5), y_sq(row_num+0.5), piece,
-                    is_text=is_text,
-                    invert=True
-                )
+        
+        # for row_num, row in enumerate(south_board):
+            # for col_num, piece in enumerate(row):
+                # self.draw_piece(
+                    # x_sq(col_num+0.5), y_sq(row_num+0.5), piece,
+                    # is_text=is_text
+                # )
+        # for row_num, row in enumerate(north_board):
+            # for col_num, piece in enumerate(row):
+                # self.draw_piece(
+                    # x_sq(col_num+0.5), y_sq(row_num+0.5), piece,
+                    # is_text=is_text,
+                    # invert=True
+                # )
         # Draw komadai
-        self.north_komadai_rect = self.draw_komadai(
-            w_pad + komadai_w/2,
-            y_sq(0),
-            north_hand,
-            sente=is_north_sente,
-            align="top"
-        )
-        self.south_komadai_rect = self.draw_komadai(
-            x_sq(9) + 2*coords_text_size + komadai_w/2,
-            y_sq(9),
-            south_hand,
-            sente=not is_north_sente,
-            align="bottom"
-        )
+        # self.north_komadai_rect = self.draw_komadai(
+            # w_pad + komadai_w/2,
+            # y_sq(0),
+            # north_hand,
+            # sente=is_north_sente,
+            # align="top"
+        # )
+        # self.south_komadai_rect = self.draw_komadai(
+            # x_sq(9) + 2*coords_text_size + komadai_w/2,
+            # y_sq(9),
+            # south_hand,
+            # sente=not is_north_sente,
+            # align="bottom"
+        # )
         return
     
     def apply_piece_skin(self, skin):

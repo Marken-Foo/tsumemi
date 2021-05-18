@@ -56,6 +56,14 @@ class KomaType(IntFlag):
     
     def is_promoted(self) -> bool:
         return bool((self & KomaType.PROMOTED) and (self & ~KomaType.OU))
+    
+    def to_csa(self) -> str:
+        """Return CSA name of the corresponding shogi piece type.
+        """
+        if self == KomaType.NONE:
+            return " * "
+        else:
+            return self.name
 
 
 class Koma(IntFlag):
@@ -156,8 +164,17 @@ KTYPE_FROM_KANJI: Dict[str, KomaType] = {
     "金": KomaType.KI, "角": KomaType.KA, "飛": KomaType.HI,
     "玉": KomaType.OU, "王": KomaType.OU,
     "と": KomaType.TO, "杏": KomaType.NY, "圭": KomaType.NK, "全": KomaType.NG,
-    "馬": KomaType.UM,"龍": KomaType.RY, "竜": KomaType.RY,
+    "馬": KomaType.UM, "龍": KomaType.RY, "竜": KomaType.RY,
     "・": KomaType.NONE
+}
+
+
+KANJI_FROM_KTYPE: Dict[KomaType, str] = {
+    KomaType.FU: "歩", KomaType.KY: "香", KomaType.KE: "桂", KomaType.GI: "銀",
+    KomaType.KI: "金", KomaType.KA: "角", KomaType.HI: "飛", KomaType.OU: "玉",
+    KomaType.TO: "と", KomaType.NY: "杏", KomaType.NK: "圭", KomaType.NG: "全",
+    KomaType.UM: "馬", KomaType.RY: "龍",
+    KomaType.NONE: ""
 }
 
 
