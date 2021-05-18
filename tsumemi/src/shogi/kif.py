@@ -269,4 +269,5 @@ class KifReader(Reader):
                 pass
             # MUST fallthrough to here to complete one while iteration
             line = handle.readline()
+        self.game.start()
         return

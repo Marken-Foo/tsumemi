@@ -37,6 +37,11 @@ class Game:
         self.curr_node = self.curr_node.prev()
         return
     
+    def start(self) -> None:
+        self.position.from_sfen(self.movetree.start_pos)
+        self.curr_node = self.movetree
+        return
+    
     def to_notation(self):
         # Return human-readable notation format for whole game
         raise NotImplementedError
