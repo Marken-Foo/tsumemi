@@ -1,22 +1,28 @@
+from __future__ import annotations
+
 import time
 
 from itertools import accumulate
 from math import fsum
+from typing import TYPE_CHECKING
 
 import tsumemi.src.tsumemi.event as event
 
+if TYPE_CHECKING:
+    from typing import List, Iterator, Optional, Tuple
 
-def sec_to_hms(seconds):
+
+def sec_to_hms(seconds: float) -> Tuple[int, int, float]:
     # Take time in seconds, return tuple of (hours, minutes, seconds).
     return (int(seconds // 3600), int((seconds % 3600) // 60), seconds % 60)
 
 
-def _two_digits(num):
+def _two_digits(num: float) -> str:
     # Take num, make integer part two chars (clock display), return string
     return "0" + str(num) if num < 10 else str(num)
 
 
-def sec_to_str(seconds, places=1):
+def sec_to_str(seconds: float, places: int = 1) -> str:
     hms = list(sec_to_hms(seconds))
     hms[2] = round(hms[2], places)
     return ":".join([_two_digits(i) for i in hms])
@@ -31,8 +37,9 @@ class TimerStopEvent(event.Event):
 
 
 class TimerSplitEvent(event.Event):
-    def __init__(self, lap_time):
-        self.time = lap_time
+    def __init__(self, lap_time: float) -> None:
+        self.time: float = lap_time
+        return
 
 
 class SplitTimer:
@@ -44,29 +51,29 @@ class SplitTimer:
     (those four), and 4 lap times (each lap is 30 seconds).
     '''
     
-    def __init__(self):
-        self.is_running = False
-        self.lap_times = []
+    def __init__(self) -> None:
+        self.is_running: bool = False
+        self.lap_times: List[float] = []
         # Elapsed (active) time since the start of this lap
-        self.curr_lap_time = 0
+        self.curr_lap_time: float = 0
         # Time at instant of last start() or split()
-        self.start_time = None
+        self.start_time: Optional[float] = None
         return
     
-    def start(self):
+    def start(self) -> None:
         if not self.is_running:
             self.is_running = True
             self.start_time = time.perf_counter()
         return
     
-    def stop(self):
+    def stop(self) -> None:
         if self.is_running:
             self.is_running = False
             if self.start_time is not None:
                 self.curr_lap_time += time.perf_counter() - self.start_time
         return
     
-    def split(self):
+    def split(self) -> Optional[float]:
         if self.start_time is None:
             # ill-defined operation
             return None
@@ -86,14 +93,14 @@ class SplitTimer:
             self.curr_lap_time = 0
             return lap_time
     
-    def reset(self):
+    def reset(self) -> None:
         self.is_running = False
         self.lap_times = []
         self.curr_lap_time = 0
         self.start_time = None
         return
     
-    def read(self):
+    def read(self) -> float:
         if self.is_running:
             res = (fsum(self.lap_times) + self.curr_lap_time
                    + time.perf_counter() - self.start_time)
@@ -101,13 +108,13 @@ class SplitTimer:
             res = fsum(self.lap_times) + self.curr_lap_time
         return res
     
-    def get_lap(self):
+    def get_lap(self) -> Optional[float]:
         if self.lap_times:
             return self.lap_times[-1]
         else:
             return None
     
-    def get_split_times(self):
+    def get_split_times(self) -> Iterator[float]:
         # Return a list of split times instead of lap times.
         return accumulate(self.lap_times)
 
@@ -116,48 +123,38 @@ class Timer(event.Emitter):
     """Wrapper for the SplitTimer class, with normal stopwatch
     functions. Emits events to be observed by GUI displays of
     the timer (or for other purposes)."""
-    def __init__(self):
+    def __init__(self) -> None:
         self.clock = SplitTimer()
-        self.observers = []
+        self.observers: List[event.IObserver] = []
         return
     
-    def read(self):
+    def read(self) -> float:
         return self.clock.read()
     
-    def reset(self):
+    def reset(self) -> None:
         self.clock.reset()
         self._notify_observers(TimerStopEvent())
         return
     
-    def split(self):
+    def split(self) -> Optional[float]:
         time = self.clock.split()
         if time is not None:
             self._notify_observers(TimerSplitEvent(time))
-        return time # can be None
+        return time
     
-    def start(self):
+    def start(self) -> None:
         self.clock.start()
         self._notify_observers(TimerStartEvent())
         return
     
-    def stop(self):
+    def stop(self) -> None:
         self.clock.stop()
         self._notify_observers(TimerStopEvent())
         return
     
-    def toggle(self):
+    def toggle(self) -> None:
         if self.clock.is_running: # remove this private access
             self.stop()
         else:
             self.start()
         return
-
-
-class CmdReadTimer:
-    """Command object to let other objects ask for a timer's time.
-    """
-    def __init__(self, timer):
-        self.timer = timer
-    
-    def execute(self):
-        return self.timer.read()

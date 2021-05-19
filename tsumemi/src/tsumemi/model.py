@@ -1,18 +1,22 @@
 import os
 
-from tsumemi.src.tsumemi.kif_parser import KifReader
+import tsumemi.src.shogi.kif as kif
+import tsumemi.src.tsumemi.timer as timer
+
 from tsumemi.src.tsumemi.problem_list import Problem, ProblemList
 
-
 class Model():
-    """Main data model of program, following MVC principles. Manages
-    reading problems from file and maintaining the problem list.
+    """Main data model of program. Manages reading problems from file
+    and maintaining the problem list.
     """
     def __init__(self):
         self.prob_buffer = ProblemList()
         self.directory = None # not currently used meaningfully
         self.solution = ""
-        self.reader = KifReader()
+        self.reader = kif.KifReader()
+        self.active_game = self.reader.game
+        self.clock = timer.Timer()
+        return
     
     def set_active_problem(self, idx=0):
         if self.prob_buffer.is_empty():
@@ -22,21 +26,28 @@ class Model():
                 self.read_problem()
             return True
     
-    def read_problem(self):
-        # Read current problem into reader.
-        # Try any likely encodings for the KIF files
+    def read_file(self, filename, reader, visitor):
         encodings = ["cp932", "utf-8"]
-        for e in encodings:
+        for enc in encodings:
             try:
-                with open(self.prob_buffer.get_curr_filepath(),\
-                          "r", encoding=e) as kif:
-                    self.reader.parse_kif(kif)
-                    self.solution = "　".join(self.reader.moves)
+                with open(filename, "r", encoding=enc) as kif:
+                    reader.read(kif, visitor)
             except UnicodeDecodeError:
                 pass
             else:
                 break
-        return self.reader
+        return
+    
+    def read_problem(self):
+        # loads position and moves as a Game in the reader, returns None
+        self.read_file(
+            self.prob_buffer.get_curr_filepath(),
+            reader=self.reader,
+            visitor=kif.GameBuilderPVis()
+        )
+        self.solution = "　".join(self.reader.game.to_notation_ja_kif())
+        self.reader.game.start()
+        return
     
     def add_problems_in_directory(self, directory, recursive=False, suppress=False):
         # Adds all problems in given directory to self.prob_buffer.
@@ -92,6 +103,25 @@ class Model():
         self.prob_buffer.set_status(status)
         return
     
-    def set_time(self, status):
-        self.prob_buffer.set_time(status)
+    # Timer clock controls
+    def start_timer(self):
+        self.clock.start()
+        return
+    
+    def stop_timer(self):
+        self.clock.stop()
+        return
+    
+    def toggle_timer(self):
+        self.clock.toggle()
+        return
+    
+    def reset_timer(self):
+        self.clock.reset()
+        return
+    
+    def split_timer(self):
+        time = self.clock.split()
+        if time is not None:
+            self.prob_buffer.set_time(time)
         return

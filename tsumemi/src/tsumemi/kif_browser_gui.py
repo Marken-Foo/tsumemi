@@ -16,6 +16,8 @@ from tsumemi.src.tsumemi.settings_window import SettingsWindow, CONFIG_PATH
 
 
 class Menubar(tk.Menu):
+    """GUI class for the menubar at the top of the main window.
+    """
     def __init__(self, parent, controller, *args, **kwargs):
         self.controller = controller
         super().__init__(parent, *args, **kwargs)
@@ -60,9 +62,14 @@ class Menubar(tk.Menu):
 
 
 class TimerDisplay(ttk.Label, event.IObserver):
-    def __init__(self, parent, controller, *args, **kwargs):
+    """GUI class to display a stopwatch/timer.
+    """
+    def __init__(self, parent, controller, clock, *args, **kwargs):
         self.controller = controller
         super().__init__(parent, *args, **kwargs)
+        self.clock = clock
+        # Register self as observer of clock
+        self.clock.add_observer(self)
         
         self.NOTIFY_ACTIONS = {
             timer.TimerStartEvent: self._on_start,
@@ -97,7 +104,7 @@ class TimerDisplay(ttk.Label, event.IObserver):
     def refresh(self):
         self.time_str.set(
             timer.sec_to_str(
-                self.controller.cmd_read_timer.execute()
+                self.clock.read()
             )
         )
         if self.is_running:
@@ -106,16 +113,19 @@ class TimerDisplay(ttk.Label, event.IObserver):
 
 
 class TimerPane(ttk.Frame):
-    def __init__(self, parent, controller, *args, **kwargs):
+    """GUI frame containing a timer display and associated controls.
+    """
+    def __init__(self, parent, controller, clock, *args, **kwargs):
         self.controller = controller
         super().__init__(parent, *args, **kwargs)
         
         # Basic timer
-        self.timer = timer.SplitTimer()
+        self.clock = clock
         # Display updates automatically by watching timer (Observer pattern).
         self.timer_display = TimerDisplay(
             parent=self,
-            controller=self.controller
+            controller=self.controller,
+            clock = self.clock
         )
         self.timer_display.grid(
             column=0, row=0, columnspan=3
@@ -123,34 +133,35 @@ class TimerPane(ttk.Frame):
         # Timer control widgets
         ttk.Button(
             self, text="Start/stop timer",
-            command=self.controller.toggle_timer
+            command=self.controller.model.toggle_timer
         ).grid(
             column=0, row=1
         )
         ttk.Button(
             self, text="Reset timer",
-            command=self.controller.reset_timer
+            command=self.controller.model.reset_timer
         ).grid(
             column=1, row=1
         )
         ttk.Button(
             self, text="Split",
-            command=self.controller.split_timer
+            command=self.controller.model.split_timer
         ).grid(
             column=2, row=1
         )
 
 
 class ProblemsView(ttk.Treeview, event.IObserver):
-    '''
-    Displays list of problems in currently open folder.
-    As it is a view of the underlying data model, it uses the Observer pattern
-    to update itself whenever the model updates.
-    '''
-    
-    def __init__(self, parent, controller, *args, **kwargs):
+    """GUI class to display list of problems.
+    Uses the Observer pattern to update itself whenever underlying
+    problem list updates.
+    """
+    def __init__(self, parent, controller, problem_list, *args, **kwargs):
         self.controller = controller
         super().__init__(parent, *args, **kwargs)
+        self.problem_list = problem_list
+        # Register self as observer of ProblemList
+        self.problem_list.add_observer(self)
         
         self.NOTIFY_ACTIONS = {
             plist.ProbStatusEvent: self.set_status,
@@ -166,15 +177,22 @@ class ProblemsView(ttk.Treeview, event.IObserver):
         
         self["columns"] = ("filename", "time", "status")
         self["show"] = "headings"
-        self.heading("filename", text="Problem", command=controller.cmd_sort_pbuf.by_file)
-        self.heading("time", text="Time", command=controller.cmd_sort_pbuf.by_time)
+        self.heading("filename", text="Problem", command=self.problem_list.sort_by_file)
+        self.heading("time", text="Time", command=self.problem_list.sort_by_time)
         self.column("time", width=120)
-        self.heading("status", text="Status", command=controller.cmd_sort_pbuf.by_status)
+        self.heading("status", text="Status", command=self.problem_list.sort_by_status)
         self.column("status", anchor="center", width=40)
-        # Colours to be decided (accessibility)
+        # Colours to be decided (accessibility concerns)
         self.tag_configure("SKIP", background="snow2")
         self.tag_configure("CORRECT", background="PaleGreen1")
         self.tag_configure("WRONG", background="LightPink1")
+        
+        # Bind double click to go to problem
+        self.bind("<Double-1>",
+            lambda e: self.controller.go_to_file(
+                idx=self.get_idx_on_click(e)
+            )
+        )
         return
     
     def on_notify(self, event):
@@ -224,12 +242,18 @@ class ProblemsView(ttk.Treeview, event.IObserver):
 
 
 class ProblemListPane(ttk.Frame):
-    def __init__(self, parent, controller, *args, **kwargs):
+    """GUI frame containing view of problem list and associated
+    controls.
+    """
+    def __init__(self, parent, controller, problem_list, *args, **kwargs):
         self.controller = controller
         super().__init__(parent, *args, **kwargs)
+        self.problem_list = problem_list
         
         # Display problem list as Treeview
-        self.tvw = ProblemsView(parent=self, controller=controller)
+        self.tvw = ProblemsView(
+            parent=self, controller=controller, problem_list=problem_list
+        )
         self.tvw.grid(column=0, row=0, sticky="NSEW")
         
         # Make scrollbar
@@ -243,7 +267,7 @@ class ProblemListPane(ttk.Frame):
         # Make randomise button
         self.btn_randomise = ttk.Button(
             self, text="Randomise problems",
-            command=controller.cmd_sort_pbuf.randomise # no; this needs to be a controller method, not a Command, since we need to update the zeroth problem and redraw the board. Right? Do we?
+            command=self.problem_list.randomise
         )
         self.btn_randomise.grid(column=0, row=1)
         
@@ -265,14 +289,13 @@ class ProblemListPane(ttk.Frame):
 
 
 class MainWindow:
-    '''Class encapsulating the window to display the kif.'''
+    """GUI class for the main window of the application.
+    Acts as controller for the application.
+    """
     # eventually, refactor menu labels and dialog out into a constant namespace
     def __init__(self, master):
         # Set up data model
         self.model = model.Model()
-        self.timer = timer.Timer()
-        self.cmd_read_timer = timer.CmdReadTimer(self.timer)
-        self.cmd_sort_pbuf = plist.CmdSortProbList(self.model.prob_buffer)
         # tkinter stuff, set up the main window
         # Reference to tk.Tk() root object
         self.master = master
@@ -313,6 +336,7 @@ class MainWindow:
         
         self.board = BoardCanvas(
             parent=self.boardWrapper, controller=self,
+            position = self.model.active_game.position,
             width=BoardCanvas.CANVAS_WIDTH, height=BoardCanvas.CANVAS_HEIGHT,
             bg="white"
         )
@@ -345,26 +369,20 @@ class MainWindow:
         self.nav_controls.grid()
         
         # Timer controls and display
-        self.timer_controls = TimerPane(parent=self.mainframe, controller=self)
+        self.timer_controls = TimerPane(parent=self.mainframe, controller=self, clock=self.model.clock)
         self.timer_controls.grid(column=1, row=1)
         self.timer_controls.columnconfigure(0, weight=0)
         self.timer_controls.rowconfigure(0, weight=0)
-        # Observer pattern; timer panel updates itself alongside timer
-        self.timer.add_observer(self.timer_controls.timer_display) # ewww
         
         # Problem list
-        self.problem_list_pane = ProblemListPane(parent=self.mainframe,
-                                                 controller=self)
+        self.problem_list_pane = ProblemListPane(
+            parent=self.mainframe, controller=self,
+            problem_list=self.model.prob_buffer
+        )
         self.problem_list_pane.grid(column=1, row=0, sticky="NSEW")
         self.problem_list_pane.columnconfigure(0, weight=1)
         self.problem_list_pane.rowconfigure(0, weight=1)
         self.problem_list_pane.grid_configure(padx=5, pady=5)
-        # Observer pattern; treeview updates itself when model updates
-        tvw = self.problem_list_pane.tvw
-        self.model.prob_buffer.add_observer(tvw)
-        # Double click to go to problem - throws exception on Double-1 heading
-        tvw.bind("<Double-1>",
-                 lambda e: self.go_to_file(idx=tvw.get_idx_on_click(e)))
         
         # Keyboard shortcuts
         self.bindings = Bindings(self)
@@ -427,28 +445,6 @@ class MainWindow:
         self.board.flip_board(want_upside_down)
         return
     
-    def start_timer(self):
-        self.timer.start()
-        return
-    
-    def stop_timer(self):
-        self.timer.stop()
-        return
-    
-    def toggle_timer(self):
-        self.timer.toggle()
-        return
-    
-    def reset_timer(self):
-        self.timer.reset()
-        return
-    
-    def split_timer(self):
-        time = self.timer.split()
-        if time is not None:
-            self.model.set_time(time)
-        return
-    
     # Speedrun mode commands
     def start_speedrun(self):
         # Make UI changes
@@ -461,8 +457,8 @@ class MainWindow:
         # Set application state
         self.bindings.unbind_shortcuts(self.master, self.bindings.FREE_SHORTCUTS)
         self.go_to_file(idx=0)
-        self.reset_timer()
-        self.start_timer()
+        self.model.reset_timer()
+        self.model.start_timer()
         return
         
     def abort_speedrun(self):
@@ -475,19 +471,19 @@ class MainWindow:
         self.problem_list_pane.btn_abort_speedrun.grid_remove()
         # Set application state
         self.bindings.bind_shortcuts(self.master, self.bindings.FREE_SHORTCUTS)
-        self.stop_timer()
+        self.model.stop_timer()
         return
     
     def skip(self):
-        self.split_timer()
+        self.model.split_timer()
         self.model.set_status(plist.ProblemStatus.SKIP)
         if not self.next_file():
             self.end_of_folder()
         return
     
     def view_solution(self):
-        self.split_timer()
-        self.stop_timer()
+        self.model.split_timer()
+        self.model.stop_timer()
         self.show_solution()
         self.nav_controls.show_correct_wrong()
         return
@@ -498,7 +494,7 @@ class MainWindow:
             self.end_of_folder()
             return
         self.nav_controls.show_sol_skip()
-        self.start_timer()
+        self.model.start_timer()
         return
     
     def mark_wrong(self):
@@ -507,11 +503,11 @@ class MainWindow:
             self.end_of_folder()
             return
         self.nav_controls.show_sol_skip()
-        self.start_timer()
+        self.model.start_timer()
         return
     
     def end_of_folder(self):
-        self.stop_timer()
+        self.model.stop_timer()
         messagebox.showinfo(
             title="End of folder",
             message="You have reached the end of the speedrun."

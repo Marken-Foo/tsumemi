@@ -6,10 +6,12 @@ from collections import Counter
 from enum import Enum
 from PIL import Image, ImageTk
 
-from tsumemi.src.tsumemi.kif_parser import KanjiNumber, Piece
+from tsumemi.src.shogi.basetypes import KanjiNumber, Koma, KomaType, Side, HAND_TYPES, KANJI_FROM_KTYPE
+
 
 BOARD_IMAGES_PATH = os.path.relpath(r"tsumemi/resources/images/boards") 
 PIECE_IMAGES_PATH = os.path.relpath(r"tsumemi/resources/images/pieces")
+
 
 class BoardSkin(Enum):
     WHITE = ("solid white", "white", None)
@@ -44,9 +46,10 @@ class PieceSkin(Enum):
 
 
 class ImgResizer:
-    """Take PIL Image and store it along with a resized ImageTk.PhotoImage.
-    Manage resized dimensions via function passed in constructor.
-    Responsible for resizing images to correct dimensions.
+    """Take PIL Image and store it alongside a resized
+    ImageTk.PhotoImage. Manage resized dimensions via function passed
+    in constructor. Responsible for resizing images to correct
+    dimensions.
     """
     def __init__(self, update_func):
         self.update_func = update_func # function returns tuple (width, height)
@@ -117,20 +120,20 @@ class PieceImgManager(ImgManager):
     def load(self, skin):
         filepath = skin.path
         if filepath:
-            for piece in Piece:
-                if piece is Piece.NONE:
+            for ktype in KomaType:
+                if ktype == KomaType.NONE:
                     continue
-                filename = "0" + piece.CSA + ".png"
+                filename = "0" + ktype.to_csa() + ".png"
                 img_path = os.path.join(skin.path, filename)
                 img = Image.open(img_path)
-                self.upright.add_image(piece, img)
-                self.komadai_upright.add_image(piece, img)
+                self.upright.add_image(ktype, img)
+                self.komadai_upright.add_image(ktype, img)
                 # upside-down image
-                filename = "1" + piece.CSA + ".png"
+                filename = "1" + ktype.to_csa() + ".png"
                 img_path = os.path.join(skin.path, filename)
                 img = Image.open(img_path)
-                self.inverted.add_image(piece, img)
-                self.komadai_inverted.add_image(piece, img)
+                self.inverted.add_image(ktype, img)
+                self.komadai_inverted.add_image(ktype, img)
             self.skin = skin
             return
         else:
@@ -274,12 +277,12 @@ class BoardCanvas(tk.Canvas):
     CANVAS_WIDTH = 600
     CANVAS_HEIGHT = 500
     
-    def __init__(self, parent, controller, *args, **kwargs):
+    def __init__(self, parent, controller, position, *args, **kwargs):
         self.controller = controller
         self.is_upside_down = False
         super().__init__(parent, *args, **kwargs)
         # Specify source of board data
-        self.reader = self.controller.model.reader
+        self.position = position
         config = self.controller.config
         # Initialise measurements, used for many other things
         self.measurements = BoardMeasurements(
@@ -361,9 +364,9 @@ class BoardCanvas(tk.Canvas):
             )
         return
     
-    def draw_piece(self, x, y, piece, komadai=False, invert=False,
+    def draw_koma(self, x, y, ktype, komadai=False, invert=False,
                    is_text=True, anchor="center"):
-        if piece is Piece.NONE:
+        if ktype == KomaType.NONE:
             return
         if is_text:
             text_size = (
@@ -372,7 +375,7 @@ class BoardCanvas(tk.Canvas):
                 else self.measurements.sq_text_size
             )
             self.create_text(
-                x, y, text=str(piece.kanji),
+                x, y, text=str(KANJI_FROM_KTYPE[ktype]),
                 font=("", text_size),
                 angle=180 if invert else 0,
                 anchor=anchor
@@ -381,7 +384,7 @@ class BoardCanvas(tk.Canvas):
             piece_dict = self.piece_images.get_dict(
                 invert=invert, komadai=komadai
             )
-            img = piece_dict[piece]
+            img = piece_dict[ktype]
             self.create_image(x, y, image=img, anchor=anchor)
         return
     
@@ -399,8 +402,10 @@ class BoardCanvas(tk.Canvas):
         pad = (komadai_text_size / 8 if is_text else komadai_piece_size / 8)
         mochigoma_heading_size = 4 * komadai_char_height # "▲\n持\n駒\n"
         
-        c_hand = Counter(hand)
-        num_piece_types = len(c_hand.items())
+        c_hand = {ktype: count for (ktype, count) in hand.items() if count > 0}
+        
+        num_piece_types = len(c_hand)
+        
         k_height = (
             mochigoma_heading_size + 2*komadai_char_height
             if num_piece_types == 0
@@ -427,7 +432,7 @@ class BoardCanvas(tk.Canvas):
             font=("", komadai_text_size),
             anchor="n"
         )
-        if not list(c_hand):
+        if num_piece_types == 0:
             # Hand is empty, write なし
             self.create_text(
                 x,
@@ -439,16 +444,18 @@ class BoardCanvas(tk.Canvas):
             return rect
         else:
             # Hand is not empty
-            for n, (piece, count) in enumerate(c_hand.items()):
+            for n, (ktype, count) in enumerate(c_hand.items()):
+                if count == 0:
+                    continue
                 y_offset = (
                     mochigoma_heading_size
                     + n*(symbol_size+pad)
                     + symbol_size/2 # for the anchor="center"
                 )
-                self.draw_piece(
+                self.draw_koma(
                     x-0.4*komadai_piece_size,
                     y+y_offset,
-                    piece=piece,
+                    ktype = ktype,
                     komadai=True,
                     is_text=is_text,
                     anchor="center"
@@ -467,52 +474,38 @@ class BoardCanvas(tk.Canvas):
         """
         # Clear board display - could also keep board and just redraw pieces
         self.delete("all")
-        reader = self.reader
+        position = self.position
         komadai_w = self.measurements.komadai_w
         coords_text_size = self.measurements.coords_text_size
         w_pad = self.measurements.w_pad
         x_sq = self.measurements.x_sq
         y_sq = self.measurements.y_sq
         
-        # Gather north and south side data.
-        # Note: if is_upside_down, essentially performs a deep copy,
-        # but just "passes by reference" the reader's board if not.
-        south_hand = reader.board.sente_hand
-        north_hand = reader.board.gote_hand
-        south_board = reader.board.sente
-        north_board = reader.board.gote
-        is_north_sente = False
+        south_hand = position.hand_sente
+        north_hand = position.hand_gote
+        is_north_sente = self.is_upside_down
         
         if self.is_upside_down:
-            # swap hands
             north_hand, south_hand = south_hand, north_hand
-            # "rotate" each board 180 degrees, then swap
-            north_board = north_board[::-1]
-            south_board = south_board[::-1]
-            for i, row in enumerate(north_board):
-                north_board[i] = row[::-1]
-            for i, row in enumerate(south_board):
-                south_board[i] = row[::-1]
-            north_board, south_board = south_board, north_board
-            is_north_sente = True
         
         # Draw board
         self.draw_board()
         # Draw board pieces
         is_text = not self.piece_images.has_images()
-        for row_num, row in enumerate(south_board):
-            for col_num, piece in enumerate(row):
-                self.draw_piece(
-                    x_sq(col_num+0.5), y_sq(row_num+0.5), piece,
-                    is_text=is_text
+        for koma, kset in position.koma_sets.items():
+            ktype = KomaType.get(koma)
+            side = koma.side()
+            invert = (is_north_sente and (side == Side.SENTE)) or (not is_north_sente and (side == Side.GOTE))
+            for idx in kset:
+                col_num = position.idx_to_c(idx)
+                row_num = position.idx_to_r(idx)
+                x = col_num-1 if self.is_upside_down else 9-col_num
+                y = 9-row_num if self.is_upside_down else row_num-1
+                self.draw_koma(
+                    x_sq(x+0.5), y_sq(y+0.5), ktype,
+                    is_text=is_text, invert=invert
                 )
-        for row_num, row in enumerate(north_board):
-            for col_num, piece in enumerate(row):
-                self.draw_piece(
-                    x_sq(col_num+0.5), y_sq(row_num+0.5), piece,
-                    is_text=is_text,
-                    invert=True
-                )
+        
         # Draw komadai
         self.north_komadai_rect = self.draw_komadai(
             w_pad + komadai_w/2,
