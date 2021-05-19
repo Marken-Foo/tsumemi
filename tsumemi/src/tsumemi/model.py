@@ -5,8 +5,8 @@ import tsumemi.src.shogi.kif as kif
 from tsumemi.src.tsumemi.problem_list import Problem, ProblemList
 
 class Model():
-    """Main data model of program, following MVC principles. Manages
-    reading problems from file and maintaining the problem list.
+    """Main data model of program. Manages reading problems from file
+    and maintaining the problem list.
     """
     def __init__(self):
         self.prob_buffer = ProblemList()
@@ -41,6 +41,8 @@ class Model():
             reader=self.reader,
             visitor=kif.GameBuilderPVis()
         )
+        self.solution = self.reader.game.to_notation()
+        self.reader.game.start()
         return
     
     def add_problems_in_directory(self, directory, recursive=False, suppress=False):

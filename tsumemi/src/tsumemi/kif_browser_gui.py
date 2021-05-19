@@ -16,6 +16,8 @@ from tsumemi.src.tsumemi.settings_window import SettingsWindow, CONFIG_PATH
 
 
 class Menubar(tk.Menu):
+    """GUI class for the menubar at the top of the main window.
+    """
     def __init__(self, parent, controller, *args, **kwargs):
         self.controller = controller
         super().__init__(parent, *args, **kwargs)
@@ -60,6 +62,8 @@ class Menubar(tk.Menu):
 
 
 class TimerDisplay(ttk.Label, event.IObserver):
+    """GUI class to display a stopwatch/timer.
+    """
     def __init__(self, parent, controller, *args, **kwargs):
         self.controller = controller
         super().__init__(parent, *args, **kwargs)
@@ -106,6 +110,8 @@ class TimerDisplay(ttk.Label, event.IObserver):
 
 
 class TimerPane(ttk.Frame):
+    """GUI frame containing a timer display and associated controls.
+    """
     def __init__(self, parent, controller, *args, **kwargs):
         self.controller = controller
         super().__init__(parent, *args, **kwargs)
@@ -142,11 +148,10 @@ class TimerPane(ttk.Frame):
 
 
 class ProblemsView(ttk.Treeview, event.IObserver):
-    '''
-    Displays list of problems in currently open folder.
-    As it is a view of the underlying data model, it uses the Observer pattern
-    to update itself whenever the model updates.
-    '''
+    """GUI class to display list of problems.
+    Uses the Observer pattern to update itself whenever underlying
+    problem list updates.
+    """
     
     def __init__(self, parent, controller, *args, **kwargs):
         self.controller = controller
@@ -171,7 +176,7 @@ class ProblemsView(ttk.Treeview, event.IObserver):
         self.column("time", width=120)
         self.heading("status", text="Status", command=controller.cmd_sort_pbuf.by_status)
         self.column("status", anchor="center", width=40)
-        # Colours to be decided (accessibility)
+        # Colours to be decided (accessibility concerns)
         self.tag_configure("SKIP", background="snow2")
         self.tag_configure("CORRECT", background="PaleGreen1")
         self.tag_configure("WRONG", background="LightPink1")
@@ -224,6 +229,9 @@ class ProblemsView(ttk.Treeview, event.IObserver):
 
 
 class ProblemListPane(ttk.Frame):
+    """GUI frame containing view of problem list and associated
+    controls.
+    """
     def __init__(self, parent, controller, *args, **kwargs):
         self.controller = controller
         super().__init__(parent, *args, **kwargs)
@@ -265,7 +273,9 @@ class ProblemListPane(ttk.Frame):
 
 
 class MainWindow:
-    '''Class encapsulating the window to display the kif.'''
+    """GUI class for the main window of the application.
+    Acts as controller for the application.
+    """
     # eventually, refactor menu labels and dialog out into a constant namespace
     def __init__(self, master):
         # Set up data model
@@ -313,6 +323,7 @@ class MainWindow:
         
         self.board = BoardCanvas(
             parent=self.boardWrapper, controller=self,
+            position = self.model.reader.game.position,
             width=BoardCanvas.CANVAS_WIDTH, height=BoardCanvas.CANVAS_HEIGHT,
             bg="white"
         )

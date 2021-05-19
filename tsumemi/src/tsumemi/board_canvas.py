@@ -14,7 +14,6 @@ BOARD_IMAGES_PATH = os.path.relpath(r"tsumemi/resources/images/boards")
 PIECE_IMAGES_PATH = os.path.relpath(r"tsumemi/resources/images/pieces")
 
 
-
 class BoardSkin(Enum):
     WHITE = ("solid white", "white", None)
     BROWN = ("solid brown", "burlywood1", None)
@@ -279,12 +278,12 @@ class BoardCanvas(tk.Canvas):
     CANVAS_WIDTH = 600
     CANVAS_HEIGHT = 500
     
-    def __init__(self, parent, controller, *args, **kwargs):
+    def __init__(self, parent, controller, position, *args, **kwargs):
         self.controller = controller
         self.is_upside_down = False
         super().__init__(parent, *args, **kwargs)
         # Specify source of board data
-        self.reader = self.controller.model.reader
+        self.position = position
         config = self.controller.config
         # Initialise measurements, used for many other things
         self.measurements = BoardMeasurements(
@@ -476,8 +475,7 @@ class BoardCanvas(tk.Canvas):
         """
         # Clear board display - could also keep board and just redraw pieces
         self.delete("all")
-        reader = self.reader
-        position = self.reader.game.position
+        position = self.position
         komadai_w = self.measurements.komadai_w
         coords_text_size = self.measurements.coords_text_size
         w_pad = self.measurements.w_pad

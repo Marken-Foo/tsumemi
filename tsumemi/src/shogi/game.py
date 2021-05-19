@@ -48,5 +48,10 @@ class Game:
         return
     
     def to_notation(self):
-        # Return human-readable notation format for whole game
-        raise NotImplementedError
+        # Return human-readable notation format for mainline
+        self.start()
+        acc = []
+        while not self.curr_node.is_leaf():
+            self.next()
+            acc.append(self.curr_node.move)
+        return " ".join([mv.to_latin() for mv in acc])

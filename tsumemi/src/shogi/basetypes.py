@@ -306,8 +306,8 @@ class Move:
         return (
             SFEN_FROM_KOMA[self.koma].upper()
             + ("*" if self.is_drop else "")
-            + str(self.end_sq)
             + ("" if self.is_drop else ("(" + str(self.start_sq) + ")"))
+            + str(self.end_sq)
             + ("+" if self.is_promotion else "")
         )
 
