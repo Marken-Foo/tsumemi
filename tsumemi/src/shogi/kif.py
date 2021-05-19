@@ -115,6 +115,8 @@ class GameBuilderPVis(ParserVisitor):
             hand_str = line.split("：")[1]
             hand = re.split("　| ", hand_str)
             for entry in hand:
+                if entry == "なし":
+                    break
                 ktype = KTYPE_FROM_KANJI[entry[0]]
                 if len(entry) == 1:
                     count = 1

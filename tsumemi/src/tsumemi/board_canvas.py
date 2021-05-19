@@ -6,7 +6,7 @@ from collections import Counter
 from enum import Enum
 from PIL import Image, ImageTk
 
-from tsumemi.src.shogi.basetypes import Koma, KomaType, Side, KANJI_FROM_KTYPE
+from tsumemi.src.shogi.basetypes import Koma, KomaType, Side, HAND_TYPES, KANJI_FROM_KTYPE
 from tsumemi.src.shogi.kif import KanjiNumber
 from tsumemi.src.tsumemi.kif_parser import Piece
 
@@ -405,8 +405,10 @@ class BoardCanvas(tk.Canvas):
         pad = (komadai_text_size / 8 if is_text else komadai_piece_size / 8)
         mochigoma_heading_size = 4 * komadai_char_height # "▲\n持\n駒\n"
         
-        c_hand = Counter(hand)
-        num_piece_types = len(c_hand.items())
+        c_hand = {ktype: count for (ktype, count) in hand.items() if count > 0}
+        
+        num_piece_types = len(c_hand)
+        
         k_height = (
             mochigoma_heading_size + 2*komadai_char_height
             if num_piece_types == 0
@@ -433,7 +435,7 @@ class BoardCanvas(tk.Canvas):
             font=("", komadai_text_size),
             anchor="n"
         )
-        if not list(c_hand):
+        if num_piece_types == 0:
             # Hand is empty, write なし
             self.create_text(
                 x,
@@ -445,7 +447,9 @@ class BoardCanvas(tk.Canvas):
             return rect
         else:
             # Hand is not empty
-            for n, (piece, count) in enumerate(c_hand.items()):
+            for n, (ktype, count) in enumerate(c_hand.items()):
+                if count == 0:
+                    continue
                 y_offset = (
                     mochigoma_heading_size
                     + n*(symbol_size+pad)
@@ -454,7 +458,7 @@ class BoardCanvas(tk.Canvas):
                 self.draw_koma(
                     x-0.4*komadai_piece_size,
                     y+y_offset,
-                    koma = piece,
+                    ktype = ktype,
                     komadai=True,
                     is_text=is_text,
                     anchor="center"
@@ -524,20 +528,20 @@ class BoardCanvas(tk.Canvas):
                 )
         
         # Draw komadai
-        # self.north_komadai_rect = self.draw_komadai(
-            # w_pad + komadai_w/2,
-            # y_sq(0),
-            # north_hand,
-            # sente=is_north_sente,
-            # align="top"
-        # )
-        # self.south_komadai_rect = self.draw_komadai(
-            # x_sq(9) + 2*coords_text_size + komadai_w/2,
-            # y_sq(9),
-            # south_hand,
-            # sente=not is_north_sente,
-            # align="bottom"
-        # )
+        self.north_komadai_rect = self.draw_komadai(
+            w_pad + komadai_w/2,
+            y_sq(0),
+            north_hand,
+            sente=is_north_sente,
+            align="top"
+        )
+        self.south_komadai_rect = self.draw_komadai(
+            x_sq(9) + 2*coords_text_size + komadai_w/2,
+            y_sq(9),
+            south_hand,
+            sente=not is_north_sente,
+            align="bottom"
+        )
         return
     
     def apply_piece_skin(self, skin):
