@@ -367,9 +367,9 @@ class BoardCanvas(tk.Canvas):
             )
         return
     
-    def draw_koma(self, x, y, koma, komadai=False, invert=False,
+    def draw_koma(self, x, y, ktype, komadai=False, invert=False,
                    is_text=True, anchor="center"):
-        if koma == koma.NONE:
+        if ktype == KomaType.NONE:
             return
         if is_text:
             text_size = (
@@ -378,7 +378,7 @@ class BoardCanvas(tk.Canvas):
                 else self.measurements.sq_text_size
             )
             self.create_text(
-                x, y, text=str(KANJI_FROM_KTYPE[KomaType.get(koma)]),
+                x, y, text=str(KANJI_FROM_KTYPE[ktype]),
                 font=("", text_size),
                 angle=180 if invert else 0,
                 anchor=anchor
@@ -387,7 +387,7 @@ class BoardCanvas(tk.Canvas):
             piece_dict = self.piece_images.get_dict(
                 invert=invert, komadai=komadai
             )
-            img = piece_dict[KomaType.get(koma)]
+            img = piece_dict[ktype]
             self.create_image(x, y, image=img, anchor=anchor)
         return
     
@@ -490,11 +490,11 @@ class BoardCanvas(tk.Canvas):
         # north_hand = reader.board.gote_hand
         # south_board = reader.board.sente
         # north_board = reader.board.gote
-        is_north_sente = False
+        is_north_sente = self.is_upside_down
         
-        # if self.is_upside_down:
+        if self.is_upside_down:
             # swap hands
-            # north_hand, south_hand = south_hand, north_hand
+            north_hand, south_hand = south_hand, north_hand
             # "rotate" each board 180 degrees, then swap
             # north_board = north_board[::-1]
             # south_board = south_board[::-1]
@@ -510,27 +510,19 @@ class BoardCanvas(tk.Canvas):
         # Draw board pieces
         is_text = not self.piece_images.has_images()
         for koma, kset in position.koma_sets.items():
+            ktype = KomaType.get(koma)
+            side = koma.side()
+            invert = (is_north_sente and (side == Side.SENTE)) or (not is_north_sente and (side == Side.GOTE))
             for idx in kset:
                 col_num = position.idx_to_c(idx)
                 row_num = position.idx_to_r(idx)
+                x = col_num-1 if self.is_upside_down else 9-col_num
+                y = 9-row_num if self.is_upside_down else row_num-1
                 self.draw_koma(
-                    x_sq(9-col_num+0.5), y_sq(row_num-1+0.5), koma,
-                    is_text=is_text, invert=(koma.side()==Side.GOTE)
+                    x_sq(x+0.5), y_sq(y+0.5), ktype,
+                    is_text=is_text, invert=invert
                 )
         
-        # for row_num, row in enumerate(south_board):
-            # for col_num, piece in enumerate(row):
-                # self.draw_piece(
-                    # x_sq(col_num+0.5), y_sq(row_num+0.5), piece,
-                    # is_text=is_text
-                # )
-        # for row_num, row in enumerate(north_board):
-            # for col_num, piece in enumerate(row):
-                # self.draw_piece(
-                    # x_sq(col_num+0.5), y_sq(row_num+0.5), piece,
-                    # is_text=is_text,
-                    # invert=True
-                # )
         # Draw komadai
         # self.north_komadai_rect = self.draw_komadai(
             # w_pad + komadai_w/2,
