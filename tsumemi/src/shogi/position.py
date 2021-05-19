@@ -51,10 +51,8 @@ class Position:
         koma_sente: Dict[Koma, Set[int]] = {Koma.make(Side.SENTE, ktype): set() for ktype in KOMA_TYPES}
         koma_gote: Dict[Koma, Set[int]] = {Koma.make(Side.GOTE, ktype): set() for ktype in KOMA_TYPES}
         self.koma_sets: Dict[Koma, Set[int]] = {**koma_sente, **koma_gote}
-        # Hand order is NONE-FU-KY-KE-GI-KI-KA-HI, NONE is unused
-        # int is number of copies of piece
-        self.hand_sente = [0, 0, 0, 0, 0, 0, 0, 0]
-        self.hand_gote = [0, 0, 0, 0, 0, 0, 0, 0]
+        self.hand_sente: Dict[KomaType, int] = {ktype: 0 for ktype in HAND_TYPES}
+        self.hand_gote: Dict[KomaType, int] = {ktype: 0 for ktype in HAND_TYPES}
         self.turn = Side.SENTE
         self.movenum = 1
         return
@@ -118,7 +116,7 @@ class Position:
     def get_koma(self, sq: Square) -> Koma:
         return self.board[self.sq_to_idx(sq)]
     
-    def get_hand(self, side: Side) -> List[int]:
+    def get_hand(self, side: Side) -> Dict[KomaType, int]:
         return self.hand_sente if side is Side.SENTE else self.hand_gote
     
     def set_hand_koma_count(self, side: Side, ktype: KomaType, count: int) -> None:
@@ -152,6 +150,8 @@ class Position:
         """Makes a move on the board.
         """
         if move.is_null():
+            # to account for game terminations, which are null moves
+            self.movenum += 1
             return
         elif move.is_drop:
             self.dec_hand_koma(move.side, KomaType.get(move.koma))
@@ -173,6 +173,7 @@ class Position:
     def unmake_move(self, move: Move) -> None:
         """Unplays/retracts a move from the board."""
         if move.is_null():
+            self.movenum -= 1
             return
         elif move.is_drop:
             self.set_koma(Koma.NONE, move.end_sq)
@@ -252,7 +253,7 @@ class Position:
         stm = " b " if self.turn is Side.SENTE else " w "
         sfen.append(stm)
         # Hands, sente then gote
-        if not any(self.hand_sente) and not any(self.hand_gote):
+        if not any(self.hand_sente.values()) and not any(self.hand_gote.values()):
             sfen.append("-")
         else:
             for pcty in HAND_TYPES:

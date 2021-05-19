@@ -149,6 +149,7 @@ class GameBuilderPVis(ParserVisitor):
         try:
             pos.from_sfen(SFEN_FROM_HANDICAP[val])
             movetree.handicap = val
+            movetree.start_pos = SFEN_FROM_HANDICAP[val]
         except KeyError:
             # To handle elegantly? Maybe the rest is still valid.
             pass

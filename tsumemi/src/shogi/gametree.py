@@ -13,7 +13,7 @@ class MoveNode:
     def __init__(self, move: Move = NullMove(),
             parent: Optional[MoveNode] = None
             ) -> None:
-        self.move = move # expects Move object
+        self.move = move # move leading to this node
         self.parent: MoveNode = NullMoveNode() if parent is None else parent
         self.movenum: int = 0 if parent is None else parent.movenum + 1
         self.comment = ""
@@ -22,6 +22,9 @@ class MoveNode:
     
     def is_null(self) -> bool:
         return False
+    
+    def is_leaf(self) -> bool:
+        return not bool(self.variations)
     
     def add_move(self, move: Move) -> MoveNode:
         new_node = MoveNode(move, self)

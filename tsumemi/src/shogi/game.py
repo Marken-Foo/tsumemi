@@ -42,6 +42,11 @@ class Game:
         self.curr_node = self.movetree
         return
     
+    def end(self) -> None:
+        while not self.curr_node.is_leaf():
+            self.next()
+        return
+    
     def to_notation(self):
         # Return human-readable notation format for whole game
         raise NotImplementedError
