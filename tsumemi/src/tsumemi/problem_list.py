@@ -55,26 +55,6 @@ class Problem:
         return isinstance(obj, Problem) and self.filepath == obj.filepath
 
 
-class CmdSortProbList:
-    """"Command object to call for a problem list to be sorted.
-    """
-    def __init__(self, prob_list: ProblemList) -> None:
-        self.prob_list = prob_list
-        return
-    
-    def by_file(self) -> None:
-        return self.prob_list.sort_by_file()
-    
-    def by_time(self) -> None:
-        return self.prob_list.sort_by_time()
-    
-    def by_status(self) -> None:
-        return self.prob_list.sort_by_status()
-    
-    def randomise(self) -> None:
-        return self.prob_list.randomise()
-
-
 class ProblemList(event.Emitter):
     """Represent a sortable list of problems with a "pointer" to the
     current active problem. Also stores metadata about problem like

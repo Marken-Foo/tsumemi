@@ -156,10 +156,12 @@ class ProblemsView(ttk.Treeview, event.IObserver):
     Uses the Observer pattern to update itself whenever underlying
     problem list updates.
     """
-    
-    def __init__(self, parent, controller, *args, **kwargs):
+    def __init__(self, parent, controller, problem_list, *args, **kwargs):
         self.controller = controller
         super().__init__(parent, *args, **kwargs)
+        self.problem_list = problem_list
+        # Register self as observer of ProblemList
+        self.problem_list.add_observer(self)
         
         self.NOTIFY_ACTIONS = {
             plist.ProbStatusEvent: self.set_status,
@@ -175,15 +177,22 @@ class ProblemsView(ttk.Treeview, event.IObserver):
         
         self["columns"] = ("filename", "time", "status")
         self["show"] = "headings"
-        self.heading("filename", text="Problem", command=controller.cmd_sort_pbuf.by_file)
-        self.heading("time", text="Time", command=controller.cmd_sort_pbuf.by_time)
+        self.heading("filename", text="Problem", command=self.problem_list.sort_by_file)
+        self.heading("time", text="Time", command=self.problem_list.sort_by_time)
         self.column("time", width=120)
-        self.heading("status", text="Status", command=controller.cmd_sort_pbuf.by_status)
+        self.heading("status", text="Status", command=self.problem_list.sort_by_status)
         self.column("status", anchor="center", width=40)
         # Colours to be decided (accessibility concerns)
         self.tag_configure("SKIP", background="snow2")
         self.tag_configure("CORRECT", background="PaleGreen1")
         self.tag_configure("WRONG", background="LightPink1")
+        
+        # Bind double click to go to problem
+        self.bind("<Double-1>",
+            lambda e: self.controller.go_to_file(
+                idx=self.get_idx_on_click(e)
+            )
+        )
         return
     
     def on_notify(self, event):
@@ -236,12 +245,15 @@ class ProblemListPane(ttk.Frame):
     """GUI frame containing view of problem list and associated
     controls.
     """
-    def __init__(self, parent, controller, *args, **kwargs):
+    def __init__(self, parent, controller, problem_list, *args, **kwargs):
         self.controller = controller
         super().__init__(parent, *args, **kwargs)
+        self.problem_list = problem_list
         
         # Display problem list as Treeview
-        self.tvw = ProblemsView(parent=self, controller=controller)
+        self.tvw = ProblemsView(
+            parent=self, controller=controller, problem_list=problem_list
+        )
         self.tvw.grid(column=0, row=0, sticky="NSEW")
         
         # Make scrollbar
@@ -255,7 +267,7 @@ class ProblemListPane(ttk.Frame):
         # Make randomise button
         self.btn_randomise = ttk.Button(
             self, text="Randomise problems",
-            command=controller.cmd_sort_pbuf.randomise # no; this needs to be a controller method, not a Command, since we need to update the zeroth problem and redraw the board. Right? Do we?
+            command=self.problem_list.randomise
         )
         self.btn_randomise.grid(column=0, row=1)
         
@@ -284,7 +296,6 @@ class MainWindow:
     def __init__(self, master):
         # Set up data model
         self.model = model.Model()
-        self.cmd_sort_pbuf = plist.CmdSortProbList(self.model.prob_buffer)
         # tkinter stuff, set up the main window
         # Reference to tk.Tk() root object
         self.master = master
@@ -364,18 +375,14 @@ class MainWindow:
         self.timer_controls.rowconfigure(0, weight=0)
         
         # Problem list
-        self.problem_list_pane = ProblemListPane(parent=self.mainframe,
-                                                 controller=self)
+        self.problem_list_pane = ProblemListPane(
+            parent=self.mainframe, controller=self,
+            problem_list=self.model.prob_buffer
+        )
         self.problem_list_pane.grid(column=1, row=0, sticky="NSEW")
         self.problem_list_pane.columnconfigure(0, weight=1)
         self.problem_list_pane.rowconfigure(0, weight=1)
         self.problem_list_pane.grid_configure(padx=5, pady=5)
-        # Observer pattern; treeview updates itself when model updates
-        tvw = self.problem_list_pane.tvw
-        self.model.prob_buffer.add_observer(tvw)
-        # Double click to go to problem - throws exception on Double-1 heading
-        tvw.bind("<Double-1>",
-                 lambda e: self.go_to_file(idx=tvw.get_idx_on_click(e)))
         
         # Keyboard shortcuts
         self.bindings = Bindings(self)
