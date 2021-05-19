@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum, EnumMeta, IntEnum, IntFlag
-from typing import Dict, Set, Tuple
+from typing import Dict, List, Set, Tuple
 
 
 class MetaEnum(EnumMeta):
@@ -14,6 +14,19 @@ class MetaEnum(EnumMeta):
         except ValueError:
             return False
         return True
+
+
+class KanjiNumber(IntEnum):
+    一 = 1
+    二 = 2
+    三 = 3
+    四 = 4
+    五 = 5
+    六 = 6
+    七 = 7
+    八 = 8
+    九 = 9
+    十 = 10
 
 
 class Side(IntFlag):
@@ -178,6 +191,15 @@ KANJI_FROM_KTYPE: Dict[KomaType, str] = {
 }
 
 
+KANJI_NOTATION_FROM_KTYPE: Dict[KomaType, str] = {
+    KomaType.FU: "歩", KomaType.KY: "香", KomaType.KE: "桂", KomaType.GI: "銀",
+    KomaType.KI: "金", KomaType.KA: "角", KomaType.HI: "飛", KomaType.OU: "玉",
+    KomaType.TO: "と", KomaType.NY: "成香", KomaType.NK: "成桂", KomaType.NG: "成銀",
+    KomaType.UM: "馬", KomaType.RY: "龍",
+    KomaType.NONE: ""
+}
+
+
 SFEN_FROM_KOMA: Dict[Koma, str] = {
     Koma.FU: "P", Koma.KY: "L", Koma.KE: "N", Koma.GI: "S",
     Koma.KI: "G", Koma.KA: "B", Koma.HI: "R", Koma.OU: "K",
@@ -310,6 +332,17 @@ class Move:
             + str(self.end_sq)
             + ("+" if self.is_promotion else "")
         )
+    
+    def to_ja_kif(self, is_same: bool = False) -> str:
+        """Return KIF format move string.
+        """
+        end_col, end_row = self.end_sq.get_cr()
+        res: List[str] = []
+        res.extend(["同　"] if is_same else [str(end_col), KanjiNumber(end_row).name])
+        res.append(KANJI_NOTATION_FROM_KTYPE[KomaType.get(self.koma)])
+        res.append("成" if self.is_promotion else "")
+        res.extend(["打"] if self.is_drop else ["(", str(self.start_sq), ")"])
+        return "".join(res)
 
 
 class NullMove(Move):
@@ -336,3 +369,6 @@ class TerminationMove(Move):
     
     def to_latin(self) -> str:
         return self.end.name
+    
+    def to_ja_kif(self) -> str:
+        return self.end.value

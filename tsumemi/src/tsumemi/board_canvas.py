@@ -6,8 +6,7 @@ from collections import Counter
 from enum import Enum
 from PIL import Image, ImageTk
 
-from tsumemi.src.shogi.basetypes import Koma, KomaType, Side, HAND_TYPES, KANJI_FROM_KTYPE
-from tsumemi.src.shogi.kif import KanjiNumber
+from tsumemi.src.shogi.basetypes import KanjiNumber, Koma, KomaType, Side, HAND_TYPES, KANJI_FROM_KTYPE
 
 
 BOARD_IMAGES_PATH = os.path.relpath(r"tsumemi/resources/images/boards") 
