@@ -8,7 +8,6 @@ from PIL import Image, ImageTk
 
 from tsumemi.src.shogi.basetypes import Koma, KomaType, Side, HAND_TYPES, KANJI_FROM_KTYPE
 from tsumemi.src.shogi.kif import KanjiNumber
-from tsumemi.src.tsumemi.kif_parser import Piece
 
 
 BOARD_IMAGES_PATH = os.path.relpath(r"tsumemi/resources/images/boards") 
@@ -485,29 +484,12 @@ class BoardCanvas(tk.Canvas):
         x_sq = self.measurements.x_sq
         y_sq = self.measurements.y_sq
         
-        # Gather north and south side data.
-        # Note: if is_upside_down, essentially performs a deep copy,
-        # but just "passes by reference" the reader's board if not.
         south_hand = position.hand_sente
         north_hand = position.hand_gote
-        # south_hand = reader.board.sente_hand
-        # north_hand = reader.board.gote_hand
-        # south_board = reader.board.sente
-        # north_board = reader.board.gote
         is_north_sente = self.is_upside_down
         
         if self.is_upside_down:
-            # swap hands
             north_hand, south_hand = south_hand, north_hand
-            # "rotate" each board 180 degrees, then swap
-            # north_board = north_board[::-1]
-            # south_board = south_board[::-1]
-            # for i, row in enumerate(north_board):
-                # north_board[i] = row[::-1]
-            # for i, row in enumerate(south_board):
-                # south_board[i] = row[::-1]
-            # north_board, south_board = south_board, north_board
-            # is_north_sente = True
         
         # Draw board
         self.draw_board()

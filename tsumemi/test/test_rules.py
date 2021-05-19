@@ -109,7 +109,7 @@ class TestMoveGeneration(unittest.TestCase):
         self.assertEqual(mvset_sente, set(sente_moves))
         self.assertEqual(mvset_gote, set(gote_moves))
     
-    def test_drop_moves(self):
+    def manual_test_drop_moves(self):
         # NOT automated test, needs manual verification
         sfen = "l1sgk1snl/6g2/p2ppp2p/2p6/9/9/P1SPPPP1P/2G6/LN2KGSNL b RBN3Prb3p 1"
         # answer keys
@@ -118,6 +118,6 @@ class TestMoveGeneration(unittest.TestCase):
         droplist_ke = self.rules.generate_drop_moves(pos=self.position, side=Side.SENTE, ktype=KomaType.KE)
         droplist_ka = self.rules.generate_drop_moves(pos=self.position, side=Side.SENTE, ktype=KomaType.KA)
         # check answers
-        print([mv.to_latin() for mv in droplist_fu])
-        print([mv.to_latin() for mv in droplist_ke])
-        print([mv.to_latin() for mv in droplist_ka])
+        # print([mv.to_latin() for mv in droplist_fu])
+        # print([mv.to_latin() for mv in droplist_ke])
+        # print([mv.to_latin() for mv in droplist_ka])

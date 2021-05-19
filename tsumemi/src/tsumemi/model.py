@@ -2,7 +2,6 @@ import os
 
 import tsumemi.src.shogi.kif as kif
 
-from tsumemi.src.tsumemi.kif_parser import KifReader
 from tsumemi.src.tsumemi.problem_list import Problem, ProblemList
 
 class Model():
@@ -37,26 +36,11 @@ class Model():
     
     def read_problem(self):
         # loads position and moves as a Game in the reader, returns None
-        self.read_file(self.prob_buffer.get_curr_filepath(), self.reader, kif.GameBuilderPVis())
-        return
-    
-    #OLD VERSION
-    def old_read_problem(self):
-        # Read current problem into reader.
-        # Try any likely encodings for the KIF files
-        encodings = ["cp932", "utf-8"]
-        for e in encodings:
-            try:
-                with open(
-                        self.prob_buffer.get_curr_filepath(),
-                        "r", encoding=e
-                ) as kifu:
-                    self.reader.parse_kif(kifu)
-                    self.solution = "　".join(self.reader.moves)
-            except UnicodeDecodeError:
-                pass
-            else:
-                break
+        self.read_file(
+            self.prob_buffer.get_curr_filepath(),
+            reader=self.reader,
+            visitor=kif.GameBuilderPVis()
+        )
         return
     
     def add_problems_in_directory(self, directory, recursive=False, suppress=False):
