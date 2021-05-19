@@ -158,13 +158,3 @@ class Timer(event.Emitter):
         else:
             self.start()
         return
-
-
-class CmdReadTimer:
-    """Command object to let other objects ask for a timer's time.
-    """
-    def __init__(self, timer: Timer) -> None:
-        self.timer = timer
-    
-    def execute(self) -> float:
-        return self.timer.read()

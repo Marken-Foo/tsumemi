@@ -1,6 +1,7 @@
 import os
 
 import tsumemi.src.shogi.kif as kif
+import tsumemi.src.tsumemi.timer as timer
 
 from tsumemi.src.tsumemi.problem_list import Problem, ProblemList
 
@@ -13,6 +14,8 @@ class Model():
         self.directory = None # not currently used meaningfully
         self.solution = ""
         self.reader = kif.KifReader()
+        self.clock = timer.Timer()
+        return
     
     def set_active_problem(self, idx=0):
         if self.prob_buffer.is_empty():
@@ -99,6 +102,24 @@ class Model():
         self.prob_buffer.set_status(status)
         return
     
-    def set_time(self, status):
-        self.prob_buffer.set_time(status)
+    def start_timer(self):
+        self.clock.start()
+        return
+    
+    def stop_timer(self):
+        self.clock.stop()
+        return
+    
+    def toggle_timer(self):
+        self.clock.toggle()
+        return
+    
+    def reset_timer(self):
+        self.clock.reset()
+        return
+    
+    def split_timer(self):
+        time = self.clock.split()
+        if time is not None:
+            self.prob_buffer.set_time(time)
         return

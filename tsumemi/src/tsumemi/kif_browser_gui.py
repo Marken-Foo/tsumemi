@@ -64,9 +64,12 @@ class Menubar(tk.Menu):
 class TimerDisplay(ttk.Label, event.IObserver):
     """GUI class to display a stopwatch/timer.
     """
-    def __init__(self, parent, controller, *args, **kwargs):
+    def __init__(self, parent, controller, clock, *args, **kwargs):
         self.controller = controller
         super().__init__(parent, *args, **kwargs)
+        self.clock = clock
+        # Register self as observer of clock
+        self.clock.add_observer(self)
         
         self.NOTIFY_ACTIONS = {
             timer.TimerStartEvent: self._on_start,
@@ -101,7 +104,7 @@ class TimerDisplay(ttk.Label, event.IObserver):
     def refresh(self):
         self.time_str.set(
             timer.sec_to_str(
-                self.controller.cmd_read_timer.execute()
+                self.clock.read()
             )
         )
         if self.is_running:
@@ -112,16 +115,17 @@ class TimerDisplay(ttk.Label, event.IObserver):
 class TimerPane(ttk.Frame):
     """GUI frame containing a timer display and associated controls.
     """
-    def __init__(self, parent, controller, *args, **kwargs):
+    def __init__(self, parent, controller, clock, *args, **kwargs):
         self.controller = controller
         super().__init__(parent, *args, **kwargs)
         
         # Basic timer
-        self.timer = timer.SplitTimer()
+        self.clock = clock
         # Display updates automatically by watching timer (Observer pattern).
         self.timer_display = TimerDisplay(
             parent=self,
-            controller=self.controller
+            controller=self.controller,
+            clock = self.clock
         )
         self.timer_display.grid(
             column=0, row=0, columnspan=3
@@ -129,19 +133,19 @@ class TimerPane(ttk.Frame):
         # Timer control widgets
         ttk.Button(
             self, text="Start/stop timer",
-            command=self.controller.toggle_timer
+            command=self.controller.model.toggle_timer
         ).grid(
             column=0, row=1
         )
         ttk.Button(
             self, text="Reset timer",
-            command=self.controller.reset_timer
+            command=self.controller.model.reset_timer
         ).grid(
             column=1, row=1
         )
         ttk.Button(
             self, text="Split",
-            command=self.controller.split_timer
+            command=self.controller.model.split_timer
         ).grid(
             column=2, row=1
         )
@@ -280,8 +284,6 @@ class MainWindow:
     def __init__(self, master):
         # Set up data model
         self.model = model.Model()
-        self.timer = timer.Timer()
-        self.cmd_read_timer = timer.CmdReadTimer(self.timer)
         self.cmd_sort_pbuf = plist.CmdSortProbList(self.model.prob_buffer)
         # tkinter stuff, set up the main window
         # Reference to tk.Tk() root object
@@ -356,12 +358,10 @@ class MainWindow:
         self.nav_controls.grid()
         
         # Timer controls and display
-        self.timer_controls = TimerPane(parent=self.mainframe, controller=self)
+        self.timer_controls = TimerPane(parent=self.mainframe, controller=self, clock=self.model.clock)
         self.timer_controls.grid(column=1, row=1)
         self.timer_controls.columnconfigure(0, weight=0)
         self.timer_controls.rowconfigure(0, weight=0)
-        # Observer pattern; timer panel updates itself alongside timer
-        self.timer.add_observer(self.timer_controls.timer_display) # ewww
         
         # Problem list
         self.problem_list_pane = ProblemListPane(parent=self.mainframe,
@@ -438,28 +438,6 @@ class MainWindow:
         self.board.flip_board(want_upside_down)
         return
     
-    def start_timer(self):
-        self.timer.start()
-        return
-    
-    def stop_timer(self):
-        self.timer.stop()
-        return
-    
-    def toggle_timer(self):
-        self.timer.toggle()
-        return
-    
-    def reset_timer(self):
-        self.timer.reset()
-        return
-    
-    def split_timer(self):
-        time = self.timer.split()
-        if time is not None:
-            self.model.set_time(time)
-        return
-    
     # Speedrun mode commands
     def start_speedrun(self):
         # Make UI changes
@@ -472,8 +450,8 @@ class MainWindow:
         # Set application state
         self.bindings.unbind_shortcuts(self.master, self.bindings.FREE_SHORTCUTS)
         self.go_to_file(idx=0)
-        self.reset_timer()
-        self.start_timer()
+        self.model.reset_timer()
+        self.model.start_timer()
         return
         
     def abort_speedrun(self):
@@ -486,19 +464,19 @@ class MainWindow:
         self.problem_list_pane.btn_abort_speedrun.grid_remove()
         # Set application state
         self.bindings.bind_shortcuts(self.master, self.bindings.FREE_SHORTCUTS)
-        self.stop_timer()
+        self.model.stop_timer()
         return
     
     def skip(self):
-        self.split_timer()
+        self.model.split_timer()
         self.model.set_status(plist.ProblemStatus.SKIP)
         if not self.next_file():
             self.end_of_folder()
         return
     
     def view_solution(self):
-        self.split_timer()
-        self.stop_timer()
+        self.model.split_timer()
+        self.model.stop_timer()
         self.show_solution()
         self.nav_controls.show_correct_wrong()
         return
@@ -509,7 +487,7 @@ class MainWindow:
             self.end_of_folder()
             return
         self.nav_controls.show_sol_skip()
-        self.start_timer()
+        self.model.start_timer()
         return
     
     def mark_wrong(self):
@@ -518,11 +496,11 @@ class MainWindow:
             self.end_of_folder()
             return
         self.nav_controls.show_sol_skip()
-        self.start_timer()
+        self.model.start_timer()
         return
     
     def end_of_folder(self):
-        self.stop_timer()
+        self.model.stop_timer()
         messagebox.showinfo(
             title="End of folder",
             message="You have reached the end of the speedrun."
