@@ -45,7 +45,7 @@ class Model():
             reader=self.reader,
             visitor=kif.GameBuilderPVis()
         )
-        self.solution = self.reader.game.to_notation()
+        self.solution = "　".join(self.reader.game.to_notation_ja_kif())
         self.reader.game.start()
         return
     

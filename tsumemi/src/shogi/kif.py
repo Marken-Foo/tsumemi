@@ -4,24 +4,14 @@ import re
 import typing
 
 from enum import IntEnum
-from typing import Dict, Sequence
+from typing import TYPE_CHECKING, Dict, Sequence
 
-from tsumemi.src.shogi.basetypes import GameTermination, Koma, Move, Side, Square, TerminationMove
+from tsumemi.src.shogi.basetypes import GameTermination, KanjiNumber, Koma, Move, Side, Square, TerminationMove
 from tsumemi.src.shogi.basetypes import HAND_TYPES, KTYPE_FROM_KANJI
 from tsumemi.src.shogi.game import Game
 
-
-class KanjiNumber(IntEnum):
-    一 = 1
-    二 = 2
-    三 = 3
-    四 = 4
-    五 = 5
-    六 = 6
-    七 = 7
-    八 = 8
-    九 = 9
-    十 = 10
+if TYPE_CHECKING:
+    from tsumemi.src.shogi.basetypes import KomaType
 
 
 SFEN_FROM_HANDICAP: Dict[str, str] = {

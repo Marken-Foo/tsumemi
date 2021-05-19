@@ -2,12 +2,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from tsumemi.src.shogi.basetypes import NullMove
+from tsumemi.src.shogi.gametree import GameNode
+from tsumemi.src.shogi.position import Position
+
 if TYPE_CHECKING:
     from tsumemi.src.shogi.basetypes import Move
     from tsumemi.src.shogi.gametree import MoveNode
-
-from tsumemi.src.shogi.gametree import GameNode
-from tsumemi.src.shogi.position import Position
 
 
 class Game:
@@ -47,11 +48,27 @@ class Game:
             self.next()
         return
     
-    def to_notation(self):
+    def to_notation(self) -> List[str]:
         # Return human-readable notation format for mainline
         self.start()
-        acc = []
+        res = []
         while not self.curr_node.is_leaf():
             self.next()
-            acc.append(self.curr_node.move)
-        return " ".join([mv.to_latin() for mv in acc])
+            res.append(self.curr_node.move.to_latin())
+        return res
+    
+    def to_notation_ja_kif(self) -> List[str]:
+        """Returns"""
+        # Return human-readable KIF notation format for mainline
+        self.start()
+        res = []
+        prev_move: Move = NullMove()
+        while not self.curr_node.is_leaf():
+            prev_move = self.curr_node.move
+            self.next()
+            mv: Move = self.curr_node.move
+            if (not prev_move.is_null()) and (mv.end_sq == prev_move.end_sq):
+                res.append(mv.to_ja_kif(is_same=True))
+            else:
+                res.append(mv.to_ja_kif())
+        return res
