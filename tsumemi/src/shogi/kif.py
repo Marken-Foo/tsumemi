@@ -186,11 +186,16 @@ class GameBuilderPVis(ParserVisitor):
                     row = int(KanjiNumber[dest[1]])
                     end_sq = Square.from_cr(col, row)
                     captured = reader.game.position.get_koma(sq=end_sq)
-                try:
-                    ktype = KTYPE_FROM_KANJI[komastr]
-                except KeyError as e:
-                    #TODO: handle gracefully and skip game
-                    raise KeyError("Unknown koma encountered: " + komastr) from e
+                ktype: KomaType
+                if komastr[0] == "成":
+                    ktype = KTYPE_FROM_KANJI[komastr[1]]
+                    ktype = ktype.promote()
+                else:
+                    try:
+                        ktype = KTYPE_FROM_KANJI[komastr]
+                    except KeyError as e:
+                        #TODO: handle gracefully and skip game
+                        raise KeyError("Unknown koma encountered: " + komastr) from e
                 # Find origin square
                 if drop_prom != "打":
                     start_sq = Square.from_coord(int(sq_origin))

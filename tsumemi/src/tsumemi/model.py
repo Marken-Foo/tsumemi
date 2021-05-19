@@ -14,6 +14,7 @@ class Model():
         self.directory = None # not currently used meaningfully
         self.solution = ""
         self.reader = kif.KifReader()
+        self.active_game = self.reader.game
         self.clock = timer.Timer()
         return
     
@@ -102,6 +103,7 @@ class Model():
         self.prob_buffer.set_status(status)
         return
     
+    # Timer clock controls
     def start_timer(self):
         self.clock.start()
         return

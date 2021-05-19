@@ -336,7 +336,7 @@ class MainWindow:
         
         self.board = BoardCanvas(
             parent=self.boardWrapper, controller=self,
-            position = self.model.reader.game.position,
+            position = self.model.active_game.position,
             width=BoardCanvas.CANVAS_WIDTH, height=BoardCanvas.CANVAS_HEIGHT,
             bg="white"
         )
