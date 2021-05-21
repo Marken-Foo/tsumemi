@@ -199,7 +199,7 @@ class GameBuilderPVis(ParserVisitor):
                 side = Side.SENTE if (int(movenum) % 2 == 1) else Side.GOTE
                 koma = Koma.make(side, ktype)
                 move = Move(start_sq, end_sq, is_promotion, koma, captured)
-            reader.game.add_move(move)
+            reader.game.make_move(move)
         return
     
     def visit_variation(self, reader: Reader, line: str) -> None:

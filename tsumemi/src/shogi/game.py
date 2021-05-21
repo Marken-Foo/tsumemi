@@ -23,7 +23,7 @@ class Game:
         self.curr_node = self.movetree
         self.position.reset()
     
-    def add_move(self, move: Move) -> None:
+    def make_move(self, move: Move) -> None:
         self.curr_node = self.curr_node.add_move(move)
         self.position.make_move(move)
         return

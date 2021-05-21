@@ -291,6 +291,18 @@ class Move:
         self.is_drop = self.start_sq == Square.HAND
         return
     
+    def __eq__(self, obj: Any) -> bool:
+        return (
+            isinstance(obj, Move)
+            and self.start_sq == obj.start_sq
+            and self.end_sq == obj.end_sq
+            and self.is_promotion == obj.is_promotion
+            and self.side == obj.side
+            and self.koma == obj.koma
+            and self.captured == obj.captured
+            and self.is_drop == obj.is_drop
+        )
+    
     def __str__(self) -> str:
         return self.to_text()
     

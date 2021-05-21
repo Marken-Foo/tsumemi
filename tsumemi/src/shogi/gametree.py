@@ -27,6 +27,13 @@ class MoveNode:
         return not bool(self.variations)
     
     def add_move(self, move: Move) -> MoveNode:
+        """Add a new node to the movetree. If move already exists as a
+        variation, don't create a new node but return the existing
+        variation node.
+        """
+        for node in self.variations:
+            if move == node.move:
+                return node
         new_node = MoveNode(move, self)
         self.variations.append(new_node)
         return new_node
