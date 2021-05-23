@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import functools
 
-from typing import Callable, List, Tuple
+from typing import TYPE_CHECKING
 
 from tsumemi.src.shogi.basetypes import Koma, KomaType, Move, Side, Square, HAND_TYPES
 from tsumemi.src.shogi.position import Dir, Position
+
+if TYPE_CHECKING:
+    from typing import Any, Callable, Dict, List, Tuple
 
 
 def is_legal(mv: Move, pos: Position) -> bool:

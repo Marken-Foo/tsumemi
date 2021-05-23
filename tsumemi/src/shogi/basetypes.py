@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 from enum import Enum, EnumMeta, IntEnum, IntFlag
-from typing import Dict, List, Set, Tuple
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from typing import Any, Dict, List, Set, Tuple
 
 
 class MetaEnum(EnumMeta):
@@ -276,8 +279,8 @@ class Square(IntEnum):
 class Move:
     """Represents one shogi move.
     """
-    def __init__(
-            self, start_sq: Square = Square.NONE,
+    def __init__(self,
+            start_sq: Square = Square.NONE,
             end_sq: Square = Square.NONE,
             is_promotion: bool = False,
             koma: Koma = Koma.NONE, captured: Koma = Koma.NONE
@@ -382,5 +385,5 @@ class TerminationMove(Move):
     def to_latin(self) -> str:
         return self.end.name
     
-    def to_ja_kif(self) -> str:
+    def to_ja_kif(self, is_same: bool = False) -> str:
         return self.end.value

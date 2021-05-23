@@ -7,6 +7,7 @@ from tsumemi.src.shogi.gametree import GameNode
 from tsumemi.src.shogi.position import Position
 
 if TYPE_CHECKING:
+    from typing import List
     from tsumemi.src.shogi.basetypes import Move
     from tsumemi.src.shogi.gametree import MoveNode
 
@@ -27,6 +28,9 @@ class Game:
         self.curr_node = self.curr_node.add_move(move)
         self.position.make_move(move)
         return
+    
+    def is_move_mainline(self, move: Move) -> bool:
+        return self.curr_node.next().move == move
     
     def next(self) -> None:
         self.position.make_move(self.curr_node.move)
