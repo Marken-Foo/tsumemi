@@ -1,12 +1,16 @@
+from __future__ import annotations
+
+import functools
 import os
 import tkinter as tk
 
 from abc import ABC, abstractmethod
 from collections import Counter
 from enum import Enum
+from typing import Optional
 from PIL import Image, ImageTk
 
-from tsumemi.src.shogi.basetypes import KanjiNumber, Koma, KomaType, Side, HAND_TYPES, KANJI_FROM_KTYPE
+from tsumemi.src.shogi.basetypes import KanjiNumber, Koma, KomaType, Side, Square, HAND_TYPES, KANJI_FROM_KTYPE
 
 
 BOARD_IMAGES_PATH = os.path.relpath(r"tsumemi/resources/images/boards") 
@@ -203,8 +207,8 @@ class BoardImgManager(ImgManager):
 
 
 class BoardMeasurements:
-    """Parameter object calculating and storing the various measurements of the
-    shogiban.
+    """Parameter object calculating and storing the various
+    measurements of the shogiban.
     """
     INNER_H_PAD = 30 # pixels
     INNER_W_PAD = 10 # pixels
@@ -226,10 +230,10 @@ class BoardMeasurements:
         return
     
     def recalculate_sizes(self, canvas_width, canvas_height):
-        """Geometry: 9x9 shogi board, flanked by komadai area on either side.
-        Padded on all 4 sides (canvas internal padding).
-        Extra space allocated between board and right komadai (2 times coord
-        text size) to accomodate board coordinates drawn there.
+        """Geometry: 9x9 shogi board, flanked by komadai area on
+        either side. Padded on all 4 sides (canvas internal padding).
+        Extra space allocated between board and right komadai (2 times
+        coord text size) to accomodate board coordinates drawn there.
         """
         max_sq_w = ((canvas_width - 2*self.INNER_W_PAD)
                     / (9 + 2*self.KOMADAI_W_IN_SQ + 2*self.COORD_TEXT_IN_SQ))
@@ -270,8 +274,9 @@ class BoardMeasurements:
 
 
 class BoardCanvas(tk.Canvas):
-    """The canvas where the shogi position is drawn. Responsible for drawing on
-    itself, delegating other tasks like size calculation to other objects.
+    """The canvas where the shogi position is drawn. Responsible for
+    drawing on itself, delegating other tasks like size calculation to
+    other objects.
     """
     # Default/current canvas size for board
     CANVAS_WIDTH = 600
@@ -303,13 +308,17 @@ class BoardCanvas(tk.Canvas):
             komadai_skin = BoardSkin[name]
         except KeyError:
             komadai_skin = BoardSkin.WHITE
-        self.piece_images = PieceImgManager(self.measurements, piece_skin)
-        self.board_images = BoardImgManager(self.measurements, board_skin)
+        # Cached images and image settings
+        self.koma_img_cache = PieceImgManager(self.measurements, piece_skin)
+        self.board_img_cache = BoardImgManager(self.measurements, board_skin)
         self.komadai_skin = komadai_skin
+        # Koma image IDs and their current positions
+        self.koma_on_board_images = {}
         return
     
     def draw_board(self):
-        """Draw just the shogiban, without pieces. Komadai areas not included.
+        """Draw just the shogiban, without pieces. Komadai areas not
+        included.
         """
         x_sq = self.measurements.x_sq
         y_sq = self.measurements.y_sq
@@ -320,7 +329,7 @@ class BoardCanvas(tk.Canvas):
             row_coords.reverse()
             col_coords.reverse()
         # Draw board
-        board_skin = self.board_images.skin
+        board_skin = self.board_img_cache.skin
         # Colour board with solid colour
         self.board_rect = self.create_rectangle(
             x_sq(0), y_sq(0),
@@ -337,8 +346,8 @@ class BoardCanvas(tk.Canvas):
                     image="",
                     anchor="nw"
                 )
-        if self.board_images.has_images():
-            board_img = self.board_images.get_dict()["board"]
+        if self.board_img_cache.has_images():
+            board_img = self.board_img_cache.get_dict()["board"]
             for row in self.board_tiles:
                 for tile in row:
                     self.itemconfig(tile, image=board_img)
@@ -364,40 +373,48 @@ class BoardCanvas(tk.Canvas):
             )
         return
     
-    def draw_koma(self, x, y, ktype, komadai=False, invert=False,
-                   is_text=True, anchor="center"):
+    def draw_koma(self,
+            x: int, y: int, ktype: KomaType,
+            komadai: bool = False, invert: bool = False,
+            is_text: bool = True, anchor: str = "center"
+        ) -> Optional[int]:
+        """Draw koma at specified location. Text is drawn if *is_text*
+        is True; *anchor* determines how the image or text is
+        positioned with respect to the point (x,y).
+        """
+        id: int
         if ktype == KomaType.NONE:
-            return
+            return None
         if is_text:
             text_size = (
                 self.measurements.komadai_text_size
                 if komadai
                 else self.measurements.sq_text_size
             )
-            self.create_text(
+            id = self.create_text(
                 x, y, text=str(KANJI_FROM_KTYPE[ktype]),
                 font=("", text_size),
                 angle=180 if invert else 0,
                 anchor=anchor
             )
         else:
-            piece_dict = self.piece_images.get_dict(
+            piece_dict = self.koma_img_cache.get_dict(
                 invert=invert, komadai=komadai
             )
             img = piece_dict[ktype]
-            self.create_image(x, y, image=img, anchor=anchor)
-        return
+            id = self.create_image(x, y, image=img, anchor=anchor)
+        return id
     
     def draw_komadai(self, x, y, hand, sente=True, align="top"):
-        """Draw komadai with pieces given by hand argument, anchored at canvas
-        position (x, y). "Anchoring" north or south achieved with align="top"
-        or "bottom".
+        """Draw komadai with pieces given by hand argument, anchored
+        at canvas position (x,y). "Anchoring" north or south achieved
+        with align="top" or "bottom".
         """
         # Note: actual size of each character in px is about 1.5*text_size
         komadai_text_size = self.measurements.komadai_text_size
         komadai_char_height = 1.5 * komadai_text_size
         komadai_piece_size = self.measurements.komadai_piece_size
-        is_text = not self.piece_images.has_images()
+        is_text = not self.koma_img_cache.has_images()
         symbol_size = komadai_text_size*3/2 if is_text else komadai_piece_size
         pad = (komadai_text_size / 8 if is_text else komadai_piece_size / 8)
         mochigoma_heading_size = 4 * komadai_char_height # "▲\n持\n駒\n"
@@ -452,7 +469,7 @@ class BoardCanvas(tk.Canvas):
                     + n*(symbol_size+pad)
                     + symbol_size/2 # for the anchor="center"
                 )
-                self.draw_koma(
+                id = self.draw_koma(
                     x-0.4*komadai_piece_size,
                     y+y_offset,
                     ktype = ktype,
@@ -460,6 +477,7 @@ class BoardCanvas(tk.Canvas):
                     is_text=is_text,
                     anchor="center"
                 )
+                #TODO: register drawn piece image with self.[some dict]
                 self.create_text(
                     x+0.5*komadai_piece_size,
                     y+y_offset,
@@ -491,7 +509,7 @@ class BoardCanvas(tk.Canvas):
         # Draw board
         self.draw_board()
         # Draw board pieces
-        is_text = not self.piece_images.has_images()
+        is_text = not self.koma_img_cache.has_images()
         for koma, kset in position.koma_sets.items():
             ktype = KomaType.get(koma)
             side = koma.side()
@@ -501,10 +519,14 @@ class BoardCanvas(tk.Canvas):
                 row_num = position.idx_to_r(idx)
                 x = col_num-1 if self.is_upside_down else 9-col_num
                 y = 9-row_num if self.is_upside_down else row_num-1
-                self.draw_koma(
+                id = self.draw_koma(
                     x_sq(x+0.5), y_sq(y+0.5), ktype,
                     is_text=is_text, invert=invert
                 )
+                self.koma_on_board_images[id] = (col_num, row_num)
+                sq = Square.from_cr(col_num, row_num)
+                callback = functools.partial(self.controller.model.game_adapter.receive_square, sq=sq)
+                self.tag_bind(id, "<Button-1>", callback)
         
         # Draw komadai
         self.north_komadai_rect = self.draw_komadai(
@@ -524,14 +546,14 @@ class BoardCanvas(tk.Canvas):
         return
     
     def apply_piece_skin(self, skin):
-        self.piece_images.load(skin)
+        self.koma_img_cache.load(skin)
         return
     
     def apply_board_skin(self, skin):
         self.itemconfig(self.board_rect, fill=skin.colour)
-        self.board_images.load(skin)
+        self.board_img_cache.load(skin)
         board_img = (
-            self.board_images.get_dict()["board"]
+            self.board_img_cache.get_dict()["board"]
             if skin.path
             else ""
         )
@@ -548,8 +570,8 @@ class BoardCanvas(tk.Canvas):
     def on_resize(self, event):
         # Callback for when the canvas itself is resized
         self.measurements.recalculate_sizes(event.width, event.height)
-        self.piece_images.resize_images()
-        self.board_images.resize_images()
+        self.koma_img_cache.resize_images()
+        self.board_img_cache.resize_images()
         # Redraw board after setting new dimensions
         self.draw()
         return

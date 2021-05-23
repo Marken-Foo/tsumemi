@@ -342,6 +342,7 @@ class MainWindow:
         )
         self.board.grid(column=0, row=0, sticky="NSEW")
         self.board.bind("<Configure>", self.board.on_resize)
+        self.model.game_adapter = model.GameAdapter(self.model.active_game, self.board)
         
         # Initialise solution text
         self.is_solution_shown = False
@@ -357,10 +358,12 @@ class MainWindow:
         
         # Initialise nav controls and select one to begin with
         self._navcons = {
-            "free" : FreeModeNavControls(parent=self.mainframe,
-                                         controller=self),
-            "speedrun" : SpeedrunNavControls(parent=self.mainframe,
-                                             controller=self)
+            "free" : FreeModeNavControls(
+                parent=self.mainframe, controller=self
+            ),
+            "speedrun" : SpeedrunNavControls(
+                parent=self.mainframe, controller=self
+            )
         }
         for navcon in self._navcons.values():
             navcon.grid(column=0, row=2)
@@ -369,7 +372,10 @@ class MainWindow:
         self.nav_controls.grid()
         
         # Timer controls and display
-        self.timer_controls = TimerPane(parent=self.mainframe, controller=self, clock=self.model.clock)
+        self.timer_controls = TimerPane(
+            parent=self.mainframe, controller=self,
+            clock=self.model.clock
+        )
         self.timer_controls.grid(column=1, row=1)
         self.timer_controls.columnconfigure(0, weight=0)
         self.timer_controls.rowconfigure(0, weight=0)
@@ -393,8 +399,10 @@ class MainWindow:
     def display_problem(self):
         self.board.draw()
         self.hide_solution()
-        self.master.title("KIF folder browser - "
-                          + str(self.model.get_curr_filepath()))
+        self.master.title(
+            "KIF folder browser - "
+            + str(self.model.get_curr_filepath())
+        )
         return
     
     def hide_solution(self):

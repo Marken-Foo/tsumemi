@@ -1,11 +1,111 @@
+from __future__ import annotations
+
 import os
 
 import tsumemi.src.shogi.kif as kif
+import tsumemi.src.shogi.rules as rules
 import tsumemi.src.tsumemi.timer as timer
 
+from tsumemi.src.shogi.basetypes import Koma, KomaType, Move, Square
+from tsumemi.src.shogi.game import Game
+from tsumemi.src.tsumemi.board_canvas import BoardCanvas
 from tsumemi.src.tsumemi.problem_list import Problem, ProblemList
 
-class Model():
+
+class GameAdapter:
+    # Manages logic flow between GUI and model.
+    def __init__(self, game: Game, board_canvas: BoardCanvas):
+        self.game = game
+        self.position = self.game.position
+        self.board_canvas = board_canvas
+        self.focused_sq = Square.NONE
+        self.focused_ktype = KomaType.NONE
+        return
+    
+    def receive_square(self, event, sq: Square, hand_ktype: KomaType = KomaType.NONE) -> None:
+        # game adapter receives a Square (Event?) from the GUI and decides what to do with it
+        koma = self.position.get_koma(sq)
+        print(koma, sq, hand_ktype)
+        if sq == Square.HAND:
+            self.focused_sq = sq
+            self.focused_ktype = hand_ktype
+            # send message to change focus
+            return
+        if self.focused_sq == Square.NONE:
+            koma = self.position.get_koma(sq)
+            if (koma != Koma.NONE) and (koma != Koma.INVALID):
+                self.focused_sq = sq
+                self.focused_ktype = KomaType.get(koma)
+                # send message to change focus
+                return
+            else:
+                return
+        elif self.focused_sq == Square.HAND:
+            koma = self.position.get_koma(sq)
+            if koma == Koma.NONE:
+                # create drop moves then check legality
+                if self.validate_legality(start_sq=self.focused_sq, end_sq=sq, ktype=self.focused_ktype):
+                    mv = Move(start_sq=self.focused_sq, end_sq=sq, koma=Koma.make(self.position.turn, self.focused_ktype))
+                    self.game.make_move(mv)
+                    # if legal make move, else remove focus
+                return
+            else:
+                self.focused_sq = sq
+                if koma.side() == self.position.turn:
+                    self.focused_ktype = KomaType.get(koma)
+                # change focus to newly selected hand piece
+                return
+        else:
+            # this is if focused square contains valid koma already
+            # mvlist = generate legal moves of self.focused_ktype
+            # if end_sq is in mvlist moves, check if promotion option and offer.
+            # make move if forced promotion/nonpromotion, else prompt and wait.
+            return
+    
+    def make_move(self, move: Move) -> None:
+        self.game.make_move(move)
+        # send message to GUI to update position
+        return
+    
+    def validate_legality(self, start_sq: Square, end_sq: Square, ktype: KomaType = KomaType.NONE) -> bool:
+        # This ONLY validates legality, making move is up to caller
+        # check if drop
+        if start_sq == Square.HAND:
+            # TODO: this is VALID, not LEGAL yet
+            mvlist = rules.generate_drop_moves(pos=self.position, side=self.position.turn, ktype=ktype)
+            mvlist_filtered = [mv for mv in mvlist if (mv.end_sq == end_sq)]
+            if len(mvlist_filtered) == 1:
+                return True
+            elif len(mvlist_filtered) == 0:
+                # there is no legal drop move
+                return False
+            else:
+                # Something is very wrong
+                return False
+        koma = self.position.get_koma(start_sq)
+        if koma.side() != self.position.turn:
+            return False
+        else:
+            # TODO: generate (LEGAL NOT VALID) moves of said piece type
+            ktype = KomaType.get(koma)
+            mvlist = rules.generate_valid_moves(pos=self.position, side=self.position.turn, ktype=ktype)
+            mvlist_filtered = [mv for mv in mvlist if (mv.start_sq == start_sq) and (mv.end_sq == end_sq)]
+            if len(mvlist_filtered) == 1:
+                return True
+            elif len(mvlist_filtered) == 2:
+                # needs promotion
+                # invoke other function, or send message to GUI to prompt for promotion?
+                return True
+            elif len(mvlist_filtered) == 0:
+                # no such move
+                return False
+            else:
+                # ?????? how did this happen
+                return False
+        
+
+
+class Model:
     """Main data model of program. Manages reading problems from file
     and maintaining the problem list.
     """
@@ -16,6 +116,7 @@ class Model():
         self.reader = kif.KifReader()
         self.active_game = self.reader.game
         self.clock = timer.Timer()
+        self.game_adapter = None
         return
     
     def set_active_problem(self, idx=0):
