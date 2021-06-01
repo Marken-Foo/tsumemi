@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import os
 
+from typing import TYPE_CHECKING
+
 import tsumemi.src.shogi.kif as kif
 import tsumemi.src.shogi.rules as rules
 import tsumemi.src.tsumemi.timer as timer
@@ -10,6 +12,9 @@ from tsumemi.src.shogi.basetypes import Koma, KomaType, Move, Square
 from tsumemi.src.shogi.game import Game
 from tsumemi.src.tsumemi.board_canvas import BoardCanvas
 from tsumemi.src.tsumemi.problem_list import Problem, ProblemList
+
+if TYPE_CHECKING:
+    from typing import List, Tuple
 
 
 class GameAdapter:
@@ -28,41 +33,61 @@ class GameAdapter:
         self.board_canvas.set_focus(Square.NONE)
         return
     
+    def set_focus(self, sq: Square) -> None:
+        self.focused_sq = sq
+        self.focused_ktype = KomaType.get(self.position.get_koma(sq))
+        self.board_canvas.set_focus(sq)
+        return
+    
+    def make_move(self, move: Move) -> None:
+        self.game.make_move(move)
+        # send message to GUI to update position
+        self.board_canvas.draw()
+        return
+    
     def receive_square(self, event,
             sq: Square, hand_ktype: KomaType = KomaType.NONE
         ) -> None:
+        """Receive Square (and/or event) from GUI view and decide
+        what to do with the information, e.g. possibly updating self
+        or making a move.
+        """
         # game adapter receives a Square (Event?) from the GUI and
         # decides what to do with it
         koma = self.position.get_koma(sq)
+        # debugging prints
         print(event)
         print(koma, sq, hand_ktype, self.position.sq_to_idx(sq))
         print(self.focused_sq, self.focused_ktype, self.position.turn)
-        if sq == Square.HAND:
-            # Selecting a hand piece can never complete a move.
+        # Selecting the same square deselects it
+        if sq == self.focused_sq:
+            self.clear_focus()
+            return
+        # Selecting a hand piece can never complete a move.
+        elif sq == Square.HAND:
             self.focused_sq = sq
             self.focused_ktype = hand_ktype
-            # send message to change focus
             self.board_canvas.set_focus(sq)
             return
+        # If nothing had previously been selected, a move cannot be
+        # completed with the current selection.
         elif self.focused_sq == Square.NONE:
-            # If nothing had previously been selected, a move cannot
-            # be completed with the current selection.
             koma = self.position.get_koma(sq)
             if (koma != Koma.NONE) and (koma != Koma.INVALID):
                 if koma.side() == self.position.turn:
-                    self.focused_sq = sq
-                    self.focused_ktype = KomaType.get(koma)
-                    # send message to change focus
-                    self.board_canvas.set_focus(sq)
+                    self.set_focus(sq)
             return
+        # If a hand piece had previously been selected, consider if a
+        # drop move is legal or not.
         elif self.focused_sq == Square.HAND:
             koma = self.position.get_koma(sq)
             if koma == Koma.NONE:
                 # create drop moves then check legality
-                if self.validate_legality(
-                        start_sq=self.focused_sq, end_sq=sq,
-                        ktype=self.focused_ktype
-                    ):
+                exists_legal_move, mvlist = self.validate_legality(
+                    start_sq=self.focused_sq, end_sq=sq,
+                    ktype=self.focused_ktype
+                )
+                if exists_legal_move: 
                     mv = Move(
                         start_sq=self.focused_sq, end_sq=sq,
                         koma=Koma.make(self.position.turn, self.focused_ktype)
@@ -74,17 +99,17 @@ class GameAdapter:
                 return
             else:
                 if koma.side() == self.position.turn:
-                    self.focused_sq = sq
-                    self.focused_ktype = KomaType.get(koma)
-                    self.board_canvas.set_focus(sq)
+                    self.set_focus(sq)
                 return
+        # Else, a board piece had previously been selected, consider
+        # if a piece move is legal or not.
         else:
-            # this is if focused square contains valid koma already
             # TODO: this is only valid moves! Make it legal!
             ktype = KomaType.get(self.position.get_koma(self.focused_sq))
-            if self.validate_legality(
-                    start_sq=self.focused_sq, end_sq=sq, ktype=ktype
-                ):
+            exists_legal_move, mvlist = self.validate_legality(
+                start_sq=self.focused_sq, end_sq=sq, ktype=ktype
+            )
+            if exists_legal_move:
                 # TODO: promotion prompts
                 mv = Move(
                     start_sq=self.focused_sq, end_sq=sq,
@@ -95,26 +120,21 @@ class GameAdapter:
                 self.clear_focus()
             else:
                 # Not completing a move, update focus accordingly
-                if self.position.get_koma(sq) == Koma.NONE:
+                koma_new = self.position.get_koma(sq)
+                if koma_new == Koma.NONE:
                     self.clear_focus()
-                elif self.position.get_koma(sq).side() == self.position.turn:
-                    self.focused_sq = sq
-                    self.focused_ktype = KomaType.get(self.position.get_koma(sq))
-                    self.board_canvas.set_focus(sq)
+                elif koma_new.side() == self.position.turn:
+                    self.set_focus(sq)
             return
-    
-    def make_move(self, move: Move) -> None:
-        self.game.make_move(move)
-        # send message to GUI to update position
-        self.board_canvas.draw()
-        return
     
     def validate_legality(self,
             start_sq: Square, end_sq: Square,
             ktype: KomaType = KomaType.NONE
-        ) -> bool:
-        # This ONLY validates legality, making move is up to caller
-        # check if drop
+        ) -> Tuple[bool, List[Move]]:
+        """Decide if there exists a legal move given the start and
+        end Squares, and KomaType (needed for hand pieces).
+        """
+        res_bool = False
         if start_sq == Square.HAND:
             # TODO: this is VALID, not LEGAL yet
             mvlist = rules.generate_drop_moves(
@@ -122,17 +142,11 @@ class GameAdapter:
             )
             mvlist_filtered = [mv for mv in mvlist if (mv.end_sq == end_sq)]
             if len(mvlist_filtered) == 1:
-                return True
-            elif len(mvlist_filtered) == 0:
-                # there is no legal drop move
-                return False
-            else:
-                # Something is very wrong
-                return False
+                res_bool = True
+            return res_bool, mvlist_filtered
+        # Now start_sq should be a valid Square on the board
         koma = self.position.get_koma(start_sq)
-        if koma.side() != self.position.turn:
-            return False
-        else:
+        if koma.side() == self.position.turn:
             # TODO: generate (LEGAL NOT VALID) moves of said piece type
             ktype = KomaType.get(koma)
             mvlist = rules.generate_valid_moves(
@@ -142,19 +156,10 @@ class GameAdapter:
                 mv for mv in mvlist
                 if (mv.start_sq == start_sq) and (mv.end_sq == end_sq)
             ]
-            if len(mvlist_filtered) == 1:
-                return True
-            elif len(mvlist_filtered) == 2:
-                # needs promotion
-                # invoke other function, or send message to GUI to prompt for promotion?
-                return True
-            elif len(mvlist_filtered) == 0:
-                # no such move
-                return False
-            else:
-                # ?????? how did this happen
-                return False
-        
+            if (len(mvlist_filtered) == 1) or (len(mvlist_filtered) == 2):
+                res_bool = True
+            return res_bool, mvlist_filtered
+        return False, []
 
 
 class Model:
