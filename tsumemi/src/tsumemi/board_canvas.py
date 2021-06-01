@@ -354,6 +354,12 @@ class BoardCanvas(tk.Canvas):
                     anchor="nw"
                 )
                 self.board_tiles[row_idx][col_idx] = id
+                # Add callbacks
+                col_num = col_idx+1 if self.is_upside_down else 9-col_idx
+                row_num = 9-row_idx if self.is_upside_down else row_idx+1
+                sq = Square.from_cr(col_num, row_num)
+                callback = functools.partial(self.controller.model.game_adapter.receive_square, sq=sq)
+                self.tag_bind(id, "<Button-1>", callback)
         if self.board_img_cache.has_images():
             board_img = self.board_img_cache.get_dict()["board"]
             for row in self.board_tiles:
@@ -485,6 +491,8 @@ class BoardCanvas(tk.Canvas):
                     is_text=is_text,
                     anchor="center"
                 )
+                callback = functools.partial(self.controller.model.game_adapter.receive_square, sq=Square.HAND, hand_ktype=ktype)
+                self.tag_bind(id, "<Button-1>", callback)
                 #TODO: register drawn piece image with self.[some dict]
                 self.create_text(
                     x+0.5*komadai_piece_size,

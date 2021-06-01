@@ -27,8 +27,11 @@ class GameAdapter:
         self.focused_ktype = KomaType.NONE
         return
     
-    def receive_square(self, event, sq: Square, hand_ktype: KomaType = KomaType.NONE) -> None:
-        # game adapter receives a Square (Event?) from the GUI and decides what to do with it
+    def receive_square(self, event,
+            sq: Square, hand_ktype: KomaType = KomaType.NONE
+        ) -> None:
+        # game adapter receives a Square (Event?) from the GUI and
+        # decides what to do with it
         koma = self.position.get_koma(sq)
         print(koma, sq, hand_ktype, self.position.sq_to_idx(sq))
         print(self.focused_sq, self.focused_ktype, self.position.turn)
@@ -38,7 +41,7 @@ class GameAdapter:
             self.focused_ktype = hand_ktype
             # send message to change focus
             return
-        if self.focused_sq == Square.NONE:
+        elif self.focused_sq == Square.NONE:
             # If nothing had previously been selected, a move cannot
             # be completed with the current selection.
             koma = self.position.get_koma(sq)
@@ -53,8 +56,14 @@ class GameAdapter:
             koma = self.position.get_koma(sq)
             if koma == Koma.NONE:
                 # create drop moves then check legality
-                if self.validate_legality(start_sq=self.focused_sq, end_sq=sq, ktype=self.focused_ktype):
-                    mv = Move(start_sq=self.focused_sq, end_sq=sq, koma=Koma.make(self.position.turn, self.focused_ktype))
+                if self.validate_legality(
+                        start_sq=self.focused_sq, end_sq=sq,
+                        ktype=self.focused_ktype
+                    ):
+                    mv = Move(
+                        start_sq=self.focused_sq, end_sq=sq,
+                        koma=Koma.make(self.position.turn, self.focused_ktype)
+                    )
                     self.game.make_move(mv)
                     self.board_canvas.draw()
                     # if legal make move, else remove focus
@@ -69,18 +78,24 @@ class GameAdapter:
             # this is if focused square contains valid koma already
             # TODO: this is only valid moves!
             ktype = KomaType.get(self.position.get_koma(self.focused_sq))
-            if self.validate_legality(start_sq=self.focused_sq, end_sq=sq, ktype=ktype):
+            if self.validate_legality(
+                    start_sq=self.focused_sq, end_sq=sq, ktype=ktype
+                ):
                 # TODO: promotion prompts
-                mv = Move(start_sq=self.focused_sq, end_sq=sq, koma=Koma.make(self.position.turn, ktype))
+                mv = Move(
+                    start_sq=self.focused_sq, end_sq=sq,
+                    koma=Koma.make(self.position.turn, ktype),
+                    captured=self.position.get_koma(sq)
+                )
                 self.make_move(mv)
                 self.clear_focus()
             else:
                 # Not completing a move, update focus accordingly
-                if ktype == KomaType.NONE:
+                if self.position.get_koma(sq) == Koma.NONE:
                     self.clear_focus()
                 else:
                     self.focused_sq = sq
-                    self.focused_ktype = self.position.get_koma(sq)
+                    self.focused_ktype = KomaType.get(self.position.get_koma(sq))
             return
     
     def make_move(self, move: Move) -> None:
@@ -89,12 +104,17 @@ class GameAdapter:
         self.board_canvas.draw()
         return
     
-    def validate_legality(self, start_sq: Square, end_sq: Square, ktype: KomaType = KomaType.NONE) -> bool:
+    def validate_legality(self,
+            start_sq: Square, end_sq: Square,
+            ktype: KomaType = KomaType.NONE
+        ) -> bool:
         # This ONLY validates legality, making move is up to caller
         # check if drop
         if start_sq == Square.HAND:
             # TODO: this is VALID, not LEGAL yet
-            mvlist = rules.generate_drop_moves(pos=self.position, side=self.position.turn, ktype=ktype)
+            mvlist = rules.generate_drop_moves(
+                pos=self.position, side=self.position.turn, ktype=ktype
+            )
             mvlist_filtered = [mv for mv in mvlist if (mv.end_sq == end_sq)]
             if len(mvlist_filtered) == 1:
                 return True
@@ -110,8 +130,13 @@ class GameAdapter:
         else:
             # TODO: generate (LEGAL NOT VALID) moves of said piece type
             ktype = KomaType.get(koma)
-            mvlist = rules.generate_valid_moves(pos=self.position, side=self.position.turn, ktype=ktype)
-            mvlist_filtered = [mv for mv in mvlist if (mv.start_sq == start_sq) and (mv.end_sq == end_sq)]
+            mvlist = rules.generate_valid_moves(
+                pos=self.position, side=self.position.turn, ktype=ktype
+            )
+            mvlist_filtered = [
+                mv for mv in mvlist
+                if (mv.start_sq == start_sq) and (mv.end_sq == end_sq)
+            ]
             if len(mvlist_filtered) == 1:
                 return True
             elif len(mvlist_filtered) == 2:
@@ -172,7 +197,9 @@ class Model:
         self.reader.game.start()
         return
     
-    def add_problems_in_directory(self, directory, recursive=False, suppress=False):
+    def add_problems_in_directory(self,
+            directory, recursive=False, suppress=False
+        ):
         # Adds all problems in given directory to self.prob_buffer.
         # Does not otherwise alter state of Model.
         if recursive:
@@ -180,21 +207,25 @@ class Model:
                 self.prob_buffer.add_problems([
                     Problem(os.path.join(dirpath, filename))
                     for filename in filenames
-                    if filename.endswith(".kif") or filename.endswith(".kifu")
+                    if filename.endswith(".kif")
+                    or filename.endswith(".kifu")
                 ], suppress=suppress)
         else:
             with os.scandir(directory) as it:
                 self.prob_buffer.add_problems([
                     Problem(os.path.join(directory, entry.name))
                     for entry in it
-                    if entry.name.endswith(".kif") or entry.name.endswith(".kifu")
+                    if entry.name.endswith(".kif")
+                    or entry.name.endswith(".kifu")
                 ], suppress=suppress)
         return
     
     def set_directory(self, directory, recursive=False):
         self.directory = directory
         self.prob_buffer.clear(suppress=True)
-        self.add_problems_in_directory(directory, recursive=recursive, suppress=True)
+        self.add_problems_in_directory(
+            directory, recursive=recursive, suppress=True
+        )
         self.prob_buffer.sort_by_file()
         return self.set_active_problem()
     

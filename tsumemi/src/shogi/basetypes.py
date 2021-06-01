@@ -132,6 +132,8 @@ class Koma(IntFlag):
         """
         if self == Koma.NONE:
             return " * "
+        elif self == Koma.INVALID:
+            return "INVALID"
         else:
             side_ch = "-" if (self & Koma.GOTE) else "+"
             return "".join((side_ch, (self & ~Koma.GOTE).name))
