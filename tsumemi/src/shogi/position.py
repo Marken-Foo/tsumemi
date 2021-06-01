@@ -167,6 +167,7 @@ class Position:
                 move.koma.promote() if move.is_promotion else move.koma,
                 move.end_sq
             )
+            self.turn = self.turn.switch()
             self.movenum += 1
             return
     
@@ -186,6 +187,7 @@ class Position:
                 self.dec_hand_koma(move.side, KomaType.get(move.captured).unpromote())
             self.set_koma(move.captured, move.end_sq)
             self.set_koma(move.koma, move.start_sq)
+            self.turn = self.turn.switch()
             self.movenum -= 1
             return
     

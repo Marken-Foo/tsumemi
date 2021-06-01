@@ -7,10 +7,14 @@ import tkinter as tk
 from abc import ABC, abstractmethod
 from collections import Counter
 from enum import Enum
-from typing import Optional
+from typing import TYPE_CHECKING
 from PIL import Image, ImageTk
 
 from tsumemi.src.shogi.basetypes import KanjiNumber, Koma, KomaType, Side, Square, HAND_TYPES, KANJI_FROM_KTYPE
+
+if TYPE_CHECKING:
+    from typing import Callable, Dict, Optional, Tuple, Union
+    PathLike = Union[str, os.PathLike]
 
 
 BOARD_IMAGES_PATH = os.path.relpath(r"tsumemi/resources/images/boards") 
@@ -30,10 +34,12 @@ class BoardSkin(Enum):
     MILITARY = ("Military", "#a06b3a", os.path.join(BOARD_IMAGES_PATH, r"tile_military.png"))
     MILITARY2 = ("Military2", "#bd7b32", os.path.join(BOARD_IMAGES_PATH, r"tile_military2.png"))
     
-    def __init__(self, desc, colour, path):
-        self.desc = desc
-        self.colour = colour
-        self.path = path
+    def __init__(self,
+            desc: str, colour: str, path: Optional[PathLike]
+        ) -> None:
+        self.desc: str = desc
+        self.colour: str = colour
+        self.path: Optional[PathLike] = path
 
 
 class PieceSkin(Enum):
@@ -43,9 +49,9 @@ class PieceSkin(Enum):
     REDWOOD = ("1-kanji red wood pieces", os.path.join(PIECE_IMAGES_PATH, r"kanji_red_wood"))
     INTL = ("Internationalised symbols", os.path.join(PIECE_IMAGES_PATH, r"international"))
     
-    def __init__(self, desc, path):
-        self.desc = desc
-        self.path = path
+    def __init__(self, desc: str, path: PathLike) -> None:
+        self.desc: str = desc
+        self.path: Optional[PathLike] = path
         return
 
 
@@ -55,36 +61,36 @@ class ImgResizer:
     in constructor. Responsible for resizing images to correct
     dimensions.
     """
-    def __init__(self, update_func):
+    def __init__(self, update_func: Callable[[], Tuple[int, int]]) -> None:
         self.update_func = update_func # function returns tuple (width, height)
         self.width, self.height = update_func()
-        self.raws = {}
-        self.images = {}
+        self.raws: Dict[Union[str, KomaType], Image.Image] = {}
+        self.images: Dict[Union[str, KomaType], ImageTk.PhotoImage] = {}
         return
     
-    def _resize_image(self, img, width, height):
+    def _resize_image(self, img, width: int, height: int) -> ImageTk.PhotoImage:
         """Take PIL Image img, return resized ImageTk.PhotoImage.
         """
         resized_img = img.resize((int(width), int(height)))
         return ImageTk.PhotoImage(resized_img)
     
-    def add_image(self, key, image):
+    def add_image(self, key: Union[str, KomaType], image: Image.Image) -> None:
         self.raws[key] = image
         self.images[key] = self._resize_image(image, self.width, self.height)
         return
     
-    def resize_images(self):
+    def resize_images(self) -> None:
         for key in self.raws:
             self.images[key] = self._resize_image(
                 self.raws[key], self.width, self.height
             )
         return
     
-    def update_sizes(self):
+    def update_sizes(self) -> None:
         self.width, self.height = self.update_func()
         return
     
-    def get_dict(self):
+    def get_dict(self) -> Dict[Union[str, KomaType], ImageTk.PhotoImage]:
         return self.images
 
 
@@ -102,11 +108,11 @@ class ImgManager(ABC):
 
 
 class PieceImgManager(ImgManager):
-    def __init__(self, measurements, skin):
-        def _komadai_piece_size():
+    def __init__(self, measurements: BoardMeasurements, skin: PieceSkin) -> None:
+        def _komadai_piece_size() -> Tuple[int, int]:
             kpc_w = measurements.komadai_piece_size
             return kpc_w, kpc_w
-        def _board_piece_size():
+        def _board_piece_size() -> Tuple[int, int]:
             sq_w = measurements.sq_w
             return sq_w, sq_w
         self.upright = ImgResizer(_board_piece_size)
@@ -118,23 +124,23 @@ class PieceImgManager(ImgManager):
         self.skin = skin
         return
     
-    def has_images(self):
+    def has_images(self) -> bool:
         return (self.skin.path is not None)
     
-    def load(self, skin):
+    def load(self, skin: PieceSkin) -> None:
         filepath = skin.path
         if filepath:
             for ktype in KomaType:
                 if ktype == KomaType.NONE:
                     continue
                 filename = "0" + ktype.to_csa() + ".png"
-                img_path = os.path.join(skin.path, filename)
+                img_path = os.path.join(filepath, filename)
                 img = Image.open(img_path)
                 self.upright.add_image(ktype, img)
                 self.komadai_upright.add_image(ktype, img)
                 # upside-down image
                 filename = "1" + ktype.to_csa() + ".png"
-                img_path = os.path.join(skin.path, filename)
+                img_path = os.path.join(filepath, filename)
                 img = Image.open(img_path)
                 self.inverted.add_image(ktype, img)
                 self.komadai_inverted.add_image(ktype, img)
@@ -145,7 +151,7 @@ class PieceImgManager(ImgManager):
             self.skin = skin
             return
     
-    def resize_images(self):
+    def resize_images(self) -> None:
         if self.skin.path:
             imgdicts = (
                 self.upright,
@@ -158,7 +164,7 @@ class PieceImgManager(ImgManager):
                 imgdict.resize_images()
         return
     
-    def get_dict(self, invert=False, komadai=False):
+    def get_dict(self, invert=False, komadai=False) -> Dict[Union[str, KomaType], ImageTk.PhotoImage]:
         if not invert and not komadai:
             return self.upright.get_dict()
         elif invert and not komadai:
@@ -170,7 +176,7 @@ class PieceImgManager(ImgManager):
 
 
 class BoardImgManager(ImgManager):
-    def __init__(self, measurements, skin):
+    def __init__(self, measurements: BoardMeasurements, skin: BoardSkin) -> None:
         def _board_sq_size():
             sq_w = measurements.sq_w
             sq_h = measurements.sq_h
@@ -182,7 +188,7 @@ class BoardImgManager(ImgManager):
         self.skin = skin
         return
     
-    def load(self, skin):
+    def load(self, skin: BoardSkin) -> None:
         filepath = skin.path
         if filepath:
             img = Image.open(filepath)
@@ -194,7 +200,7 @@ class BoardImgManager(ImgManager):
             self.skin = skin
             return
     
-    def resize_images(self):
+    def resize_images(self) -> None:
         if self.skin.path:
             imgdicts = (self.images,)
             for imgdict in imgdicts:
@@ -202,7 +208,7 @@ class BoardImgManager(ImgManager):
                 imgdict.resize_images()
         return
     
-    def get_dict(self):
+    def get_dict(self) -> Dict[Union[str, KomaType], ImageTk.PhotoImage]:
         return self.images.get_dict()
 
 
@@ -220,7 +226,7 @@ class BoardMeasurements:
     SQ_ASPECT_RATIO = 11/12
     SQ_TEXT_IN_SQ = 7/10
     
-    def __init__(self, width, height):
+    def __init__(self, width: int, height: int) -> None:
         # could refactor into a dictionary perhaps?
         (
             self.sq_w, self.sq_h, self.komadai_w, self.w_pad, self.h_pad,
@@ -229,7 +235,7 @@ class BoardMeasurements:
         ) = self.recalculate_sizes(width, height)
         return
     
-    def recalculate_sizes(self, canvas_width, canvas_height):
+    def recalculate_sizes(self, canvas_width: int, canvas_height: int):
         """Geometry: 9x9 shogi board, flanked by komadai area on
         either side. Padded on all 4 sides (canvas internal padding).
         Extra space allocated between board and right komadai (2 times
@@ -312,6 +318,9 @@ class BoardCanvas(tk.Canvas):
         self.koma_img_cache = PieceImgManager(self.measurements, piece_skin)
         self.board_img_cache = BoardImgManager(self.measurements, board_skin)
         self.komadai_skin = komadai_skin
+        # Images created and stored so only their image field changes later.
+        # FEN ordering.
+        self.board_tiles = [[None] * 9 for i in range(9)]
         # Koma image IDs and their current positions
         self.koma_on_board_images = {}
         return
@@ -336,16 +345,15 @@ class BoardCanvas(tk.Canvas):
             x_sq(9), y_sq(9),
             fill=board_skin.colour
         )
-        # Images created and stored so only their image field changes later.
-        self.board_tiles = [[None] * 9 for i in range(9)]
-        for row_num in range(9):
-            for col_num in range(9):
-                self.board_tiles[row_num][col_num] = self.create_image(
-                    x_sq(row_num),
-                    y_sq(col_num),
+        for row_idx in range(9):
+            for col_idx in range(9):
+                id = self.create_image(
+                    x_sq(col_idx),
+                    y_sq(row_idx),
                     image="",
                     anchor="nw"
                 )
+                self.board_tiles[row_idx][col_idx] = id
         if self.board_img_cache.has_images():
             board_img = self.board_img_cache.get_dict()["board"]
             for row in self.board_tiles:
@@ -357,17 +365,17 @@ class BoardCanvas(tk.Canvas):
             self.create_line(x_sq(0), y_sq(i), x_sq(9), y_sq(i),
                                     fill="black", width=1)
         # Draw board coordinates
-        for row_num in range(9):
+        for row_idx in range(9):
             self.create_text(
-                x_sq(9), y_sq(row_num+0.5),
-                text=" " + row_coords[row_num],
+                x_sq(9), y_sq(row_idx+0.5),
+                text=" " + row_coords[row_idx],
                 font=("", coords_text_size),
                 anchor="w"
             )
-        for col_num in range(9):
+        for col_idx in range(9):
             self.create_text(
-                x_sq(col_num+0.5), y_sq(0),
-                text=col_coords[col_num],
+                x_sq(col_idx+0.5), y_sq(0),
+                text=col_coords[col_idx],
                 font=("", coords_text_size),
                 anchor="s"
             )
@@ -545,11 +553,11 @@ class BoardCanvas(tk.Canvas):
         )
         return
     
-    def apply_piece_skin(self, skin):
+    def apply_piece_skin(self, skin: PieceSkin) -> None:
         self.koma_img_cache.load(skin)
         return
     
-    def apply_board_skin(self, skin):
+    def apply_board_skin(self, skin: BoardSkin) -> None:
         self.itemconfig(self.board_rect, fill=skin.colour)
         self.board_img_cache.load(skin)
         board_img = (
@@ -559,7 +567,7 @@ class BoardCanvas(tk.Canvas):
         )
         return
     
-    def apply_komadai_skin(self, skin):
+    def apply_komadai_skin(self, skin: BoardSkin) -> None:
         # Can only figure out how to apply solid colours for now
         self.itemconfig(self.north_komadai_rect, fill=skin.colour)
         self.itemconfig(self.south_komadai_rect, fill=skin.colour)
@@ -576,7 +584,7 @@ class BoardCanvas(tk.Canvas):
         self.draw()
         return
     
-    def flip_board(self, want_upside_down):
+    def flip_board(self, want_upside_down: bool) -> None:
         # For upside-down mode
         if self.is_upside_down != want_upside_down:
             self.is_upside_down = want_upside_down

@@ -11,7 +11,7 @@ import tsumemi.src.tsumemi.event as event
 if TYPE_CHECKING:
     import os
     from typing import Any, List, Optional, Union
-    PathLike = Union[str, bytes, os.PathLike]
+    PathLike = Union[str, os.PathLike]
 
 
 class ProblemStatus(Enum):

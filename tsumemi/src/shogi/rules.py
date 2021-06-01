@@ -77,7 +77,11 @@ def generate_moves_base(
     locations = pos.koma_sets[Koma.make(side, ktype)]
     for start_idx in locations:
         destinations = dest_generator(pos, start_idx, side)
-        for end_idx in destinations:
+        # TODO: this requires internals of Position! Refactor!
+        filtered_dests = [
+            idx for idx in destinations if pos.board[idx] != Koma.INVALID
+        ]
+        for end_idx in filtered_dests:
             tuplist = promotion_constrainer(pos, side, start_idx, end_idx)
             for tup in tuplist:
                 start, end, promo = tup
@@ -116,6 +120,9 @@ def steps_ou(start_idx: int, side: Side) -> Tuple[int, ...]:
         start_idx+Dir.SE, start_idx+Dir.S, start_idx+Dir.SW,
         start_idx+Dir.W, start_idx+Dir.NW
     )
+
+# Destination generators may return invalid destinations.
+# They must be filtered before use.
 
 def generate_dests_steps(
         pos: Position, start_idx: int, side: Side,
