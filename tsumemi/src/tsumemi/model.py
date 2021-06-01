@@ -25,6 +25,7 @@ class GameAdapter:
     def clear_focus(self) -> None:
         self.focused_sq = Square.NONE
         self.focused_ktype = KomaType.NONE
+        self.board_canvas.set_focus(Square.NONE)
         return
     
     def receive_square(self, event,
@@ -33,6 +34,7 @@ class GameAdapter:
         # game adapter receives a Square (Event?) from the GUI and
         # decides what to do with it
         koma = self.position.get_koma(sq)
+        print(event)
         print(koma, sq, hand_ktype, self.position.sq_to_idx(sq))
         print(self.focused_sq, self.focused_ktype, self.position.turn)
         if sq == Square.HAND:
@@ -40,18 +42,19 @@ class GameAdapter:
             self.focused_sq = sq
             self.focused_ktype = hand_ktype
             # send message to change focus
+            self.board_canvas.set_focus(sq)
             return
         elif self.focused_sq == Square.NONE:
             # If nothing had previously been selected, a move cannot
             # be completed with the current selection.
             koma = self.position.get_koma(sq)
             if (koma != Koma.NONE) and (koma != Koma.INVALID):
-                self.focused_sq = sq
-                self.focused_ktype = KomaType.get(koma)
-                # send message to change focus
-                return
-            else:
-                return
+                if koma.side() == self.position.turn:
+                    self.focused_sq = sq
+                    self.focused_ktype = KomaType.get(koma)
+                    # send message to change focus
+                    self.board_canvas.set_focus(sq)
+            return
         elif self.focused_sq == Square.HAND:
             koma = self.position.get_koma(sq)
             if koma == Koma.NONE:
@@ -66,17 +69,18 @@ class GameAdapter:
                     )
                     self.game.make_move(mv)
                     self.board_canvas.draw()
-                    # if legal make move, else remove focus
+                    # if legal make move and remove focus, else remove focus
+                    self.clear_focus()
                 return
             else:
-                self.focused_sq = sq
                 if koma.side() == self.position.turn:
+                    self.focused_sq = sq
                     self.focused_ktype = KomaType.get(koma)
-                # change focus to newly selected hand piece
+                    self.board_canvas.set_focus(sq)
                 return
         else:
             # this is if focused square contains valid koma already
-            # TODO: this is only valid moves!
+            # TODO: this is only valid moves! Make it legal!
             ktype = KomaType.get(self.position.get_koma(self.focused_sq))
             if self.validate_legality(
                     start_sq=self.focused_sq, end_sq=sq, ktype=ktype
@@ -93,9 +97,10 @@ class GameAdapter:
                 # Not completing a move, update focus accordingly
                 if self.position.get_koma(sq) == Koma.NONE:
                     self.clear_focus()
-                else:
+                elif self.position.get_koma(sq).side() == self.position.turn:
                     self.focused_sq = sq
                     self.focused_ktype = KomaType.get(self.position.get_koma(sq))
+                    self.board_canvas.set_focus(sq)
             return
     
     def make_move(self, move: Move) -> None:

@@ -13,17 +13,20 @@ from PIL import Image, ImageTk
 from tsumemi.src.shogi.basetypes import KanjiNumber, Koma, KomaType, Side, Square, HAND_TYPES, KANJI_FROM_KTYPE
 
 if TYPE_CHECKING:
-    from typing import Callable, Dict, Optional, Tuple, Union
+    from typing import Any, Callable, Dict, Optional, Tuple, Union
     PathLike = Union[str, os.PathLike]
+    ImgDict = Dict[Any, ImageTk.PhotoImage]
 
 
 BOARD_IMAGES_PATH = os.path.relpath(r"tsumemi/resources/images/boards") 
 PIECE_IMAGES_PATH = os.path.relpath(r"tsumemi/resources/images/pieces")
+IMG_TRANSPARENT = Image.new("RGBA", (1, 1), "#00000000")
+IMG_HIGHLIGHT = Image.new("RGBA", (1, 1), "#99ff0066")
 
 
 class BoardSkin(Enum):
-    WHITE = ("solid white", "white", None)
-    BROWN = ("solid brown", "burlywood1", None)
+    WHITE = ("solid white", "white", "")
+    BROWN = ("solid brown", "burlywood1", "")
     WOOD1 = ("Wood1", "#d29a00", os.path.join(BOARD_IMAGES_PATH, r"tile_wood1.png"))
     WOOD2 = ("Wood2", "#fbcd77", os.path.join(BOARD_IMAGES_PATH, r"tile_wood2.png"))
     WOOD3 = ("Wood3", "#c98e52", os.path.join(BOARD_IMAGES_PATH, r"tile_wood3.png"))
@@ -35,15 +38,15 @@ class BoardSkin(Enum):
     MILITARY2 = ("Military2", "#bd7b32", os.path.join(BOARD_IMAGES_PATH, r"tile_military2.png"))
     
     def __init__(self,
-            desc: str, colour: str, path: Optional[PathLike]
+            desc: str, colour: str, path: PathLike
         ) -> None:
         self.desc: str = desc
         self.colour: str = colour
-        self.path: Optional[PathLike] = path
+        self.path: PathLike = path
 
 
 class PieceSkin(Enum):
-    TEXT = ("1-kanji text characters", None)
+    TEXT = ("1-kanji text characters", "")
     LIGHT = ("1-kanji light pieces", os.path.join(PIECE_IMAGES_PATH, r"kanji_light"))
     BROWN = ("1-kanji brown pieces", os.path.join(PIECE_IMAGES_PATH, r"kanji_brown"))
     REDWOOD = ("1-kanji red wood pieces", os.path.join(PIECE_IMAGES_PATH, r"kanji_red_wood"))
@@ -51,11 +54,11 @@ class PieceSkin(Enum):
     
     def __init__(self, desc: str, path: PathLike) -> None:
         self.desc: str = desc
-        self.path: Optional[PathLike] = path
+        self.path: PathLike = path
         return
 
 
-class ImgResizer:
+class ImgSizingDict:
     """Take PIL Image and store it alongside a resized
     ImageTk.PhotoImage. Manage resized dimensions via function passed
     in constructor. Responsible for resizing images to correct
@@ -65,7 +68,7 @@ class ImgResizer:
         self.update_func = update_func # function returns tuple (width, height)
         self.width, self.height = update_func()
         self.raws: Dict[Union[str, KomaType], Image.Image] = {}
-        self.images: Dict[Union[str, KomaType], ImageTk.PhotoImage] = {}
+        self.images: ImgDict = {}
         return
     
     def _resize_image(self, img, width: int, height: int) -> ImageTk.PhotoImage:
@@ -90,13 +93,13 @@ class ImgResizer:
         self.width, self.height = self.update_func()
         return
     
-    def get_dict(self) -> Dict[Union[str, KomaType], ImageTk.PhotoImage]:
+    def get_dict(self) -> ImgDict:
         return self.images
 
 
 class ImgManager(ABC):
     def has_images(self):
-        return self.skin.path is not None
+        return bool(self.skin.path)
     
     @abstractmethod
     def load(self, skin):
@@ -107,25 +110,28 @@ class ImgManager(ABC):
         pass
 
 
-class PieceImgManager(ImgManager):
-    def __init__(self, measurements: BoardMeasurements, skin: PieceSkin) -> None:
+class KomaImgManager(ImgManager):
+    def __init__(self,
+                measurements: BoardMeasurements, skin: PieceSkin
+        ) -> None:
         def _komadai_piece_size() -> Tuple[int, int]:
             kpc_w = measurements.komadai_piece_size
             return kpc_w, kpc_w
         def _board_piece_size() -> Tuple[int, int]:
             sq_w = measurements.sq_w
             return sq_w, sq_w
-        self.upright = ImgResizer(_board_piece_size)
-        self.inverted = ImgResizer(_board_piece_size)
-        self.komadai_upright = ImgResizer(_komadai_piece_size)
-        self.komadai_inverted = ImgResizer(_komadai_piece_size)
+        self.upright = ImgSizingDict(_board_piece_size)
+        self.inverted = ImgSizingDict(_board_piece_size)
+        self.komadai_upright = ImgSizingDict(_komadai_piece_size)
+        self.komadai_inverted = ImgSizingDict(_komadai_piece_size)
+        # Other members
         self.measurements = measurements
         self.load(skin)
         self.skin = skin
         return
     
     def has_images(self) -> bool:
-        return (self.skin.path is not None)
+        return bool(self.skin.path)
     
     def load(self, skin: PieceSkin) -> None:
         filepath = skin.path
@@ -164,7 +170,7 @@ class PieceImgManager(ImgManager):
                 imgdict.resize_images()
         return
     
-    def get_dict(self, invert=False, komadai=False) -> Dict[Union[str, KomaType], ImageTk.PhotoImage]:
+    def get_dict(self, invert=False, komadai=False) -> ImgDict:
         if not invert and not komadai:
             return self.upright.get_dict()
         elif invert and not komadai:
@@ -176,17 +182,26 @@ class PieceImgManager(ImgManager):
 
 
 class BoardImgManager(ImgManager):
-    def __init__(self, measurements: BoardMeasurements, skin: BoardSkin) -> None:
+    def __init__(self,
+            measurements: BoardMeasurements, skin: BoardSkin
+        ) -> None:
         def _board_sq_size():
             sq_w = measurements.sq_w
             sq_h = measurements.sq_h
             # +1 pixel to avoid gaps when tiling image
             return sq_w+1, sq_h+1
-        self.images = ImgResizer(_board_sq_size)
+        # Populate default images
+        self.images = ImgSizingDict(_board_sq_size)
+        self.images.add_image("transparent", IMG_TRANSPARENT)
+        self.images.add_image("highlight", IMG_HIGHLIGHT)
+        # Other members
         self.measurements = measurements
         self.load(skin)
         self.skin = skin
         return
+    
+    def has_images(self) -> bool:
+        return bool(self.skin.path)
     
     def load(self, skin: BoardSkin) -> None:
         filepath = skin.path
@@ -208,7 +223,7 @@ class BoardImgManager(ImgManager):
                 imgdict.resize_images()
         return
     
-    def get_dict(self) -> Dict[Union[str, KomaType], ImageTk.PhotoImage]:
+    def get_dict(self) -> ImgDict:
         return self.images.get_dict()
 
 
@@ -315,14 +330,36 @@ class BoardCanvas(tk.Canvas):
         except KeyError:
             komadai_skin = BoardSkin.WHITE
         # Cached images and image settings
-        self.koma_img_cache = PieceImgManager(self.measurements, piece_skin)
+        self.koma_img_cache = KomaImgManager(self.measurements, piece_skin)
         self.board_img_cache = BoardImgManager(self.measurements, board_skin)
         self.komadai_skin = komadai_skin
         # Images created and stored so only their image field changes later.
         # FEN ordering.
         self.board_tiles = [[None] * 9 for i in range(9)]
+        self.board_select_tiles = [[None] * 9 for i in range(9)]
         # Koma image IDs and their current positions
-        self.koma_on_board_images = {}
+        self.koma_on_board_images: Dict[int, Tuple[int, int]] = {}
+        # Currently highlighted tile [col_num, row_num]
+        # Hand pieces would be [0, KomaType]
+        self.highlighted_sq = Square.NONE
+        return
+    
+    def set_focus(self, sq: Square) -> None:
+        if self.highlighted_sq != Square.NONE:
+            col, row = self.highlighted_sq.get_cr()
+            col_idx = col-1 if self.is_upside_down else 9-col
+            row_idx = 9-row if self.is_upside_down else row-1
+            old_idx = self.board_select_tiles[row_idx][col_idx]
+            self.itemconfig(old_idx, image=self.board_img_cache.get_dict()["transparent"])
+        if sq == Square.HAND:
+            pass
+        elif sq != Square.NONE:
+            col_num, row_num = sq.get_cr()
+            col_idx = col_num-1 if self.is_upside_down else 9-col_num
+            row_idx = 9-row_num if self.is_upside_down else row_num-1
+            img_idx = self.board_select_tiles[row_idx][col_idx]
+            self.itemconfig(img_idx, image=self.board_img_cache.get_dict()["highlight"])
+        self.highlighted_sq = sq
         return
     
     def draw_board(self):
@@ -332,11 +369,6 @@ class BoardCanvas(tk.Canvas):
         x_sq = self.measurements.x_sq
         y_sq = self.measurements.y_sq
         coords_text_size = self.measurements.coords_text_size
-        row_coords = [" " + KanjiNumber(i).name for i in range(1, 10, 1)]
-        col_coords = [str(i) for i in range(9, 0, -1)]
-        if self.is_upside_down:
-            row_coords.reverse()
-            col_coords.reverse()
         # Draw board
         board_skin = self.board_img_cache.skin
         # Colour board with solid colour
@@ -347,19 +379,25 @@ class BoardCanvas(tk.Canvas):
         )
         for row_idx in range(9):
             for col_idx in range(9):
+                # Create board image layer
                 id = self.create_image(
-                    x_sq(col_idx),
-                    y_sq(row_idx),
-                    image="",
-                    anchor="nw"
+                    x_sq(col_idx), y_sq(row_idx),
+                    image="", anchor="nw"
                 )
                 self.board_tiles[row_idx][col_idx] = id
+                # Create focus highlight layer
+                id_focus = self.create_image(
+                    x_sq(col_idx), y_sq(row_idx),
+                    image=self.board_img_cache.get_dict()["transparent"],
+                    anchor="nw"
+                )
+                self.board_select_tiles[row_idx][col_idx] = id_focus
                 # Add callbacks
                 col_num = col_idx+1 if self.is_upside_down else 9-col_idx
                 row_num = 9-row_idx if self.is_upside_down else row_idx+1
                 sq = Square.from_cr(col_num, row_num)
                 callback = functools.partial(self.controller.model.game_adapter.receive_square, sq=sq)
-                self.tag_bind(id, "<Button-1>", callback)
+                self.tag_bind(id_focus, "<Button-1>", callback)
         if self.board_img_cache.has_images():
             board_img = self.board_img_cache.get_dict()["board"]
             for row in self.board_tiles:
@@ -372,16 +410,19 @@ class BoardCanvas(tk.Canvas):
                                     fill="black", width=1)
         # Draw board coordinates
         for row_idx in range(9):
+            row_num = 9-row_idx if self.is_upside_down else row_idx+1
+            row_label = " " + KanjiNumber(row_num).name
             self.create_text(
                 x_sq(9), y_sq(row_idx+0.5),
-                text=" " + row_coords[row_idx],
+                text=" " + row_label,
                 font=("", coords_text_size),
                 anchor="w"
             )
         for col_idx in range(9):
+            col_num = col_idx+1 if self.is_upside_down else 9-col_idx
             self.create_text(
                 x_sq(col_idx+0.5), y_sq(0),
-                text=col_coords[col_idx],
+                text=str(col_num),
                 font=("", coords_text_size),
                 anchor="s"
             )
