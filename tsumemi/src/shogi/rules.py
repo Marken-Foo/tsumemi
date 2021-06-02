@@ -4,7 +4,7 @@ import functools
 
 from typing import TYPE_CHECKING
 
-from tsumemi.src.shogi.basetypes import Koma, KomaType, Move, Side, Square, HAND_TYPES
+from tsumemi.src.shogi.basetypes import Koma, KomaType, Move, Side, Square, HAND_TYPES, KOMA_TYPES
 from tsumemi.src.shogi.position import Dir, Position
 
 if TYPE_CHECKING:
@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 def is_legal(mv: Move, pos: Position) -> bool:
     side = pos.turn
     pos.make_move(mv)
-    ans = is_suicide(pos, side)
+    ans = not is_in_check(pos, side)
     pos.unmake_move(mv)
     return ans
 
@@ -60,8 +60,7 @@ def generate_drop_moves(
                 continue
         elif ktype == KomaType.KY:
             row_num = pos.idx_to_r(end_idx)
-            if (
-                    ((side == Side.SENTE) and (row_num == 1))
+            if (((side == Side.SENTE) and (row_num == 1))
                     or ((side == Side.GOTE) and (row_num == 9))
             ):
                 continue
@@ -136,8 +135,16 @@ def generate_moves_base(
                 mvlist.append(move)
     return mvlist
 
-def is_suicide(pos: Position, side: Side) -> bool:
-    pass
+def is_in_check(pos: Position, side: Side) -> bool:
+    # assumes royal king(s)
+    king = Koma.make(side, KomaType.OU)
+    king_pos = [pos.idx_to_sq(idx) for idx in pos.koma_sets[king]]
+    for ktype in KOMA_TYPES:
+        mvlist = generate_valid_moves(pos, side.switch(), ktype)
+        for mv in mvlist:
+            if mv.end_sq in king_pos:
+                return True
+    return False
 
 # === Basic reusable movement patterns of pieces
 

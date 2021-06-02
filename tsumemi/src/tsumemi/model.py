@@ -83,14 +83,14 @@ class GameAdapter:
             koma = self.position.get_koma(sq)
             if koma == Koma.NONE:
                 # create drop moves then check legality
-                exists_legal_move, mvlist = self.validate_legality(
+                exists_valid_move, mvlist = self.check_validity(
                     start_sq=self.focused_sq, end_sq=sq,
                     ktype=self.focused_ktype
                 )
-                if exists_legal_move: 
-                    self.game.make_move(mvlist[0])
-                    self.board_canvas.draw()
-                    # if legal make move and remove focus, else remove focus
+                if exists_valid_move:
+                    if rules.is_legal(mvlist[0], self.position):
+                        self.game.make_move(mvlist[0])
+                        self.board_canvas.draw()
                     self.clear_focus()
                 else:
                     self.clear_focus()
@@ -102,20 +102,25 @@ class GameAdapter:
         # Else, a board piece had previously been selected, consider
         # if a piece move is legal or not.
         else:
-            # TODO: this is only valid moves! Make it legal!
             ktype = KomaType.get(self.position.get_koma(self.focused_sq))
-            exists_legal_move, mvlist = self.validate_legality(
+            exists_valid_move, mvlist = self.check_validity(
                 start_sq=self.focused_sq, end_sq=sq, ktype=ktype
             )
-            if exists_legal_move:
+            if exists_valid_move:
                 # For normal shogi, either one move (promo or non)
                 # or two (choice between promo or non)
                 if len(mvlist) == 1:
-                    self.make_move(mvlist[0])
+                    if rules.is_legal(mvlist[0], self.position):
+                        self.make_move(mvlist[0])
                     self.clear_focus()
                 elif len(mvlist) == 2:
-                    # more info needed, GUI prompts for input
-                    self.board_canvas.prompt_promotion(sq, ktype)
+                    # If the promotion is legal, so is the
+                    # nonpromotion, and vice-versa.
+                    if rules.is_legal(mvlist[0], self.position):
+                        # more info needed, GUI prompts for input
+                        self.board_canvas.prompt_promotion(sq, ktype)
+                    else:
+                        self.clear_focus()
                     return
             else:
                 # Not completing a move, update focus accordingly
@@ -146,7 +151,7 @@ class GameAdapter:
             self.clear_focus()
         return
     
-    def validate_legality(self,
+    def check_validity(self,
             start_sq: Square, end_sq: Square,
             ktype: KomaType = KomaType.NONE
         ) -> Tuple[bool, List[Move]]:
@@ -155,7 +160,6 @@ class GameAdapter:
         """
         res_bool = False
         if start_sq == Square.HAND:
-            # TODO: this is VALID, not LEGAL yet
             mvlist = rules.generate_drop_moves(
                 pos=self.position, side=self.position.turn, ktype=ktype
             )
@@ -166,7 +170,6 @@ class GameAdapter:
         # Now start_sq should be a valid Square on the board
         koma = self.position.get_koma(start_sq)
         if koma.side() == self.position.turn:
-            # TODO: generate (LEGAL NOT VALID) moves of said piece type
             ktype = KomaType.get(koma)
             mvlist = rules.generate_valid_moves(
                 pos=self.position, side=self.position.turn, ktype=ktype

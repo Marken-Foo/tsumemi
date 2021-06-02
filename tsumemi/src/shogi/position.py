@@ -51,6 +51,7 @@ class Position:
         koma_sente: Dict[Koma, Set[int]] = {Koma.make(Side.SENTE, ktype): set() for ktype in KOMA_TYPES}
         koma_gote: Dict[Koma, Set[int]] = {Koma.make(Side.GOTE, ktype): set() for ktype in KOMA_TYPES}
         self.koma_sets: Dict[Koma, Set[int]] = {**koma_sente, **koma_gote}
+        # hands and other info
         self.hand_sente: Dict[KomaType, int] = {ktype: 0 for ktype in HAND_TYPES}
         self.hand_gote: Dict[KomaType, int] = {ktype: 0 for ktype in HAND_TYPES}
         self.turn = Side.SENTE
