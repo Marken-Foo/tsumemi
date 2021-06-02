@@ -11,6 +11,8 @@ if TYPE_CHECKING:
     from typing import Any, Callable, Dict, List, Tuple
 
 
+# === Public interface (functions meant to be used by other code)
+
 def is_legal(mv: Move, pos: Position) -> bool:
     side = pos.turn
     pos.make_move(mv)
@@ -21,23 +23,66 @@ def is_legal(mv: Move, pos: Position) -> bool:
 def generate_legal_moves(pos: Position) -> List[Move]:
     pass
 
-def _generate_line_idxs(
-        pos: Position, side: Side, start_idx: int, dir: Dir
-    ) -> List[int]:
-    """Generate a list of target destination square indices,
-    assuming a koma at location start_idx that moves in a line
-    along the direction dir.
-    """
-    res = []
-    dest = start_idx + dir
-    dest_koma = pos.board[dest]
-    while dest_koma == Koma.NONE:
-        res.append(dest)
-        dest += dir
-        dest_koma = pos.board[dest]
-    if dest_koma != Koma.INVALID and dest_koma.side() != side:
-        res.append(dest)
-    return res
+def generate_valid_moves(
+        pos: Position, side: Side, ktype: KomaType
+    ) -> List[Move]:
+    dest_generator, promotion_constrainer = MOVEGEN_FUNCTIONS[ktype]
+    return generate_moves_base(
+        pos=pos, side=side, ktype=ktype,
+        dest_generator=dest_generator,
+        promotion_constrainer=promotion_constrainer
+    )
+
+def generate_drop_moves(
+        pos: Position, side: Side, ktype: KomaType
+    ) -> List[Move]:
+    if ktype not in HAND_TYPES:
+        return []
+    mvlist: List[Move] = []
+    hand = pos.hand_sente if side == Side.SENTE else pos.hand_gote
+    if hand[ktype] == 0:
+        return mvlist
+    for end_idx in pos.empty_idxs:
+        if ktype == KomaType.FU:
+            row_num = pos.idx_to_r(end_idx)
+            if (((side == Side.SENTE) and (row_num == 1))
+                    or ((side == Side.GOTE) and (row_num == 9))
+            ):
+                continue
+            # nifu
+            col = pos.idx_to_c(end_idx)
+            is_nifu = False
+            for row in range(1, 10, 1):
+                idx = pos.cr_to_idx(col, row)
+                if pos.board[idx] == Koma.make(side, KomaType.FU):
+                    is_nifu = True
+            if is_nifu:
+                continue
+        elif ktype == KomaType.KY:
+            row_num = pos.idx_to_r(end_idx)
+            if (
+                    ((side == Side.SENTE) and (row_num == 1))
+                    or ((side == Side.GOTE) and (row_num == 9))
+            ):
+                continue
+        elif ktype == KomaType.KE:
+            row_num = pos.idx_to_r(end_idx)
+            if ((
+                    (side == Side.SENTE)
+                    and ((row_num == 1) or (row_num == 2))
+                ) or (
+                    (side == Side.GOTE)
+                    and ((row_num == 9) or (row_num == 8))
+                )
+            ):
+                continue
+        move = _drop(
+            pos=pos, end_idx=end_idx, side=side, ktype=ktype
+        )
+        mvlist.append(move)
+    return mvlist
+
+# === Convenience functions to create Moves.
 
 def _move(
         pos: Position, start_idx: int, end_idx: int, side: Side,
@@ -61,6 +106,8 @@ def _drop(
         start_sq=Square.HAND, end_sq=pos.idx_to_sq(end_idx),
         koma=Koma.make(side, ktype)
     )
+
+# === For move generation
 
 def generate_moves_base(
         pos: Position, side: Side, ktype: KomaType,
@@ -88,6 +135,29 @@ def generate_moves_base(
                 move = _move(pos, start, end, side, ktype, promo)
                 mvlist.append(move)
     return mvlist
+
+def is_suicide(pos: Position, side: Side) -> bool:
+    pass
+
+# === Basic reusable movement patterns of pieces
+
+def _generate_line_idxs(
+        pos: Position, side: Side, start_idx: int, dir: Dir
+    ) -> List[int]:
+    """Generate a list of target destination square indices,
+    assuming a koma at location start_idx that moves in a line
+    along the direction dir.
+    """
+    res = []
+    dest = start_idx + dir
+    dest_koma = pos.board[dest]
+    while dest_koma == Koma.NONE:
+        res.append(dest)
+        dest += dir
+        dest_koma = pos.board[dest]
+    if dest_koma != Koma.INVALID and dest_koma.side() != side:
+        res.append(dest)
+    return res
 
 def steps_fu(start_idx: int, side: Side) -> Tuple[int, ...]:
     forward = Dir.S if side == Side.GOTE else Dir.N
@@ -121,8 +191,9 @@ def steps_ou(start_idx: int, side: Side) -> Tuple[int, ...]:
         start_idx+Dir.W, start_idx+Dir.NW
     )
 
-# Destination generators may return invalid destinations.
-# They must be filtered before use.
+# === Destination generators.
+#  They may return invalid destinations.
+#  Filter the output before use.
 
 def generate_dests_steps(
         pos: Position, start_idx: int, side: Side,
@@ -184,6 +255,10 @@ def generate_dests_ry(
     ]
     return hisha + alfil
 
+# === Promotion constrainers.
+# They determine if there are promotion and/or nonpromotion moves
+# given the piece type and the start and end squares.
+
 def constrain_promotions_ky(
         pos: Position, side: Side, start_idx: int, end_idx: int
     ) -> List[Tuple[int, int, bool]]:
@@ -226,7 +301,10 @@ def constrain_promotable(
     promotion zone.
     """
     res: List[Tuple[int, int, bool]] = []
-    can_promote = pos.is_idx_in_zone(start_idx, side) or pos.is_idx_in_zone(end_idx, side)
+    can_promote = (
+        pos.is_idx_in_zone(start_idx, side)
+        or pos.is_idx_in_zone(end_idx, side)
+    )
     res.append((start_idx, end_idx, False))
     if can_promote:
         res.append((start_idx, end_idx, True))
@@ -239,53 +317,6 @@ def constrain_unpromotable(
     cannot promote.
     """
     return [(start_idx, end_idx, False),]
-
-def generate_valid_moves(pos: Position, side: Side, ktype: KomaType) -> List[Move]:
-    dest_generator, promotion_constrainer = MOVEGEN_FUNCTIONS[ktype]
-    return generate_moves_base(
-        pos=pos, side=side, ktype=ktype,
-        dest_generator=dest_generator,
-        promotion_constrainer=promotion_constrainer
-    )
-
-def generate_drop_moves(pos: Position, side: Side, ktype: KomaType) -> List[Move]:
-    if ktype not in HAND_TYPES:
-        return []
-    mvlist: List[Move] = []
-    hand = pos.hand_sente if side == Side.SENTE else pos.hand_gote
-    if hand[ktype] == 0:
-        return mvlist
-    for end_idx in pos.empty_idxs:
-        if ktype == KomaType.FU:
-            row_num = pos.idx_to_r(end_idx)
-            if ((side == Side.SENTE) and (row_num == 1)) or ((side == Side.GOTE) and (row_num == 9)):
-                continue
-            # nifu
-            col = pos.idx_to_c(end_idx)
-            is_nifu = False
-            for row in range(1, 10, 1):
-                idx = pos.cr_to_idx(col, row)
-                if pos.board[idx] == Koma.make(side, KomaType.FU):
-                    is_nifu = True
-            if is_nifu:
-                continue
-        elif ktype == KomaType.KY:
-            row_num = pos.idx_to_r(end_idx)
-            if ((side == Side.SENTE) and (row_num == 1)) or ((side == Side.GOTE) and (row_num == 9)):
-                continue
-        elif ktype == KomaType.KE:
-            row_num = pos.idx_to_r(end_idx)
-            if ((side == Side.SENTE) and ((row_num == 1) or (row_num == 2))) or ((side == Side.GOTE) and ((row_num == 9) or (row_num == 8))):
-                continue
-        move = _drop(
-            pos=pos, end_idx=end_idx, side=side, ktype=ktype
-        )
-        mvlist.append(move)
-    return mvlist
-
-def is_suicide(pos: Position, side: Side) -> bool:
-    pass
-
 
 # Contains the functions to generate valid moves for each KomaType.
 MOVEGEN_FUNCTIONS: Dict[KomaType,

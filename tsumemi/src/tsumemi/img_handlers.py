@@ -23,6 +23,8 @@ IMG_SEMI_TRANSPARENT = Image.new("RGBA", (1, 1), "#FFFFFF99")
 
 
 class BoardSkin(Enum):
+    """Contains names, backup colours, and image paths for boards.
+    """
     WHITE = ("solid white", "white", "")
     BROWN = ("solid brown", "burlywood1", "")
     WOOD1 = ("Wood1", "#d29a00", os.path.join(BOARD_IMAGES_PATH, r"tile_wood1.png"))
@@ -44,6 +46,8 @@ class BoardSkin(Enum):
 
 
 class PieceSkin(Enum):
+    """Contains names and image paths for pieces.
+    """
     TEXT = ("1-kanji text characters", "")
     LIGHT = ("1-kanji light pieces", os.path.join(PIECE_IMAGES_PATH, r"kanji_light"))
     BROWN = ("1-kanji brown pieces", os.path.join(PIECE_IMAGES_PATH, r"kanji_brown"))
@@ -130,7 +134,11 @@ class ImgSizingDict:
     dimensions.
     """
     def __init__(self, update_func: Callable[[], Tuple[int, int]]) -> None:
-        self.update_func = update_func # function returns tuple (width, height)
+        """Create ImgSizingDict. update_func is a function returning
+        tuple (width, height) of the desired dimensions of the stored
+        images.
+        """
+        self.update_func = update_func
         self.width, self.height = update_func()
         self.raws: Dict[Union[str, KomaType], Image.Image] = {}
         self.images: ImgDict = {}
@@ -176,6 +184,8 @@ class ImgManager(ABC):
 
 
 class KomaImgManager(ImgManager):
+    """Handles storing and sizing of images for pieces.
+    """
     def __init__(self,
                 measurements: BoardMeasurements, skin: PieceSkin
         ) -> None:
@@ -247,6 +257,8 @@ class KomaImgManager(ImgManager):
 
 
 class BoardImgManager(ImgManager):
+    """Handles storing and sizing of images for the board.
+    """
     def __init__(self,
             measurements: BoardMeasurements, skin: BoardSkin
         ) -> None:

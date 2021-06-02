@@ -92,6 +92,8 @@ class GameAdapter:
                     self.board_canvas.draw()
                     # if legal make move and remove focus, else remove focus
                     self.clear_focus()
+                else:
+                    self.clear_focus()
                 return
             else:
                 if koma.side() == self.position.turn:

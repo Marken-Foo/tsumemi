@@ -343,6 +343,7 @@ class MainWindow:
         self.board.grid(column=0, row=0, sticky="NSEW")
         self.board.bind("<Configure>", self.board.on_resize)
         self.model.game_adapter = model.GameAdapter(self.model.active_game, self.board)
+        self.board.connect_game_adapter(self.model.game_adapter)
         
         # Initialise solution text
         self.is_solution_shown = False

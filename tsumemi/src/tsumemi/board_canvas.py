@@ -11,6 +11,7 @@ from tsumemi.src.tsumemi.img_handlers import BoardImgManager, BoardMeasurements,
 
 if TYPE_CHECKING:
     from typing import Dict, Optional, Tuple
+    from tsumemi.src.tsumemi.model import GameAdapter
 
 
 class BoardCanvas(tk.Canvas):
@@ -27,12 +28,14 @@ class BoardCanvas(tk.Canvas):
         self.is_upside_down = False
         super().__init__(parent, *args, **kwargs)
         # Specify source of board data
+        self.game_adapter: Optional[GameAdapter] = None
         self.position = position
         config = self.controller.config
         # Initialise measurements, used for many other things
         self.measurements = BoardMeasurements(
             self.CANVAS_WIDTH, self.CANVAS_HEIGHT
         )
+        # Load skins
         try:
             name = config["skins"]["pieces"]
             piece_skin = PieceSkin[name]
@@ -53,7 +56,7 @@ class BoardCanvas(tk.Canvas):
         self.board_img_cache = BoardImgManager(self.measurements, board_skin)
         self.komadai_skin = komadai_skin
         # Images created and stored so only their image field changes later.
-        # FEN ordering.
+        # FEN ordering. (row_idx, col_idx), zero-based
         self.board_tiles = [[None] * 9 for i in range(9)]
         self.board_select_tiles = [[None] * 9 for i in range(9)]
         # Koma image IDs and their current positions
@@ -63,7 +66,14 @@ class BoardCanvas(tk.Canvas):
         self.highlighted_sq = Square.NONE
         return
     
+    def connect_game_adapter(self, game_adapter: GameAdapter) -> None:
+        self.game_adapter = game_adapter
+        self.position = game_adapter.position
+        return
+    
     def set_focus(self, sq: Square) -> None:
+        """Put visual focus on a particular square or koma.
+        """
         if self.highlighted_sq != Square.NONE:
             col, row = self.highlighted_sq.get_cr()
             col_idx = col-1 if self.is_upside_down else 9-col
@@ -71,6 +81,7 @@ class BoardCanvas(tk.Canvas):
             old_idx = self.board_select_tiles[row_idx][col_idx]
             self.itemconfig(old_idx, image=self.board_img_cache.get_dict()["transparent"])
         if sq == Square.HAND:
+            #TODO
             pass
         elif sq != Square.NONE:
             col_num, row_num = sq.get_cr()
@@ -82,6 +93,9 @@ class BoardCanvas(tk.Canvas):
         return
     
     def prompt_promotion(self, sq: Square, ktype: KomaType) -> None:
+        """Display the visual cues prompting user to choose promotion
+        or non-promotion.
+        """
         x_sq = self.measurements.x_sq
         y_sq = self.measurements.y_sq
         id_cover = self.create_image(
@@ -123,10 +137,15 @@ class BoardCanvas(tk.Canvas):
                 sq: Square, ktype: KomaType,
                 is_promotion: Optional[bool]
             ) -> None:
-        self.controller.model.game_adapter.execute_promotion_choice(
-            is_promotion, sq=sq, ktype=ktype
-        )
-        self.delete("promotion_prompt")
+        """Callback for promotion prompt. Clears the visual cues and
+        passes the selected choice to underlying adapter. Use None
+        for is_promotion to indicate cancellation of the move.
+        """
+        if self.game_adapter is not None:
+            self.game_adapter.execute_promotion_choice(
+                is_promotion, sq=sq, ktype=ktype
+            )
+            self.delete("promotion_prompt")
         return
     
     def draw_board(self):
@@ -160,11 +179,12 @@ class BoardCanvas(tk.Canvas):
                 )
                 self.board_select_tiles[row_idx][col_idx] = id_focus
                 # Add callbacks
-                col_num = col_idx+1 if self.is_upside_down else 9-col_idx
-                row_num = 9-row_idx if self.is_upside_down else row_idx+1
-                sq = Square.from_cr(col_num, row_num)
-                callback = functools.partial(self.controller.model.game_adapter.receive_square, sq=sq)
-                self.tag_bind(id_focus, "<Button-1>", callback)
+                if self.game_adapter is not None:
+                    col_num = col_idx+1 if self.is_upside_down else 9-col_idx
+                    row_num = 9-row_idx if self.is_upside_down else row_idx+1
+                    sq = Square.from_cr(col_num, row_num)
+                    callback = functools.partial(self.game_adapter.receive_square, sq=sq)
+                    self.tag_bind(id_focus, "<Button-1>", callback)
         if self.board_img_cache.has_images():
             board_img = self.board_img_cache.get_dict()["board"]
             for row in self.board_tiles:
@@ -303,8 +323,12 @@ class BoardCanvas(tk.Canvas):
                     is_text=is_text,
                     anchor="center"
                 )
-                callback = functools.partial(self.controller.model.game_adapter.receive_square, sq=Square.HAND, hand_ktype=ktype)
-                self.tag_bind(id, "<Button-1>", callback)
+                if self.game_adapter is not None:
+                    callback = functools.partial(
+                        self.game_adapter.receive_square,
+                        sq=Square.HAND, hand_ktype=ktype
+                    )
+                    self.tag_bind(id, "<Button-1>", callback)
                 #TODO: register drawn piece image with self.[some dict]
                 self.create_text(
                     x+0.5*komadai_piece_size,
@@ -352,9 +376,12 @@ class BoardCanvas(tk.Canvas):
                     is_text=is_text, invert=invert
                 )
                 self.koma_on_board_images[id] = (col_num, row_num)
-                sq = Square.from_cr(col_num, row_num)
-                callback = functools.partial(self.controller.model.game_adapter.receive_square, sq=sq)
-                self.tag_bind(id, "<Button-1>", callback)
+                if self.game_adapter is not None:
+                    sq = Square.from_cr(col_num, row_num)
+                    callback = functools.partial(
+                        self.game_adapter.receive_square, sq=sq
+                    )
+                    self.tag_bind(id, "<Button-1>", callback)
         
         # Draw komadai
         self.north_komadai_rect = self.draw_komadai(
@@ -371,6 +398,8 @@ class BoardCanvas(tk.Canvas):
             sente=not is_north_sente,
             align="bottom"
         )
+        # set focus
+        self.set_focus(self.highlighted_sq)
         return
     
     def apply_piece_skin(self, skin: PieceSkin) -> None:
