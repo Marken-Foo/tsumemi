@@ -14,7 +14,7 @@ from tsumemi.src.tsumemi.board_canvas import BoardCanvas
 from tsumemi.src.tsumemi.problem_list import Problem, ProblemList
 
 if TYPE_CHECKING:
-    from typing import List, Tuple
+    from typing import List, Optional, Tuple
 
 
 class GameAdapter:
@@ -88,11 +88,7 @@ class GameAdapter:
                     ktype=self.focused_ktype
                 )
                 if exists_legal_move: 
-                    mv = Move(
-                        start_sq=self.focused_sq, end_sq=sq,
-                        koma=Koma.make(self.position.turn, self.focused_ktype)
-                    )
-                    self.game.make_move(mv)
+                    self.game.make_move(mvlist[0])
                     self.board_canvas.draw()
                     # if legal make move and remove focus, else remove focus
                     self.clear_focus()
@@ -110,14 +106,15 @@ class GameAdapter:
                 start_sq=self.focused_sq, end_sq=sq, ktype=ktype
             )
             if exists_legal_move:
-                # TODO: promotion prompts
-                mv = Move(
-                    start_sq=self.focused_sq, end_sq=sq,
-                    koma=Koma.make(self.position.turn, ktype),
-                    captured=self.position.get_koma(sq)
-                )
-                self.make_move(mv)
-                self.clear_focus()
+                # For normal shogi, either one move (promo or non)
+                # or two (choice between promo or non)
+                if len(mvlist) == 1:
+                    self.make_move(mvlist[0])
+                    self.clear_focus()
+                elif len(mvlist) == 2:
+                    # more info needed, GUI prompts for input
+                    self.board_canvas.prompt_promotion(sq, ktype)
+                    return
             else:
                 # Not completing a move, update focus accordingly
                 koma_new = self.position.get_koma(sq)
@@ -126,6 +123,26 @@ class GameAdapter:
                 elif koma_new.side() == self.position.turn:
                     self.set_focus(sq)
             return
+    
+    def execute_promotion_choice(self,
+            is_promotion: Optional[bool],
+            sq: Square, ktype: KomaType
+        ) -> None:
+        if is_promotion is None:
+            # This means promotion choice is cancelled
+            self.clear_focus()
+            return
+        else:
+            # Promotion choice is made, yes or no
+            mv = Move(
+                start_sq=self.focused_sq, end_sq=sq,
+                koma=Koma.make(self.position.turn, ktype),
+                captured=self.position.get_koma(sq),
+                is_promotion=is_promotion
+            )
+            self.make_move(mv)
+            self.clear_focus()
+        return
     
     def validate_legality(self,
             start_sq: Square, end_sq: Square,

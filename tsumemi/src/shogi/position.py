@@ -126,7 +126,10 @@ class Position:
     
     def inc_hand_koma(self, side: Side, ktype: KomaType) -> None:
         target = self.get_hand(side)
-        target[ktype] += 1
+        try:
+            target[ktype] += 1
+        except KeyError:
+            target[ktype] = 1
         return
     
     def dec_hand_koma(self, side: Side, ktype: KomaType) -> None:
