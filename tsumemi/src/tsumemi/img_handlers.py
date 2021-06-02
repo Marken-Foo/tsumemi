@@ -101,6 +101,8 @@ class BoardMeasurements:
         komadai_text_size = int(sq_w * self.KOMADAI_TEXT_IN_SQ)
         komadai_w = sq_w * self.KOMADAI_W_IN_SQ
         sq_text_size = int(sq_w * self.SQ_TEXT_IN_SQ)
+        w_pad: float
+        h_pad: float
         if int(sq_w) == int(max_sq_w):
             w_pad = self.INNER_W_PAD
             h_pad = (canvas_height - 9*sq_h) / 2

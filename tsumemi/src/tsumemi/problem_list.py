@@ -101,12 +101,14 @@ class ProblemList(event.Emitter):
     
     def set_status(self, status: ProblemStatus) -> None:
         if self.curr_prob is not None:
+            assert self.curr_prob_idx is not None # for mypy
             self.curr_prob.status = status
             self._notify_observers(ProbStatusEvent(self.curr_prob_idx, status))
         return
     
     def set_time(self, time: float) -> None:
         if self.curr_prob is not None:
+            assert self.curr_prob_idx is not None # for mypy
             self.curr_prob.time = time
             self._notify_observers(ProbTimeEvent(self.curr_prob_idx, time))
         return

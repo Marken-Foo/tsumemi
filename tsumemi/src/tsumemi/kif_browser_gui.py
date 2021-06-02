@@ -336,14 +336,13 @@ class MainWindow:
         
         self.board = BoardCanvas(
             parent=self.boardWrapper, controller=self,
-            position = self.model.active_game.position,
+            game = self.model.active_game,
             width=BoardCanvas.CANVAS_WIDTH, height=BoardCanvas.CANVAS_HEIGHT,
             bg="white"
         )
         self.board.grid(column=0, row=0, sticky="NSEW")
         self.board.bind("<Configure>", self.board.on_resize)
         self.model.game_adapter = model.GameAdapter(self.model.active_game, self.board)
-        self.board.connect_game_adapter(self.model.game_adapter)
         
         # Initialise solution text
         self.is_solution_shown = False

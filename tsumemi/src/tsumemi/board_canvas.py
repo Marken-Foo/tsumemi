@@ -3,14 +3,16 @@ from __future__ import annotations
 import functools
 import tkinter as tk
 
-from collections import Counter
 from typing import TYPE_CHECKING
 
-from tsumemi.src.shogi.basetypes import KanjiNumber, Koma, KomaType, Side, Square, HAND_TYPES, KANJI_FROM_KTYPE
+from tsumemi.src.shogi.basetypes import KanjiNumber, KomaType, Side, Square
+from tsumemi.src.shogi.basetypes import HAND_TYPES, KANJI_FROM_KTYPE
 from tsumemi.src.tsumemi.img_handlers import BoardImgManager, BoardMeasurements, BoardSkin, KomaImgManager, PieceSkin
 
 if TYPE_CHECKING:
     from typing import Dict, Optional, Tuple
+    from tsumemi.src.shogi.game import Game
+    from tsumemi.src.shogi.position import Position
     from tsumemi.src.tsumemi.model import GameAdapter
 
 
@@ -23,13 +25,17 @@ class BoardCanvas(tk.Canvas):
     CANVAS_WIDTH = 600
     CANVAS_HEIGHT = 500
     
-    def __init__(self, parent, controller, position, *args, **kwargs):
+    def __init__(self, parent, controller, game, *args, **kwargs):
+        """Initialise self with reference to a Game, allowing self to
+        display board positions from the Game (purely a view).
+        """
         self.controller = controller
         self.is_upside_down = False
         super().__init__(parent, *args, **kwargs)
         # Specify source of board data
+        self.game: Game = game
         self.game_adapter: Optional[GameAdapter] = None
-        self.position = position
+        self.position: Position = game.position
         config = self.controller.config
         # Initialise measurements, used for many other things
         self.measurements = BoardMeasurements(
@@ -67,7 +73,11 @@ class BoardCanvas(tk.Canvas):
         return
     
     def connect_game_adapter(self, game_adapter: GameAdapter) -> None:
+        """Register a GameAdapter with self, to enable move input and
+        control via GUI.
+        """
         self.game_adapter = game_adapter
+        self.game = game_adapter.game
         self.position = game_adapter.position
         return
     
@@ -79,7 +89,9 @@ class BoardCanvas(tk.Canvas):
             col_idx = col-1 if self.is_upside_down else 9-col
             row_idx = 9-row if self.is_upside_down else row-1
             old_idx = self.board_select_tiles[row_idx][col_idx]
-            self.itemconfig(old_idx, image=self.board_img_cache.get_dict()["transparent"])
+            self.itemconfig(old_idx,
+                image=self.board_img_cache.get_dict()["transparent"]
+            )
         if sq == Square.HAND:
             #TODO
             pass
@@ -88,7 +100,9 @@ class BoardCanvas(tk.Canvas):
             col_idx = col_num-1 if self.is_upside_down else 9-col_num
             row_idx = 9-row_num if self.is_upside_down else row_num-1
             img_idx = self.board_select_tiles[row_idx][col_idx]
-            self.itemconfig(img_idx, image=self.board_img_cache.get_dict()["highlight"])
+            self.itemconfig(img_idx,
+                image=self.board_img_cache.get_dict()["highlight"]
+            )
         self.highlighted_sq = sq
         return
     
@@ -110,18 +124,25 @@ class BoardCanvas(tk.Canvas):
         is_text = not self.koma_img_cache.has_images()
         is_north_sente = self.is_upside_down
         side = self.position.turn
-        invert = (is_north_sente and (side == Side.SENTE)) or (not is_north_sente and (side == Side.GOTE))
+        invert = (
+            (is_north_sente and (side == Side.SENTE))
+            or (not is_north_sente and (side == Side.GOTE))
+        )
         id_promoted = self.draw_koma(
             x_sq(col_idx+0.5), y_sq(row_idx+0.5), ktype.promote(),
             is_text=is_text, invert=invert,
             tag="promotion_prompt"
         )
+        assert id_promoted is not None
         id_unpromoted = self.draw_koma(
             x_sq(col_idx+0.5), y_sq(row_idx+0.5+1), ktype,
             is_text=is_text, invert=invert,
             tag="promotion_prompt"
         )
-        callback = functools.partial(self._prompt_promotion_callback, sq=sq, ktype=ktype)
+        assert id_unpromoted is not None
+        callback = functools.partial(
+            self._prompt_promotion_callback, sq=sq, ktype=ktype
+        )
         self.tag_bind(id_promoted, "<Button-1>",
             functools.partial(callback, is_promotion=True)
         )
@@ -183,7 +204,9 @@ class BoardCanvas(tk.Canvas):
                     col_num = col_idx+1 if self.is_upside_down else 9-col_idx
                     row_num = 9-row_idx if self.is_upside_down else row_idx+1
                     sq = Square.from_cr(col_num, row_num)
-                    callback = functools.partial(self.game_adapter.receive_square, sq=sq)
+                    callback = functools.partial(
+                        self.game_adapter.receive_square, sq=sq
+                    )
                     self.tag_bind(id_focus, "<Button-1>", callback)
         if self.board_img_cache.has_images():
             board_img = self.board_img_cache.get_dict()["board"]
@@ -365,7 +388,10 @@ class BoardCanvas(tk.Canvas):
         for koma, kset in position.koma_sets.items():
             ktype = KomaType.get(koma)
             side = koma.side()
-            invert = (is_north_sente and (side == Side.SENTE)) or (not is_north_sente and (side == Side.GOTE))
+            invert = (
+                (is_north_sente and (side == Side.SENTE))
+                or (not is_north_sente and (side == Side.GOTE))
+            )
             for idx in kset:
                 col_num = position.idx_to_c(idx)
                 row_num = position.idx_to_r(idx)

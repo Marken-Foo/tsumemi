@@ -101,7 +101,9 @@ class SplitTimer:
         return
     
     def read(self) -> float:
-        if self.is_running:
+        if self.start_time is None:
+            return 0
+        elif self.is_running:
             res = (fsum(self.lap_times) + self.curr_lap_time
                    + time.perf_counter() - self.start_time)
         else:

@@ -18,11 +18,14 @@ if TYPE_CHECKING:
 
 
 class GameAdapter:
-    # Manages logic flow between GUI and model.
+    """Links a BoardCanvas (frontend) to a Game (backend).
+    Manages the logic flow between the GUI and data model.
+    """
     def __init__(self, game: Game, board_canvas: BoardCanvas):
         self.game = game
         self.position = self.game.position
         self.board_canvas = board_canvas
+        self.board_canvas.connect_game_adapter(self)
         self.focused_sq = Square.NONE
         self.focused_ktype = KomaType.NONE
         return
@@ -48,9 +51,8 @@ class GameAdapter:
     def receive_square(self, event,
             sq: Square, hand_ktype: KomaType = KomaType.NONE
         ) -> None:
-        """Receive Square (and/or event) from GUI view and decide
-        what to do with the information, e.g. possibly updating self
-        or making a move.
+        """Receive Square (and/or event) from GUI view, retain the
+        information, and decide if it completes a legal move or not.
         """
         # game adapter receives a Square (Event?) from the GUI and
         # decides what to do with it
@@ -88,9 +90,10 @@ class GameAdapter:
                     ktype=self.focused_ktype
                 )
                 if exists_valid_move:
+                    # Given the end square and koma type, if a valid
+                    # drop exists, it's the only one.
                     if rules.is_legal(mvlist[0], self.position):
-                        self.game.make_move(mvlist[0])
-                        self.board_canvas.draw()
+                        self.make_move(mvlist[0])
                     self.clear_focus()
                 else:
                     self.clear_focus()
@@ -155,7 +158,7 @@ class GameAdapter:
             start_sq: Square, end_sq: Square,
             ktype: KomaType = KomaType.NONE
         ) -> Tuple[bool, List[Move]]:
-        """Decide if there exists a legal move given the start and
+        """Decide if there exists a valid move given the start and
         end Squares, and KomaType (needed for hand pieces).
         """
         res_bool = False
