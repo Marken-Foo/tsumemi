@@ -3,9 +3,10 @@ from __future__ import annotations
 import re
 
 from enum import IntEnum
-from typing import TYPE_CHECKING, Dict, List, Set, Tuple
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from typing import Dict, List, Set
     from tsumemi.src.shogi.basetypes import Move
 
 from tsumemi.src.shogi.basetypes import Koma, KomaType, Side, Square

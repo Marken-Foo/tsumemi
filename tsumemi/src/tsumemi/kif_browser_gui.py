@@ -10,7 +10,7 @@ import tsumemi.src.tsumemi.model as model
 import tsumemi.src.tsumemi.problem_list as plist
 import tsumemi.src.tsumemi.timer as timer
 
-from tsumemi.src.tsumemi.board_canvas import BoardCanvas, PieceSkin, BoardSkin
+from tsumemi.src.tsumemi.board_canvas import BoardCanvas
 from tsumemi.src.tsumemi.nav_controls import FreeModeNavControls, SpeedrunNavControls
 from tsumemi.src.tsumemi.settings_window import SettingsWindow, CONFIG_PATH
 

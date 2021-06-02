@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import random
 import re
 
 from enum import Enum
-from random import shuffle
 from typing import TYPE_CHECKING
 
 import tsumemi.src.tsumemi.event as event
@@ -164,7 +164,7 @@ class ProblemList(event.Emitter):
         the same problem before and after the shuffle.
         """
         z = list(zip(range(len(self.problems)), self.problems))
-        shuffle(z)
+        random.shuffle(z)
         idxs, probs = zip(*z)
         self.problems = list(probs)
         self.curr_prob_idx = idxs.index(self.curr_prob_idx)

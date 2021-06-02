@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import itertools
+import math
 import time
 
-from itertools import accumulate
-from math import fsum
 from typing import TYPE_CHECKING
 
 import tsumemi.src.tsumemi.event as event
@@ -13,12 +13,16 @@ if TYPE_CHECKING:
 
 
 def sec_to_hms(seconds: float) -> Tuple[int, int, float]:
-    # Take time in seconds, return tuple of (hours, minutes, seconds).
+    """Take a time in seconds and return a tuple of
+    (hours, minutes, seconds).
+    """
     return (int(seconds // 3600), int((seconds % 3600) // 60), seconds % 60)
 
 
 def _two_digits(num: float) -> str:
-    # Take num, make integer part two chars (clock display), return string
+    """Take a float, make its integer part at least two chars long
+    (clock display), and return it as a string.
+    """
     return "0" + str(num) if num < 10 else str(num)
 
 
@@ -85,8 +89,7 @@ class SplitTimer:
             self.curr_lap_time = 0
             return lap_time
         else:
-            # Taking a split while the timer is paused "has no meaning".
-            # But we implement it anyway.
+            # Splitting while the timer is paused "has no meaning".
             lap_time = self.curr_lap_time
             self.lap_times.append(lap_time)
             self.start_time = None
@@ -104,10 +107,13 @@ class SplitTimer:
         if self.start_time is None:
             return 0
         elif self.is_running:
-            res = (fsum(self.lap_times) + self.curr_lap_time
-                   + time.perf_counter() - self.start_time)
+            res = (math.fsum(self.lap_times)
+                + self.curr_lap_time
+                + time.perf_counter()
+                - self.start_time
+            )
         else:
-            res = fsum(self.lap_times) + self.curr_lap_time
+            res = math.fsum(self.lap_times) + self.curr_lap_time
         return res
     
     def get_lap(self) -> Optional[float]:
@@ -118,7 +124,7 @@ class SplitTimer:
     
     def get_split_times(self) -> Iterator[float]:
         # Return a list of split times instead of lap times.
-        return accumulate(self.lap_times)
+        return itertools.accumulate(self.lap_times)
 
 
 class Timer(event.Emitter):

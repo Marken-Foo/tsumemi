@@ -9,19 +9,19 @@ import tsumemi.src.shogi.rules as rules
 import tsumemi.src.tsumemi.timer as timer
 
 from tsumemi.src.shogi.basetypes import Koma, KomaType, Move, Square
-from tsumemi.src.shogi.game import Game
-from tsumemi.src.tsumemi.board_canvas import BoardCanvas
 from tsumemi.src.tsumemi.problem_list import Problem, ProblemList
 
 if TYPE_CHECKING:
     from typing import List, Optional, Tuple
+    from tsumemi.src.shogi.game import Game
+    from tsumemi.src.tsumemi.board_canvas import BoardCanvas
 
 
 class GameAdapter:
     """Links a BoardCanvas (frontend) to a Game (backend).
     Manages the logic flow between the GUI and data model.
     """
-    def __init__(self, game: Game, board_canvas: BoardCanvas):
+    def __init__(self, game: Game, board_canvas: BoardCanvas) -> None:
         self.game = game
         self.position = self.game.position
         self.board_canvas = board_canvas
@@ -98,9 +98,11 @@ class GameAdapter:
                 else:
                     self.clear_focus()
                 return
-            else:
+            else: # selected a square with a piece
                 if koma.side() == self.position.turn:
                     self.set_focus(sq)
+                else:
+                    self.clear_focus(sq)
                 return
         # Else, a board piece had previously been selected, consider
         # if a piece move is legal or not.

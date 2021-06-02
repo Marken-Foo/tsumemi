@@ -3,7 +3,7 @@ import tkinter as tk
 
 from tkinter import ttk
 
-from tsumemi.src.tsumemi.board_canvas import BoardSkin, PieceSkin
+from tsumemi.src.tsumemi.img_handlers import BoardSkin, PieceSkin
 
 
 CONFIG_PATH = os.path.relpath(r"tsumemi/resources/config.ini")

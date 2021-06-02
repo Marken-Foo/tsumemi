@@ -85,13 +85,17 @@ class BoardCanvas(tk.Canvas):
         """Put visual focus on a particular square or koma.
         """
         if self.highlighted_sq != Square.NONE:
-            col, row = self.highlighted_sq.get_cr()
-            col_idx = col-1 if self.is_upside_down else 9-col
-            row_idx = 9-row if self.is_upside_down else row-1
-            old_idx = self.board_select_tiles[row_idx][col_idx]
-            self.itemconfig(old_idx,
-                image=self.board_img_cache.get_dict()["transparent"]
-            )
+            if self.highlighted_sq == Square.HAND:
+                #TODO
+                pass
+            else:
+                col, row = self.highlighted_sq.get_cr()
+                col_idx = col-1 if self.is_upside_down else 9-col
+                row_idx = 9-row if self.is_upside_down else row-1
+                old_idx = self.board_select_tiles[row_idx][col_idx]
+                self.itemconfig(old_idx,
+                    image=self.board_img_cache.get_dict()["transparent"]
+                )
         if sq == Square.HAND:
             #TODO
             pass

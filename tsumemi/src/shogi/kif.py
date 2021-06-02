@@ -4,13 +4,14 @@ import re
 import typing
 
 from enum import IntEnum
-from typing import TYPE_CHECKING, Dict, Sequence
+from typing import TYPE_CHECKING
 
 from tsumemi.src.shogi.basetypes import GameTermination, KanjiNumber, Koma, Move, Side, Square, TerminationMove
 from tsumemi.src.shogi.basetypes import HAND_TYPES, KTYPE_FROM_KANJI
 from tsumemi.src.shogi.game import Game
 
 if TYPE_CHECKING:
+    from typing import Dict, Sequence
     from tsumemi.src.shogi.basetypes import KomaType
 
 

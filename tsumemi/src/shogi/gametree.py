@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Callable, List, Optional
 
+from tsumemi.src.shogi.basetypes import NullMove
+
 if TYPE_CHECKING:
     from tsumemi.src.shogi.basetypes import Move
-
-from tsumemi.src.shogi.basetypes import NullMove
 
 
 class MoveNode:
