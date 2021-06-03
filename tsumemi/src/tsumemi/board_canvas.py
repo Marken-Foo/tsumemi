@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 from tsumemi.src.shogi.basetypes import KanjiNumber, KomaType, Side, Square
 from tsumemi.src.shogi.basetypes import HAND_TYPES, KANJI_FROM_KTYPE
-from tsumemi.src.tsumemi.img_handlers import BoardImgManager, BoardMeasurements, BoardSkin, KomaImgManager, PieceSkin
+from tsumemi.src.tsumemi.img_handlers import BoardImgManager, BoardMeasurements, BoardSkin, KomaImgManager, KomadaiImgManager, PieceSkin
 
 if TYPE_CHECKING:
     from typing import Dict, Optional, Tuple
@@ -60,7 +60,7 @@ class BoardCanvas(tk.Canvas):
         # Cached images and image settings
         self.koma_img_cache = KomaImgManager(self.measurements, piece_skin)
         self.board_img_cache = BoardImgManager(self.measurements, board_skin)
-        self.komadai_skin = komadai_skin
+        self.komadai_img_cache = KomadaiImgManager(self.measurements, komadai_skin)
         # Images created and stored so only their image field changes later.
         # FEN ordering. (row_idx, col_idx), zero-based
         self.board_tiles = [[None] * 9 for i in range(9)]
@@ -70,6 +70,7 @@ class BoardCanvas(tk.Canvas):
         # Currently highlighted tile [col_num, row_num]
         # Hand pieces would be [0, KomaType]
         self.highlighted_sq = Square.NONE
+        self.highlighted_ktype = KomaType.NONE
         return
     
     def connect_game_adapter(self, game_adapter: GameAdapter) -> None:
@@ -81,13 +82,14 @@ class BoardCanvas(tk.Canvas):
         self.position = game_adapter.position
         return
     
-    def set_focus(self, sq: Square) -> None:
+    def set_focus(self, sq: Square, ktype: KomaType=KomaType.NONE) -> None:
         """Put visual focus on a particular square or koma.
         """
+        # Unhighlight already highlighted square/koma
         if self.highlighted_sq != Square.NONE:
             if self.highlighted_sq == Square.HAND:
-                #TODO
-                pass
+                for id in self.find_withtag("komadai"):
+                    self.itemconfig(id, image="")
             else:
                 col, row = self.highlighted_sq.get_cr()
                 col_idx = col-1 if self.is_upside_down else 9-col
@@ -96,9 +98,18 @@ class BoardCanvas(tk.Canvas):
                 self.itemconfig(old_idx,
                     image=self.board_img_cache.get_dict()["transparent"]
                 )
+        # Highlight new square/koma
         if sq == Square.HAND:
-            #TODO
-            pass
+            # this is a kludge
+            side_str = "sente" if self.position.turn == Side.SENTE else "gote"
+            ids_a = self.find_withtag("komadai")
+            ids_b = self.find_withtag(ktype.to_csa())
+            ids_c = self.find_withtag(side_str)
+            item = [x for x in ids_a if (x in ids_b) and (x in ids_c)]
+            if item:
+                self.itemconfig(item[0],
+                    image=self.komadai_img_cache.get_dict()["highlight"]
+                )
         elif sq != Square.NONE:
             col_num, row_num = sq.get_cr()
             col_idx = col_num-1 if self.is_upside_down else 9-col_num
@@ -120,7 +131,7 @@ class BoardCanvas(tk.Canvas):
             x_sq(0), y_sq(0),
             image=self.board_img_cache.get_dict("board")["semi-transparent"],
             anchor="nw",
-            tag="promotion_prompt"
+            tags=("promotion_prompt",)
         )
         col_num, row_num = sq.get_cr()
         col_idx = col_num-1 if self.is_upside_down else 9-col_num
@@ -135,13 +146,13 @@ class BoardCanvas(tk.Canvas):
         id_promoted = self.draw_koma(
             x_sq(col_idx+0.5), y_sq(row_idx+0.5), ktype.promote(),
             is_text=is_text, invert=invert,
-            tag="promotion_prompt"
+            tags=("promotion_prompt",)
         )
         assert id_promoted is not None
         id_unpromoted = self.draw_koma(
             x_sq(col_idx+0.5), y_sq(row_idx+0.5+1), ktype,
             is_text=is_text, invert=invert,
-            tag="promotion_prompt"
+            tags=("promotion_prompt",)
         )
         assert id_unpromoted is not None
         callback = functools.partial(
@@ -246,7 +257,7 @@ class BoardCanvas(tk.Canvas):
             x: int, y: int, ktype: KomaType,
             komadai: bool = False, invert: bool = False,
             is_text: bool = True, anchor: str = "center",
-            tag: str = ""
+            tags: Tuple[str] = ("",)
         ) -> Optional[int]:
         """Draw koma at specified location. Text is drawn if *is_text*
         is True; *anchor* determines how the image or text is
@@ -265,7 +276,7 @@ class BoardCanvas(tk.Canvas):
                 x, y, text=str(KANJI_FROM_KTYPE[ktype]),
                 font=("", text_size),
                 angle=180 if invert else 0,
-                anchor=anchor, tag=tag
+                anchor=anchor, tags=tags
             )
         else:
             piece_dict = self.koma_img_cache.get_dict(
@@ -274,7 +285,7 @@ class BoardCanvas(tk.Canvas):
             img = piece_dict[ktype]
             id = self.create_image(
                 x, y, image=img,
-                anchor=anchor, tag=tag
+                anchor=anchor, tags=tags
             )
         return id
     
@@ -283,19 +294,19 @@ class BoardCanvas(tk.Canvas):
         at canvas position (x,y). "Anchoring" north or south achieved
         with align="top" or "bottom".
         """
-        # Note: actual size of each character in px is about 1.5*text_size
+        is_text = not self.koma_img_cache.has_images()
+        # Komadai measurements.
+        # Actual size of each character in px is about 1.5*text_size
         komadai_text_size = self.measurements.komadai_text_size
         komadai_char_height = 1.5 * komadai_text_size
         komadai_piece_size = self.measurements.komadai_piece_size
-        is_text = not self.koma_img_cache.has_images()
         symbol_size = komadai_text_size*3/2 if is_text else komadai_piece_size
         pad = (komadai_text_size / 8 if is_text else komadai_piece_size / 8)
         mochigoma_heading_size = 4 * komadai_char_height # "▲\n持\n駒\n"
         
         c_hand = {ktype: count for (ktype, count) in hand.items() if count > 0}
-        
         num_piece_types = len(c_hand)
-        
+        k_width = 2 * komadai_piece_size
         k_height = (
             mochigoma_heading_size + 2*komadai_char_height
             if num_piece_types == 0
@@ -308,11 +319,13 @@ class BoardCanvas(tk.Canvas):
             y = y - k_height
         
         # Draw the komadai base
+        rect = 0
         rect = self.create_rectangle(
-            x-komadai_piece_size, y,
-            x+komadai_piece_size, y+k_height,
-            fill=self.komadai_skin.colour,
-            outline=""
+            x-(k_width/2), y,
+            x+(k_width/2), y+k_height,
+            fill=self.komadai_img_cache.skin.colour,
+            outline="",
+            tags=("komadai-solid",)
         )
         
         header_text = "▲\n持\n駒" if sente else "△\n持\n駒"
@@ -325,13 +338,11 @@ class BoardCanvas(tk.Canvas):
         if num_piece_types == 0:
             # Hand is empty, write なし
             self.create_text(
-                x,
-                y + mochigoma_heading_size,
-                text="な\nし",
-                font=("", komadai_text_size),
+                x, y+mochigoma_heading_size,
+                text="な\nし", font=("", komadai_text_size),
                 anchor="n"
             )
-            return rect
+            return
         else:
             # Hand is not empty
             for n, (ktype, count) in enumerate(c_hand.items()):
@@ -342,8 +353,17 @@ class BoardCanvas(tk.Canvas):
                     + n*(symbol_size+pad)
                     + symbol_size/2 # for the anchor="center"
                 )
+                id_highlight = self.create_image(
+                    x-(k_width/5),
+                    y+y_offset,
+                    image="",
+                    anchor="center",
+                    tags=("komadai", ktype.to_csa(),
+                        "sente" if sente else "gote"
+                    )
+                )
                 id = self.draw_koma(
-                    x-0.4*komadai_piece_size,
+                    x-(k_width/5),
                     y+y_offset,
                     ktype=ktype,
                     komadai=True,
@@ -353,7 +373,8 @@ class BoardCanvas(tk.Canvas):
                 if self.game_adapter is not None:
                     callback = functools.partial(
                         self.game_adapter.receive_square,
-                        sq=Square.HAND, hand_ktype=ktype
+                        sq=Square.HAND, hand_ktype=ktype,
+                        hand_side = Side.SENTE if sente else Side.GOTE
                     )
                     self.tag_bind(id, "<Button-1>", callback)
                 #TODO: register drawn piece image with self.[some dict]
@@ -364,7 +385,7 @@ class BoardCanvas(tk.Canvas):
                     font=("", komadai_text_size),
                     anchor="center"
                 )
-        return rect
+        return
     
     def draw(self):
         """Draw complete board with komadai and pieces.
@@ -414,14 +435,14 @@ class BoardCanvas(tk.Canvas):
                     self.tag_bind(id, "<Button-1>", callback)
         
         # Draw komadai
-        self.north_komadai_rect = self.draw_komadai(
+        self.draw_komadai(
             w_pad + komadai_w/2,
             y_sq(0),
             north_hand,
             sente=is_north_sente,
             align="top"
         )
-        self.south_komadai_rect = self.draw_komadai(
+        self.draw_komadai(
             x_sq(9) + 2*coords_text_size + komadai_w/2,
             y_sq(9),
             south_hand,
@@ -439,18 +460,12 @@ class BoardCanvas(tk.Canvas):
     def apply_board_skin(self, skin: BoardSkin) -> None:
         self.itemconfig(self.board_rect, fill=skin.colour)
         self.board_img_cache.load(skin)
-        board_img = (
-            self.board_img_cache.get_dict()["board"]
-            if skin.path
-            else ""
-        )
         return
     
     def apply_komadai_skin(self, skin: BoardSkin) -> None:
         # Can only figure out how to apply solid colours for now
-        self.itemconfig(self.north_komadai_rect, fill=skin.colour)
-        self.itemconfig(self.south_komadai_rect, fill=skin.colour)
-        self.komadai_skin = skin
+        self.itemconfig("komadai-solid", fill=skin.colour)
+        self.komadai_img_cache.load(skin)
         return
     
     
@@ -459,6 +474,7 @@ class BoardCanvas(tk.Canvas):
         self.measurements.recalculate_sizes(event.width, event.height)
         self.koma_img_cache.resize_images()
         self.board_img_cache.resize_images()
+        self.komadai_img_cache.resize_images()
         # Redraw board after setting new dimensions
         self.draw()
         return

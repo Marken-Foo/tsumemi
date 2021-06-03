@@ -8,7 +8,7 @@ import tsumemi.src.shogi.kif as kif
 import tsumemi.src.shogi.rules as rules
 import tsumemi.src.tsumemi.timer as timer
 
-from tsumemi.src.shogi.basetypes import Koma, KomaType, Move, Square
+from tsumemi.src.shogi.basetypes import Koma, KomaType, Move, Side, Square
 from tsumemi.src.tsumemi.problem_list import Problem, ProblemList
 
 if TYPE_CHECKING:
@@ -49,7 +49,8 @@ class GameAdapter:
         return
     
     def receive_square(self, event,
-            sq: Square, hand_ktype: KomaType = KomaType.NONE
+            sq: Square, hand_ktype: KomaType = KomaType.NONE,
+            hand_side: Side = Side.SENTE
         ) -> None:
         """Receive Square (and/or event) from GUI view, retain the
         information, and decide if it completes a legal move or not.
@@ -62,14 +63,19 @@ class GameAdapter:
         print(koma, sq, hand_ktype, self.position.sq_to_idx(sq))
         print(self.focused_sq, self.focused_ktype, self.position.turn)
         # Selecting the same square deselects it
-        if sq == self.focused_sq:
+        if ((sq == self.focused_sq)
+                and ((sq != Square.HAND) or (self.focused_ktype == hand_ktype))
+            ):
             self.clear_focus()
             return
         # Selecting a hand piece can never complete a move.
         elif sq == Square.HAND:
-            self.focused_sq = sq
-            self.focused_ktype = hand_ktype
-            self.board_canvas.set_focus(sq)
+            if hand_side == self.position.turn:
+                self.focused_sq = sq
+                self.focused_ktype = hand_ktype
+                self.board_canvas.set_focus(sq, hand_ktype)
+            else:
+                self.clear_focus()
             return
         # If nothing had previously been selected, a move cannot be
         # completed with the current selection.
@@ -102,7 +108,7 @@ class GameAdapter:
                 if koma.side() == self.position.turn:
                     self.set_focus(sq)
                 else:
-                    self.clear_focus(sq)
+                    self.clear_focus()
                 return
         # Else, a board piece had previously been selected, consider
         # if a piece move is legal or not.
@@ -134,6 +140,8 @@ class GameAdapter:
                     self.clear_focus()
                 elif koma_new.side() == self.position.turn:
                     self.set_focus(sq)
+                else:
+                    self.clear_focus()
             return
     
     def execute_promotion_choice(self,
