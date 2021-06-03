@@ -11,7 +11,7 @@ import tsumemi.src.tsumemi.problem_list as plist
 import tsumemi.src.tsumemi.timer as timer
 
 from tsumemi.src.tsumemi.board_canvas import BoardCanvas
-from tsumemi.src.tsumemi.game_adapter import GameAdapter
+from tsumemi.src.tsumemi.game_adapter import MoveInputHandler
 from tsumemi.src.tsumemi.nav_controls import FreeModeNavControls, SpeedrunNavControls
 from tsumemi.src.tsumemi.settings_window import SettingsWindow, CONFIG_PATH
 
@@ -331,8 +331,8 @@ class MainWindow:
         )
         self.board.grid(column=0, row=0, sticky="NSEW")
         self.board.bind("<Configure>", self.board.on_resize)
-        self.game_adapter = GameAdapter(self.board)
-        self.game_adapter.add_observer(self.model)
+        self.move_input_handler = MoveInputHandler(self.board)
+        self.move_input_handler.add_observer(self.model)
         
         # Initialise solution text
         self.is_solution_shown = False
@@ -424,7 +424,7 @@ class MainWindow:
         res = fn()
         if res:
             self.display_problem()
-            self.game_adapter.clear_focus()
+            self.move_input_handler.clear_focus()
         return res
     
     def open_folder(self, event=None, recursive=False):

@@ -19,7 +19,7 @@ class MoveEvent(evt.Event):
         return
 
 
-class GameAdapter(evt.Emitter):
+class MoveInputHandler(evt.Emitter):
     """Handles logic/legality for move input via frontend BoardCanvas.
     Emits MoveEvents when a legal move has been successfully input.
     """

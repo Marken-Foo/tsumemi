@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from typing import Dict, Optional, Tuple
     from tsumemi.src.shogi.game import Game
     from tsumemi.src.shogi.position import Position
-    from tsumemi.src.tsumemi.game_adapter import GameAdapter
+    from tsumemi.src.tsumemi.game_adapter import MoveInputHandler
 
 
 class BoardCanvas(tk.Canvas):
@@ -34,7 +34,7 @@ class BoardCanvas(tk.Canvas):
         super().__init__(parent, *args, **kwargs)
         # Specify source of board data
         self.game: Game = game
-        self.game_adapter: Optional[GameAdapter] = None
+        self.move_input_handler: Optional[MoveInputHandler] = None
         self.position: Position = game.position
         config = self.controller.config
         # Initialise measurements, used for many other things
@@ -73,12 +73,13 @@ class BoardCanvas(tk.Canvas):
         self.highlighted_ktype = KomaType.NONE
         return
     
-    def connect_game_adapter(self, game_adapter: GameAdapter) -> None:
-        """Register a GameAdapter with self, to enable move input and
+    def connect_game_adapter(self, move_input_handler: MoveInputHandler
+        ) -> None:
+        """Register a MoveInputHandler with self, to enable move input and
         control via GUI.
         """
-        self.game_adapter = game_adapter
-        game_adapter.board_canvas = self
+        self.move_input_handler = move_input_handler
+        move_input_handler.board_canvas = self
         return
     
     def set_focus(self, sq: Square, ktype: KomaType=KomaType.NONE) -> None:
@@ -176,8 +177,8 @@ class BoardCanvas(tk.Canvas):
         passes the selected choice to underlying adapter. Use None
         for is_promotion to indicate cancellation of the move.
         """
-        if self.game_adapter is not None:
-            self.game_adapter.execute_promotion_choice(
+        if self.move_input_handler is not None:
+            self.move_input_handler.execute_promotion_choice(
                 is_promotion, sq=sq, ktype=ktype
             )
             self.delete("promotion_prompt")
@@ -214,12 +215,12 @@ class BoardCanvas(tk.Canvas):
                 )
                 self.board_select_tiles[row_idx][col_idx] = id_focus
                 # Add callbacks
-                if self.game_adapter is not None:
+                if self.move_input_handler is not None:
                     col_num = col_idx+1 if self.is_upside_down else 9-col_idx
                     row_num = 9-row_idx if self.is_upside_down else row_idx+1
                     sq = Square.from_cr(col_num, row_num)
                     callback = functools.partial(
-                        self.game_adapter.receive_square, sq=sq
+                        self.move_input_handler.receive_square, sq=sq
                     )
                     self.tag_bind(id_focus, "<Button-1>", callback)
         if self.board_img_cache.has_images():
@@ -368,9 +369,9 @@ class BoardCanvas(tk.Canvas):
                     is_text=is_text,
                     anchor="center"
                 )
-                if self.game_adapter is not None:
+                if self.move_input_handler is not None:
                     callback = functools.partial(
-                        self.game_adapter.receive_square,
+                        self.move_input_handler.receive_square,
                         sq=Square.HAND, hand_ktype=ktype,
                         hand_side = Side.SENTE if sente else Side.GOTE
                     )
@@ -425,10 +426,10 @@ class BoardCanvas(tk.Canvas):
                     is_text=is_text, invert=invert
                 )
                 self.koma_on_board_images[id] = (col_num, row_num)
-                if self.game_adapter is not None:
+                if self.move_input_handler is not None:
                     sq = Square.from_cr(col_num, row_num)
                     callback = functools.partial(
-                        self.game_adapter.receive_square, sq=sq
+                        self.move_input_handler.receive_square, sq=sq
                     )
                     self.tag_bind(id, "<Button-1>", callback)
         
