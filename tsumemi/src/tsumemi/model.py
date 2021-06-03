@@ -151,14 +151,14 @@ class Model(evt.IObserver):
     
     def verify_move(self, event: gadapt.MoveEvent) -> None:
         move = event.move
-        correct_move = self.active_game.curr_node.next().move
-        if move == correct_move:
+        if self.active_game.is_mainline(move):
+            # the move is the mainline, so it is correct
             self.active_game.make_move(move)
             self.gui_controller.board.draw()
-            if self.active_game.curr_node.is_leaf():
+            if self.active_game.is_end():
                 pass
             else:
-                response_move = self.active_game.curr_node.next().move
+                response_move = self.active_game.get_mainline_move()
                 if type(response_move) == TerminationMove:
                     pass
                 else:

@@ -279,7 +279,9 @@ class Square(IntEnum):
 
 
 class Move:
-    """Represents one shogi move.
+    """Represents one shogi move. Contains enough information to be
+    reversible, i.e. a move can be unmade, given the corresponding
+    shogi position as well.
     """
     def __init__(self,
             start_sq: Square = Square.NONE,
@@ -313,13 +315,6 @@ class Move:
     
     def is_null(self) -> bool:
         return False
-    
-    def to_bin(self) -> int:
-        return (
-            self.start_sq & 0b11111111
-            | (self.end_sq & 0b11111111) << 8
-            | self.is_promotion & 0b1 << 16
-        )
     
     def to_text(self) -> str:
         """Return easily-parseable string representation of a Move.
@@ -374,15 +369,13 @@ class NullMove(Move):
 
 
 class TerminationMove(Move):
-    # a struct for a game-terminating move (e.g. resigns, abort, etc)
+    """Contains information about a game-terminating move (e.g.
+    resigns, abort, etc)
+    """
     def __init__(self, termination: GameTermination) -> None:
         super().__init__()
         self.end = termination
         return
-    
-    def to_bin(self) -> int:
-        # magic number 118 since 0-110 is board, 111-117 is hand
-        return (0b1 << 15 | (CODE_FROM_TERMINATION[self.end] + 118))
     
     def to_text(self) -> str:
         return self.end.name

@@ -30,35 +30,77 @@ class Game:
         self.curr_node = self.movetree
         self.position.reset()
     
-    def make_move(self, move: Move) -> None:
-        """Execute the given move in the position and add it to the
-        movetree if it doesn't already exist.
+    def add_move(self, move: Move) -> None:
+        """Execute the given move and add it to the movetree if it
+        doesn't already exist.
         """
         self.curr_node = self.curr_node.add_move(move)
         self.position.make_move(move)
         return
     
-    def is_move_mainline(self, move: Move) -> bool:
-        return self.curr_node.next().move == move
+    def make_move(self, move: Move) -> bool:
+        """If the move exists in the movetree, execute the move. If
+        not, don't do anything.
+        """
+        res = self.curr_node.has_move(move)
+        if res:
+            self.curr_node = self.curr_node.get_variation_node(move)
+            self.position.make_move(move)
+        return res
     
-    def next(self) -> None:
-        self.position.make_move(self.curr_node.move)
-        self.curr_node = self.curr_node.next()
-        return
+    def is_mainline(self, move: Move) -> bool:
+        if self.curr_node.is_leaf():
+            return False
+        else:
+            return self.curr_node.next().move == move
+    
+    def is_start(self) -> bool:
+        return self.curr_node.parent.is_null()
+    
+    def is_end(self) -> bool:
+        return self.curr_node.is_leaf()
+    
+    def get_mainline_move(self) -> Move:
+        next_node = self.curr_node.next()
+        if self.curr_node == next_node:
+            return NullMove()
+        else:
+            return next_node.move
+    
+    def next(self) -> bool:
+        """Go one move further into the game, following the mainline.
+        """
+        if self.curr_node.is_leaf():
+            return False
+        else:
+            next_node = self.curr_node.next()
+            self.position.make_move(next_node.move)
+            self.curr_node = next_node
+            return True
     
     def prev(self) -> None:
-        self.position.unmake_move(self.curr_node.move)
-        self.curr_node = self.curr_node.prev()
-        return
+        """Step one move back in the game.
+        """
+        if self.curr_node.prev() == self.curr_node:
+            return
+        else:
+            self.position.unmake_move(self.curr_node.move)
+            self.curr_node = self.curr_node.prev()
+            return
     
     def start(self) -> None:
+        """Go to the start of the game.
+        """
         self.position.from_sfen(self.movetree.start_pos)
         self.curr_node = self.movetree
         return
     
     def end(self) -> None:
-        while not self.curr_node.is_leaf():
-            self.next()
+        """Go to the end of the current branch.
+        """
+        has_next = True
+        while has_next:
+            has_next = self.next()
         return
     
     def to_notation(self) -> List[str]:

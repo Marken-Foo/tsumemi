@@ -48,13 +48,39 @@ class MoveNode:
         self.comment = "".join((self.comment, comment))
         return
     
+    def has_move(self, move: Move) -> bool:
+        """Return True iff the given move is a continuation from this
+        MoveNode.
+        """
+        for node in self.variations:
+            if move == node.move:
+                return True
+        return False
+    
+    def get_variation_node(self, move: Move) -> MoveNode:
+        """Return the child node corresponding to the given move.
+        """
+        for node in self.variations:
+            if move == node.move:
+                return node
+        raise ValueError(
+            "Move " + str(move) + " is not a variation after move "
+            + str(self.movenum)
+        )
+    
     def next(self) -> MoveNode:
+        """Return mainline child node if it exists, else return self.
+        """
         return self.variations[0] if self.variations else self
     
     def prev(self) -> MoveNode:
+        """Return parent node if it exists, else return self.
+        """
         return self.parent if not self.parent.is_null() else self
     
     def start(self) -> MoveNode:
+        """Return the root node of self.
+        """
         node = self
         while not node.parent.is_null():
             node = node.parent
