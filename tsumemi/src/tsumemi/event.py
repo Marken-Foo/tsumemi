@@ -20,7 +20,6 @@ class IObserver(ABC):
     def __init__(self) -> None:
         self.NOTIFY_ACTIONS: Dict[Type[Event], Callable[..., Any]] = {}
     
-    @abstractmethod
     def on_notify(self, event: Event) -> None:
         event_type = type(event)
         if event_type in self.NOTIFY_ACTIONS:

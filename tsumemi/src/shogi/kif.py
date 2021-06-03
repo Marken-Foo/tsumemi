@@ -4,13 +4,14 @@ import re
 import typing
 
 from enum import IntEnum
-from typing import TYPE_CHECKING, Dict, Sequence
+from typing import TYPE_CHECKING
 
 from tsumemi.src.shogi.basetypes import GameTermination, KanjiNumber, Koma, Move, Side, Square, TerminationMove
 from tsumemi.src.shogi.basetypes import HAND_TYPES, KTYPE_FROM_KANJI
 from tsumemi.src.shogi.game import Game
 
 if TYPE_CHECKING:
+    from typing import Dict, Sequence
     from tsumemi.src.shogi.basetypes import KomaType
 
 
@@ -148,6 +149,7 @@ class GameBuilderPVis(ParserVisitor):
         return
     
     def visit_move(self, reader: Reader, line: str) -> None:
+        game = reader.game
         match = re.search(KIF_MOVELINE_REGEX, line)
         if match is None:
             raise TypeError("Match object is None, cannot identify move")
@@ -169,13 +171,13 @@ class GameBuilderPVis(ParserVisitor):
                 sq_origin = m.group("sq_origin")
                 # Find destination square
                 if dest == "同　":
-                    end_sq = reader.game.curr_node.move.end_sq
-                    captured = reader.game.position.get_koma(sq=end_sq)
+                    end_sq = game.curr_node.move.end_sq
+                    captured = game.position.get_koma(sq=end_sq)
                 else:
                     col = int(dest[0])
                     row = int(KanjiNumber[dest[1]])
                     end_sq = Square.from_cr(col, row)
-                    captured = reader.game.position.get_koma(sq=end_sq)
+                    captured = game.position.get_koma(sq=end_sq)
                 ktype: KomaType
                 if komastr[0] == "成":
                     ktype = KTYPE_FROM_KANJI[komastr[1]]
@@ -199,22 +201,23 @@ class GameBuilderPVis(ParserVisitor):
                 side = Side.SENTE if (int(movenum) % 2 == 1) else Side.GOTE
                 koma = Koma.make(side, ktype)
                 move = Move(start_sq, end_sq, is_promotion, koma, captured)
-            reader.game.add_move(move)
+            game.add_move(move)
         return
     
     def visit_variation(self, reader: Reader, line: str) -> None:
+        game = reader.game
         match = re.match(KIF_VARIATION_REGEX, line)
         if match is None:
             raise ValueError("KIF variation regex failed to match: " + line)
         else:
             var_movenum = int(match.group("movenum"))
             while (
-                (not reader.game.curr_node.is_null())
-                and reader.game.curr_node.movenum != var_movenum
+                (not game.curr_node.is_null())
+                and game.curr_node.movenum != var_movenum
             ):
-                reader.game.prev()
-            reader.game.prev() # Once more to reach the prior move
-            if reader.game.curr_node.is_null():
+                game.prev()
+            game.prev() # Once more to reach the prior move
+            if game.curr_node.is_null():
                 raise Exception("HALP desired movenum not found")
             return
 

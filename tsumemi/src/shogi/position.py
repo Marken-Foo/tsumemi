@@ -3,9 +3,10 @@ from __future__ import annotations
 import re
 
 from enum import IntEnum
-from typing import TYPE_CHECKING, Dict, List, Set, Tuple
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from typing import Dict, List, Set
     from tsumemi.src.shogi.basetypes import Move
 
 from tsumemi.src.shogi.basetypes import Koma, KomaType, Side, Square
@@ -51,6 +52,7 @@ class Position:
         koma_sente: Dict[Koma, Set[int]] = {Koma.make(Side.SENTE, ktype): set() for ktype in KOMA_TYPES}
         koma_gote: Dict[Koma, Set[int]] = {Koma.make(Side.GOTE, ktype): set() for ktype in KOMA_TYPES}
         self.koma_sets: Dict[Koma, Set[int]] = {**koma_sente, **koma_gote}
+        # hands and other info
         self.hand_sente: Dict[KomaType, int] = {ktype: 0 for ktype in HAND_TYPES}
         self.hand_gote: Dict[KomaType, int] = {ktype: 0 for ktype in HAND_TYPES}
         self.turn = Side.SENTE
@@ -126,7 +128,10 @@ class Position:
     
     def inc_hand_koma(self, side: Side, ktype: KomaType) -> None:
         target = self.get_hand(side)
-        target[ktype] += 1
+        try:
+            target[ktype] += 1
+        except KeyError:
+            target[ktype] = 1
         return
     
     def dec_hand_koma(self, side: Side, ktype: KomaType) -> None:
@@ -167,6 +172,7 @@ class Position:
                 move.koma.promote() if move.is_promotion else move.koma,
                 move.end_sq
             )
+            self.turn = self.turn.switch()
             self.movenum += 1
             return
     
@@ -186,6 +192,7 @@ class Position:
                 self.dec_hand_koma(move.side, KomaType.get(move.captured).unpromote())
             self.set_koma(move.captured, move.end_sq)
             self.set_koma(move.koma, move.start_sq)
+            self.turn = self.turn.switch()
             self.movenum -= 1
             return
     

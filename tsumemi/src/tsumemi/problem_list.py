@@ -1,37 +1,37 @@
 from __future__ import annotations
 
+import random
 import re
 
 from enum import Enum
-from random import shuffle
 from typing import TYPE_CHECKING
 
-import tsumemi.src.tsumemi.event as event
+import tsumemi.src.tsumemi.event as evt
 
 if TYPE_CHECKING:
     import os
     from typing import Any, List, Optional, Union
-    PathLike = Union[str, bytes, os.PathLike]
+    PathLike = Union[str, os.PathLike]
 
 
 class ProblemStatus(Enum):
     NONE = 0; CORRECT = 1; WRONG = 2; SKIP = 3
 
 
-class ProbListEvent(event.Event):
+class ProbListEvent(evt.Event):
     def __init__(self, prob_list: List[Problem]) -> None:
         self.prob_list = prob_list
         return
 
 
-class ProbStatusEvent(event.Event):
+class ProbStatusEvent(evt.Event):
     def __init__(self, prob_idx: int, status: ProblemStatus) -> None:
         self.idx = prob_idx
         self.status = status
         return
 
 
-class ProbTimeEvent(event.Event):
+class ProbTimeEvent(evt.Event):
     def __init__(self, prob_idx: int, time: float) -> None:
         self.idx = prob_idx
         self.time = time
@@ -55,7 +55,7 @@ class Problem:
         return isinstance(obj, Problem) and self.filepath == obj.filepath
 
 
-class ProblemList(event.Emitter):
+class ProblemList(evt.Emitter):
     """Represent a sortable list of problems with a "pointer" to the
     current active problem. Also stores metadata about problem like
     solve time and status.
@@ -73,7 +73,7 @@ class ProblemList(event.Emitter):
         self.problems: List[Problem] = []
         self.curr_prob: Optional[Problem] = None
         self.curr_prob_idx: Optional[int] = None
-        self.observers: List[event.IObserver] = []
+        self.observers: List[evt.IObserver] = []
         return
     
     def clear(self, suppress=False) -> None:
@@ -101,12 +101,14 @@ class ProblemList(event.Emitter):
     
     def set_status(self, status: ProblemStatus) -> None:
         if self.curr_prob is not None:
+            assert self.curr_prob_idx is not None # for mypy
             self.curr_prob.status = status
             self._notify_observers(ProbStatusEvent(self.curr_prob_idx, status))
         return
     
     def set_time(self, time: float) -> None:
         if self.curr_prob is not None:
+            assert self.curr_prob_idx is not None # for mypy
             self.curr_prob.time = time
             self._notify_observers(ProbTimeEvent(self.curr_prob_idx, time))
         return
@@ -162,7 +164,7 @@ class ProblemList(event.Emitter):
         the same problem before and after the shuffle.
         """
         z = list(zip(range(len(self.problems)), self.problems))
-        shuffle(z)
+        random.shuffle(z)
         idxs, probs = zip(*z)
         self.problems = list(probs)
         self.curr_prob_idx = idxs.index(self.curr_prob_idx)

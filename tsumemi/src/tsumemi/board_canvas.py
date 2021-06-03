@@ -1,293 +1,47 @@
-import os
+from __future__ import annotations
+
+import functools
 import tkinter as tk
 
-from abc import ABC, abstractmethod
-from collections import Counter
-from enum import Enum
-from PIL import Image, ImageTk
+from typing import TYPE_CHECKING
 
-from tsumemi.src.shogi.basetypes import KanjiNumber, Koma, KomaType, Side, HAND_TYPES, KANJI_FROM_KTYPE
+from tsumemi.src.shogi.basetypes import KanjiNumber, KomaType, Side, Square
+from tsumemi.src.shogi.basetypes import HAND_TYPES, KANJI_FROM_KTYPE
+from tsumemi.src.tsumemi.img_handlers import BoardImgManager, BoardMeasurements, BoardSkin, KomaImgManager, KomadaiImgManager, PieceSkin
 
-
-BOARD_IMAGES_PATH = os.path.relpath(r"tsumemi/resources/images/boards") 
-PIECE_IMAGES_PATH = os.path.relpath(r"tsumemi/resources/images/pieces")
-
-
-class BoardSkin(Enum):
-    WHITE = ("solid white", "white", None)
-    BROWN = ("solid brown", "burlywood1", None)
-    WOOD1 = ("Wood1", "#d29a00", os.path.join(BOARD_IMAGES_PATH, r"tile_wood1.png"))
-    WOOD2 = ("Wood2", "#fbcd77", os.path.join(BOARD_IMAGES_PATH, r"tile_wood2.png"))
-    WOOD3 = ("Wood3", "#c98e52", os.path.join(BOARD_IMAGES_PATH, r"tile_wood3.png"))
-    WOOD4 = ("Wood4", "#d5b45a", os.path.join(BOARD_IMAGES_PATH, r"tile_wood4.png"))
-    WOOD5 = ("Wood5", "#ffdf8f", os.path.join(BOARD_IMAGES_PATH, r"tile_wood5.png"))
-    WOOD6 = ("Wood6", "#f4ca64", os.path.join(BOARD_IMAGES_PATH, r"tile_wood6.png"))
-    STONE = ("Stone", "#b8b9af", os.path.join(BOARD_IMAGES_PATH, r"tile_stone.png"))
-    MILITARY = ("Military", "#a06b3a", os.path.join(BOARD_IMAGES_PATH, r"tile_military.png"))
-    MILITARY2 = ("Military2", "#bd7b32", os.path.join(BOARD_IMAGES_PATH, r"tile_military2.png"))
-    
-    def __init__(self, desc, colour, path):
-        self.desc = desc
-        self.colour = colour
-        self.path = path
-
-
-class PieceSkin(Enum):
-    TEXT = ("1-kanji text characters", None)
-    LIGHT = ("1-kanji light pieces", os.path.join(PIECE_IMAGES_PATH, r"kanji_light"))
-    BROWN = ("1-kanji brown pieces", os.path.join(PIECE_IMAGES_PATH, r"kanji_brown"))
-    REDWOOD = ("1-kanji red wood pieces", os.path.join(PIECE_IMAGES_PATH, r"kanji_red_wood"))
-    INTL = ("Internationalised symbols", os.path.join(PIECE_IMAGES_PATH, r"international"))
-    
-    def __init__(self, desc, path):
-        self.desc = desc
-        self.path = path
-        return
-
-
-class ImgResizer:
-    """Take PIL Image and store it alongside a resized
-    ImageTk.PhotoImage. Manage resized dimensions via function passed
-    in constructor. Responsible for resizing images to correct
-    dimensions.
-    """
-    def __init__(self, update_func):
-        self.update_func = update_func # function returns tuple (width, height)
-        self.width, self.height = update_func()
-        self.raws = {}
-        self.images = {}
-        return
-    
-    def _resize_image(self, img, width, height):
-        """Take PIL Image img, return resized ImageTk.PhotoImage.
-        """
-        resized_img = img.resize((int(width), int(height)))
-        return ImageTk.PhotoImage(resized_img)
-    
-    def add_image(self, key, image):
-        self.raws[key] = image
-        self.images[key] = self._resize_image(image, self.width, self.height)
-        return
-    
-    def resize_images(self):
-        for key in self.raws:
-            self.images[key] = self._resize_image(
-                self.raws[key], self.width, self.height
-            )
-        return
-    
-    def update_sizes(self):
-        self.width, self.height = self.update_func()
-        return
-    
-    def get_dict(self):
-        return self.images
-
-
-class ImgManager(ABC):
-    def has_images(self):
-        return self.skin.path is not None
-    
-    @abstractmethod
-    def load(self, skin):
-        pass
-    
-    @abstractmethod
-    def resize_images(self):
-        pass
-
-
-class PieceImgManager(ImgManager):
-    def __init__(self, measurements, skin):
-        def _komadai_piece_size():
-            kpc_w = measurements.komadai_piece_size
-            return kpc_w, kpc_w
-        def _board_piece_size():
-            sq_w = measurements.sq_w
-            return sq_w, sq_w
-        self.upright = ImgResizer(_board_piece_size)
-        self.inverted = ImgResizer(_board_piece_size)
-        self.komadai_upright = ImgResizer(_komadai_piece_size)
-        self.komadai_inverted = ImgResizer(_komadai_piece_size)
-        self.measurements = measurements
-        self.load(skin)
-        self.skin = skin
-        return
-    
-    def has_images(self):
-        return (self.skin.path is not None)
-    
-    def load(self, skin):
-        filepath = skin.path
-        if filepath:
-            for ktype in KomaType:
-                if ktype == KomaType.NONE:
-                    continue
-                filename = "0" + ktype.to_csa() + ".png"
-                img_path = os.path.join(skin.path, filename)
-                img = Image.open(img_path)
-                self.upright.add_image(ktype, img)
-                self.komadai_upright.add_image(ktype, img)
-                # upside-down image
-                filename = "1" + ktype.to_csa() + ".png"
-                img_path = os.path.join(skin.path, filename)
-                img = Image.open(img_path)
-                self.inverted.add_image(ktype, img)
-                self.komadai_inverted.add_image(ktype, img)
-            self.skin = skin
-            return
-        else:
-            # skin without images
-            self.skin = skin
-            return
-    
-    def resize_images(self):
-        if self.skin.path:
-            imgdicts = (
-                self.upright,
-                self.inverted,
-                self.komadai_upright,
-                self.komadai_inverted
-            )
-            for imgdict in imgdicts:
-                imgdict.update_sizes()
-                imgdict.resize_images()
-        return
-    
-    def get_dict(self, invert=False, komadai=False):
-        if not invert and not komadai:
-            return self.upright.get_dict()
-        elif invert and not komadai:
-            return self.inverted.get_dict()
-        elif not invert and komadai:
-            return self.komadai_upright.get_dict()
-        else: # invert and komadai
-            return self.komadai_inverted.get_dict()
-
-
-class BoardImgManager(ImgManager):
-    def __init__(self, measurements, skin):
-        def _board_sq_size():
-            sq_w = measurements.sq_w
-            sq_h = measurements.sq_h
-            # +1 pixel to avoid gaps when tiling image
-            return sq_w+1, sq_h+1
-        self.images = ImgResizer(_board_sq_size)
-        self.measurements = measurements
-        self.load(skin)
-        self.skin = skin
-        return
-    
-    def load(self, skin):
-        filepath = skin.path
-        if filepath:
-            img = Image.open(filepath)
-            self.images.add_image("board", img)
-            self.skin = skin # after loading, in case anything goes wrong
-            return
-        else:
-            # skin without images
-            self.skin = skin
-            return
-    
-    def resize_images(self):
-        if self.skin.path:
-            imgdicts = (self.images,)
-            for imgdict in imgdicts:
-                imgdict.update_sizes()
-                imgdict.resize_images()
-        return
-    
-    def get_dict(self):
-        return self.images.get_dict()
-
-
-class BoardMeasurements:
-    """Parameter object calculating and storing the various measurements of the
-    shogiban.
-    """
-    INNER_H_PAD = 30 # pixels
-    INNER_W_PAD = 10 # pixels
-    # Constant proportions; base unit is square width.
-    COORD_TEXT_IN_SQ = 2/9
-    KOMADAI_PIECE_RATIO = 4/5 # komadai piece : board piece size ratio
-    KOMADAI_TEXT_IN_SQ = 2/5
-    KOMADAI_W_IN_SQ = 2
-    SQ_ASPECT_RATIO = 11/12
-    SQ_TEXT_IN_SQ = 7/10
-    
-    def __init__(self, width, height):
-        # could refactor into a dictionary perhaps?
-        (
-            self.sq_w, self.sq_h, self.komadai_w, self.w_pad, self.h_pad,
-            self.komadai_piece_size, self.sq_text_size, self.komadai_text_size,
-            self.coords_text_size, self.x_sq, self.y_sq
-        ) = self.recalculate_sizes(width, height)
-        return
-    
-    def recalculate_sizes(self, canvas_width, canvas_height):
-        """Geometry: 9x9 shogi board, flanked by komadai area on either side.
-        Padded on all 4 sides (canvas internal padding).
-        Extra space allocated between board and right komadai (2 times coord
-        text size) to accomodate board coordinates drawn there.
-        """
-        max_sq_w = ((canvas_width - 2*self.INNER_W_PAD)
-                    / (9 + 2*self.KOMADAI_W_IN_SQ + 2*self.COORD_TEXT_IN_SQ))
-        max_sq_h = (canvas_height - 2*self.INNER_H_PAD) / 9
-        # Determine whether the width or the height is the limiting factor
-        sq_w = min(max_sq_w, max_sq_h*self.SQ_ASPECT_RATIO)
-        # Propagate other measurements
-        sq_h = sq_w / self.SQ_ASPECT_RATIO
-        coords_text_size = int(sq_w * self.COORD_TEXT_IN_SQ)
-        komadai_piece_size = int(sq_w * self.KOMADAI_PIECE_RATIO)
-        komadai_text_size = int(sq_w * self.KOMADAI_TEXT_IN_SQ)
-        komadai_w = sq_w * self.KOMADAI_W_IN_SQ
-        sq_text_size = int(sq_w * self.SQ_TEXT_IN_SQ)
-        if int(sq_w) == int(max_sq_w):
-            w_pad = self.INNER_W_PAD
-            h_pad = (canvas_height - 9*sq_h) / 2
-        else:
-            w_pad = (canvas_width - 2*komadai_w
-                     - 2*coords_text_size - 9*sq_w) / 2
-            h_pad = self.INNER_H_PAD
-        # Useful helper functions. Argument is row/col number of square.
-        def x_sq(i):
-            return w_pad + komadai_w + sq_w * i
-        def y_sq(j):
-            return h_pad + sq_h * j
-        
-        res = (
-            sq_w, sq_h, komadai_w, w_pad, h_pad, komadai_piece_size,
-            sq_text_size, komadai_text_size, coords_text_size,
-            x_sq, y_sq
-        )
-        (
-            self.sq_w, self.sq_h, self.komadai_w, self.w_pad, self.h_pad,
-            self.komadai_piece_size, self.sq_text_size, self.komadai_text_size,
-            self.coords_text_size, self.x_sq, self.y_sq
-        ) = res
-        return res
+if TYPE_CHECKING:
+    from typing import Dict, Optional, Tuple
+    from tsumemi.src.shogi.game import Game
+    from tsumemi.src.shogi.position import Position
+    from tsumemi.src.tsumemi.move_input_handler import MoveInputHandler
 
 
 class BoardCanvas(tk.Canvas):
-    """The canvas where the shogi position is drawn. Responsible for drawing on
-    itself, delegating other tasks like size calculation to other objects.
+    """The canvas where the shogi position is drawn. Responsible for
+    drawing on itself, delegating other tasks like size calculation to
+    other objects.
     """
     # Default/current canvas size for board
     CANVAS_WIDTH = 600
     CANVAS_HEIGHT = 500
     
-    def __init__(self, parent, controller, position, *args, **kwargs):
+    def __init__(self, parent, controller, game, *args, **kwargs):
+        """Initialise self with reference to a Game, allowing self to
+        display board positions from the Game (purely a view).
+        """
         self.controller = controller
         self.is_upside_down = False
         super().__init__(parent, *args, **kwargs)
         # Specify source of board data
-        self.position = position
+        self.game: Game = game
+        self.move_input_handler: Optional[MoveInputHandler] = None
+        self.position: Position = game.position
         config = self.controller.config
         # Initialise measurements, used for many other things
         self.measurements = BoardMeasurements(
             self.CANVAS_WIDTH, self.CANVAS_HEIGHT
         )
+        # Load skins
         try:
             name = config["skins"]["pieces"]
             piece_skin = PieceSkin[name]
@@ -303,42 +57,174 @@ class BoardCanvas(tk.Canvas):
             komadai_skin = BoardSkin[name]
         except KeyError:
             komadai_skin = BoardSkin.WHITE
-        self.piece_images = PieceImgManager(self.measurements, piece_skin)
-        self.board_images = BoardImgManager(self.measurements, board_skin)
-        self.komadai_skin = komadai_skin
+        # Cached images and image settings
+        self.koma_img_cache = KomaImgManager(self.measurements, piece_skin)
+        self.board_img_cache = BoardImgManager(self.measurements, board_skin)
+        self.komadai_img_cache = KomadaiImgManager(self.measurements, komadai_skin)
+        # Images created and stored so only their image field changes later.
+        # FEN ordering. (row_idx, col_idx), zero-based
+        self.board_tiles = [[None] * 9 for i in range(9)]
+        self.board_select_tiles = [[None] * 9 for i in range(9)]
+        # Koma image IDs and their current positions
+        self.koma_on_board_images: Dict[int, Tuple[int, int]] = {}
+        # Currently highlighted tile [col_num, row_num]
+        # Hand pieces would be [0, KomaType]
+        self.highlighted_sq = Square.NONE
+        self.highlighted_ktype = KomaType.NONE
+        return
+    
+    def connect_game_adapter(self, move_input_handler: MoveInputHandler
+        ) -> None:
+        """Register a MoveInputHandler with self, to enable move input and
+        control via GUI.
+        """
+        self.move_input_handler = move_input_handler
+        move_input_handler.board_canvas = self
+        return
+    
+    def set_focus(self, sq: Square, ktype: KomaType=KomaType.NONE) -> None:
+        """Put visual focus on a particular square or koma.
+        """
+        # Unhighlight already highlighted square/koma
+        if self.highlighted_sq != Square.NONE:
+            if self.highlighted_sq == Square.HAND:
+                for id in self.find_withtag("komadai"):
+                    self.itemconfig(id, image="")
+            else:
+                col, row = self.highlighted_sq.get_cr()
+                col_idx = col-1 if self.is_upside_down else 9-col
+                row_idx = 9-row if self.is_upside_down else row-1
+                old_idx = self.board_select_tiles[row_idx][col_idx]
+                self.itemconfig(old_idx,
+                    image=self.board_img_cache.get_dict()["transparent"]
+                )
+        # Highlight new square/koma
+        if sq == Square.HAND:
+            # this is a kludge
+            side_str = "sente" if self.position.turn == Side.SENTE else "gote"
+            ids_a = self.find_withtag("komadai")
+            ids_b = self.find_withtag(ktype.to_csa())
+            ids_c = self.find_withtag(side_str)
+            item = [x for x in ids_a if (x in ids_b) and (x in ids_c)]
+            if item:
+                self.itemconfig(item[0],
+                    image=self.komadai_img_cache.get_dict()["highlight"]
+                )
+        elif sq != Square.NONE:
+            col_num, row_num = sq.get_cr()
+            col_idx = col_num-1 if self.is_upside_down else 9-col_num
+            row_idx = 9-row_num if self.is_upside_down else row_num-1
+            img_idx = self.board_select_tiles[row_idx][col_idx]
+            self.itemconfig(img_idx,
+                image=self.board_img_cache.get_dict()["highlight"]
+            )
+        self.highlighted_sq = sq
+        return
+    
+    def prompt_promotion(self, sq: Square, ktype: KomaType) -> None:
+        """Display the visual cues prompting user to choose promotion
+        or non-promotion.
+        """
+        x_sq = self.measurements.x_sq
+        y_sq = self.measurements.y_sq
+        id_cover = self.create_image(
+            x_sq(0), y_sq(0),
+            image=self.board_img_cache.get_dict("board")["semi-transparent"],
+            anchor="nw",
+            tags=("promotion_prompt",)
+        )
+        col_num, row_num = sq.get_cr()
+        col_idx = col_num-1 if self.is_upside_down else 9-col_num
+        row_idx = 9-row_num if self.is_upside_down else row_num-1
+        is_text = not self.koma_img_cache.has_images()
+        is_north_sente = self.is_upside_down
+        side = self.position.turn
+        invert = (
+            (is_north_sente and (side == Side.SENTE))
+            or (not is_north_sente and (side == Side.GOTE))
+        )
+        id_promoted = self.draw_koma(
+            x_sq(col_idx+0.5), y_sq(row_idx+0.5), ktype.promote(),
+            is_text=is_text, invert=invert,
+            tags=("promotion_prompt",)
+        )
+        assert id_promoted is not None
+        id_unpromoted = self.draw_koma(
+            x_sq(col_idx+0.5), y_sq(row_idx+0.5+1), ktype,
+            is_text=is_text, invert=invert,
+            tags=("promotion_prompt",)
+        )
+        assert id_unpromoted is not None
+        callback = functools.partial(
+            self._prompt_promotion_callback, sq=sq, ktype=ktype
+        )
+        self.tag_bind(id_promoted, "<Button-1>",
+            functools.partial(callback, is_promotion=True)
+        )
+        self.tag_bind(id_unpromoted, "<Button-1>",
+            functools.partial(callback, is_promotion=False)
+        )
+        self.tag_bind(id_cover, "<Button-1>",
+            functools.partial(callback, is_promotion=None)
+        )
+        return
+    
+    def _prompt_promotion_callback(self, event,
+                sq: Square, ktype: KomaType,
+                is_promotion: Optional[bool]
+            ) -> None:
+        """Callback for promotion prompt. Clears the visual cues and
+        passes the selected choice to underlying adapter. Use None
+        for is_promotion to indicate cancellation of the move.
+        """
+        if self.move_input_handler is not None:
+            self.move_input_handler.execute_promotion_choice(
+                is_promotion, sq=sq, ktype=ktype
+            )
+            self.delete("promotion_prompt")
         return
     
     def draw_board(self):
-        """Draw just the shogiban, without pieces. Komadai areas not included.
+        """Draw just the shogiban, without pieces. Komadai areas not
+        included.
         """
         x_sq = self.measurements.x_sq
         y_sq = self.measurements.y_sq
         coords_text_size = self.measurements.coords_text_size
-        row_coords = [" " + KanjiNumber(i).name for i in range(1, 10, 1)]
-        col_coords = [str(i) for i in range(9, 0, -1)]
-        if self.is_upside_down:
-            row_coords.reverse()
-            col_coords.reverse()
         # Draw board
-        board_skin = self.board_images.skin
+        board_skin = self.board_img_cache.skin
         # Colour board with solid colour
         self.board_rect = self.create_rectangle(
             x_sq(0), y_sq(0),
             x_sq(9), y_sq(9),
             fill=board_skin.colour
         )
-        # Images created and stored so only their image field changes later.
-        self.board_tiles = [[None] * 9 for i in range(9)]
-        for row_num in range(9):
-            for col_num in range(9):
-                self.board_tiles[row_num][col_num] = self.create_image(
-                    x_sq(row_num),
-                    y_sq(col_num),
-                    image="",
+        for row_idx in range(9):
+            for col_idx in range(9):
+                # Create board image layer
+                id = self.create_image(
+                    x_sq(col_idx), y_sq(row_idx),
+                    image="", anchor="nw"
+                )
+                self.board_tiles[row_idx][col_idx] = id
+                # Create focus highlight layer
+                id_focus = self.create_image(
+                    x_sq(col_idx), y_sq(row_idx),
+                    image=self.board_img_cache.get_dict()["transparent"],
                     anchor="nw"
                 )
-        if self.board_images.has_images():
-            board_img = self.board_images.get_dict()["board"]
+                self.board_select_tiles[row_idx][col_idx] = id_focus
+                # Add callbacks
+                if self.move_input_handler is not None:
+                    col_num = col_idx+1 if self.is_upside_down else 9-col_idx
+                    row_num = 9-row_idx if self.is_upside_down else row_idx+1
+                    sq = Square.from_cr(col_num, row_num)
+                    callback = functools.partial(
+                        self.move_input_handler.receive_square, sq=sq
+                    )
+                    self.tag_bind(id_focus, "<Button-1>", callback)
+        if self.board_img_cache.has_images():
+            board_img = self.board_img_cache.get_dict()["board"]
             for row in self.board_tiles:
                 for tile in row:
                     self.itemconfig(tile, image=board_img)
@@ -348,64 +234,79 @@ class BoardCanvas(tk.Canvas):
             self.create_line(x_sq(0), y_sq(i), x_sq(9), y_sq(i),
                                     fill="black", width=1)
         # Draw board coordinates
-        for row_num in range(9):
+        for row_idx in range(9):
+            row_num = 9-row_idx if self.is_upside_down else row_idx+1
+            row_label = " " + KanjiNumber(row_num).name
             self.create_text(
-                x_sq(9), y_sq(row_num+0.5),
-                text=" " + row_coords[row_num],
+                x_sq(9), y_sq(row_idx+0.5),
+                text=" " + row_label,
                 font=("", coords_text_size),
                 anchor="w"
             )
-        for col_num in range(9):
+        for col_idx in range(9):
+            col_num = col_idx+1 if self.is_upside_down else 9-col_idx
             self.create_text(
-                x_sq(col_num+0.5), y_sq(0),
-                text=col_coords[col_num],
+                x_sq(col_idx+0.5), y_sq(0),
+                text=str(col_num),
                 font=("", coords_text_size),
                 anchor="s"
             )
         return
     
-    def draw_koma(self, x, y, ktype, komadai=False, invert=False,
-                   is_text=True, anchor="center"):
+    def draw_koma(self,
+            x: int, y: int, ktype: KomaType,
+            komadai: bool = False, invert: bool = False,
+            is_text: bool = True, anchor: str = "center",
+            tags: Tuple[str] = ("",)
+        ) -> Optional[int]:
+        """Draw koma at specified location. Text is drawn if *is_text*
+        is True; *anchor* determines how the image or text is
+        positioned with respect to the point (x,y).
+        """
+        id: int
         if ktype == KomaType.NONE:
-            return
+            return None
         if is_text:
             text_size = (
                 self.measurements.komadai_text_size
                 if komadai
                 else self.measurements.sq_text_size
             )
-            self.create_text(
+            id = self.create_text(
                 x, y, text=str(KANJI_FROM_KTYPE[ktype]),
                 font=("", text_size),
                 angle=180 if invert else 0,
-                anchor=anchor
+                anchor=anchor, tags=tags
             )
         else:
-            piece_dict = self.piece_images.get_dict(
+            piece_dict = self.koma_img_cache.get_dict(
                 invert=invert, komadai=komadai
             )
             img = piece_dict[ktype]
-            self.create_image(x, y, image=img, anchor=anchor)
-        return
+            id = self.create_image(
+                x, y, image=img,
+                anchor=anchor, tags=tags
+            )
+        return id
     
     def draw_komadai(self, x, y, hand, sente=True, align="top"):
-        """Draw komadai with pieces given by hand argument, anchored at canvas
-        position (x, y). "Anchoring" north or south achieved with align="top"
-        or "bottom".
+        """Draw komadai with pieces given by hand argument, anchored
+        at canvas position (x,y). "Anchoring" north or south achieved
+        with align="top" or "bottom".
         """
-        # Note: actual size of each character in px is about 1.5*text_size
+        is_text = not self.koma_img_cache.has_images()
+        # Komadai measurements.
+        # Actual size of each character in px is about 1.5*text_size
         komadai_text_size = self.measurements.komadai_text_size
         komadai_char_height = 1.5 * komadai_text_size
         komadai_piece_size = self.measurements.komadai_piece_size
-        is_text = not self.piece_images.has_images()
         symbol_size = komadai_text_size*3/2 if is_text else komadai_piece_size
         pad = (komadai_text_size / 8 if is_text else komadai_piece_size / 8)
         mochigoma_heading_size = 4 * komadai_char_height # "▲\n持\n駒\n"
         
         c_hand = {ktype: count for (ktype, count) in hand.items() if count > 0}
-        
         num_piece_types = len(c_hand)
-        
+        k_width = 2 * komadai_piece_size
         k_height = (
             mochigoma_heading_size + 2*komadai_char_height
             if num_piece_types == 0
@@ -418,11 +319,12 @@ class BoardCanvas(tk.Canvas):
             y = y - k_height
         
         # Draw the komadai base
-        rect = self.create_rectangle(
-            x-komadai_piece_size, y,
-            x+komadai_piece_size, y+k_height,
-            fill=self.komadai_skin.colour,
-            outline=""
+        self.create_rectangle(
+            x-(k_width/2), y,
+            x+(k_width/2), y+k_height,
+            fill=self.komadai_img_cache.skin.colour,
+            outline="",
+            tags=("komadai-solid",)
         )
         
         header_text = "▲\n持\n駒" if sente else "△\n持\n駒"
@@ -435,13 +337,11 @@ class BoardCanvas(tk.Canvas):
         if num_piece_types == 0:
             # Hand is empty, write なし
             self.create_text(
-                x,
-                y + mochigoma_heading_size,
-                text="な\nし",
-                font=("", komadai_text_size),
+                x, y+mochigoma_heading_size,
+                text="な\nし", font=("", komadai_text_size),
                 anchor="n"
             )
-            return rect
+            return
         else:
             # Hand is not empty
             for n, (ktype, count) in enumerate(c_hand.items()):
@@ -452,14 +352,31 @@ class BoardCanvas(tk.Canvas):
                     + n*(symbol_size+pad)
                     + symbol_size/2 # for the anchor="center"
                 )
-                self.draw_koma(
-                    x-0.4*komadai_piece_size,
+                id_highlight = self.create_image(
+                    x-(k_width/5),
                     y+y_offset,
-                    ktype = ktype,
+                    image="",
+                    anchor="center",
+                    tags=("komadai", ktype.to_csa(),
+                        "sente" if sente else "gote"
+                    )
+                )
+                id = self.draw_koma(
+                    x-(k_width/5),
+                    y+y_offset,
+                    ktype=ktype,
                     komadai=True,
                     is_text=is_text,
                     anchor="center"
                 )
+                if self.move_input_handler is not None:
+                    callback = functools.partial(
+                        self.move_input_handler.receive_square,
+                        sq=Square.HAND, hand_ktype=ktype,
+                        hand_side = Side.SENTE if sente else Side.GOTE
+                    )
+                    self.tag_bind(id, "<Button-1>", callback)
+                #TODO: register drawn piece image with self.[some dict]
                 self.create_text(
                     x+0.5*komadai_piece_size,
                     y+y_offset,
@@ -467,7 +384,7 @@ class BoardCanvas(tk.Canvas):
                     font=("", komadai_text_size),
                     anchor="center"
                 )
-        return rect
+        return
     
     def draw(self):
         """Draw complete board with komadai and pieces.
@@ -491,70 +408,77 @@ class BoardCanvas(tk.Canvas):
         # Draw board
         self.draw_board()
         # Draw board pieces
-        is_text = not self.piece_images.has_images()
+        is_text = not self.koma_img_cache.has_images()
         for koma, kset in position.koma_sets.items():
             ktype = KomaType.get(koma)
             side = koma.side()
-            invert = (is_north_sente and (side == Side.SENTE)) or (not is_north_sente and (side == Side.GOTE))
+            invert = (
+                (is_north_sente and (side == Side.SENTE))
+                or (not is_north_sente and (side == Side.GOTE))
+            )
             for idx in kset:
                 col_num = position.idx_to_c(idx)
                 row_num = position.idx_to_r(idx)
                 x = col_num-1 if self.is_upside_down else 9-col_num
                 y = 9-row_num if self.is_upside_down else row_num-1
-                self.draw_koma(
+                id = self.draw_koma(
                     x_sq(x+0.5), y_sq(y+0.5), ktype,
                     is_text=is_text, invert=invert
                 )
+                self.koma_on_board_images[id] = (col_num, row_num)
+                if self.move_input_handler is not None:
+                    sq = Square.from_cr(col_num, row_num)
+                    callback = functools.partial(
+                        self.move_input_handler.receive_square, sq=sq
+                    )
+                    self.tag_bind(id, "<Button-1>", callback)
         
         # Draw komadai
-        self.north_komadai_rect = self.draw_komadai(
+        self.draw_komadai(
             w_pad + komadai_w/2,
             y_sq(0),
             north_hand,
             sente=is_north_sente,
             align="top"
         )
-        self.south_komadai_rect = self.draw_komadai(
+        self.draw_komadai(
             x_sq(9) + 2*coords_text_size + komadai_w/2,
             y_sq(9),
             south_hand,
             sente=not is_north_sente,
             align="bottom"
         )
+        # set focus
+        self.set_focus(self.highlighted_sq)
         return
     
-    def apply_piece_skin(self, skin):
-        self.piece_images.load(skin)
+    def apply_piece_skin(self, skin: PieceSkin) -> None:
+        self.koma_img_cache.load(skin)
         return
     
-    def apply_board_skin(self, skin):
+    def apply_board_skin(self, skin: BoardSkin) -> None:
         self.itemconfig(self.board_rect, fill=skin.colour)
-        self.board_images.load(skin)
-        board_img = (
-            self.board_images.get_dict()["board"]
-            if skin.path
-            else ""
-        )
+        self.board_img_cache.load(skin)
         return
     
-    def apply_komadai_skin(self, skin):
+    def apply_komadai_skin(self, skin: BoardSkin) -> None:
         # Can only figure out how to apply solid colours for now
-        self.itemconfig(self.north_komadai_rect, fill=skin.colour)
-        self.itemconfig(self.south_komadai_rect, fill=skin.colour)
-        self.komadai_skin = skin
+        self.itemconfig("komadai-solid", fill=skin.colour)
+        self.komadai_img_cache.load(skin)
         return
     
     
     def on_resize(self, event):
         # Callback for when the canvas itself is resized
         self.measurements.recalculate_sizes(event.width, event.height)
-        self.piece_images.resize_images()
-        self.board_images.resize_images()
+        self.koma_img_cache.resize_images()
+        self.board_img_cache.resize_images()
+        self.komadai_img_cache.resize_images()
         # Redraw board after setting new dimensions
         self.draw()
         return
     
-    def flip_board(self, want_upside_down):
+    def flip_board(self, want_upside_down: bool) -> None:
         # For upside-down mode
         if self.is_upside_down != want_upside_down:
             self.is_upside_down = want_upside_down

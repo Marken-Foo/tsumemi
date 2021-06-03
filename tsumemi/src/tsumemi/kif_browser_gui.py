@@ -5,12 +5,13 @@ import tkinter as tk
 from functools import partial
 from tkinter import filedialog, messagebox, ttk
 
-import tsumemi.src.tsumemi.event as event
+import tsumemi.src.tsumemi.event as evt
 import tsumemi.src.tsumemi.model as model
 import tsumemi.src.tsumemi.problem_list as plist
 import tsumemi.src.tsumemi.timer as timer
 
-from tsumemi.src.tsumemi.board_canvas import BoardCanvas, PieceSkin, BoardSkin
+from tsumemi.src.tsumemi.board_canvas import BoardCanvas
+from tsumemi.src.tsumemi.move_input_handler import MoveInputHandler
 from tsumemi.src.tsumemi.nav_controls import FreeModeNavControls, SpeedrunNavControls
 from tsumemi.src.tsumemi.settings_window import SettingsWindow, CONFIG_PATH
 
@@ -61,7 +62,7 @@ class Menubar(tk.Menu):
         return
 
 
-class TimerDisplay(ttk.Label, event.IObserver):
+class TimerDisplay(ttk.Label, evt.IObserver):
     """GUI class to display a stopwatch/timer.
     """
     def __init__(self, parent, controller, clock, *args, **kwargs):
@@ -84,12 +85,6 @@ class TimerDisplay(ttk.Label, event.IObserver):
             foreground="light sky blue",
             font=("TkDefaultFont", 48)
         )
-    
-    def on_notify(self, event):
-        event_type = type(event)
-        if event_type in self.NOTIFY_ACTIONS:
-            self.NOTIFY_ACTIONS[event_type](event)
-        return
     
     def _on_start(self, event):
         self.is_running = True
@@ -133,25 +128,25 @@ class TimerPane(ttk.Frame):
         # Timer control widgets
         ttk.Button(
             self, text="Start/stop timer",
-            command=self.controller.model.toggle_timer
+            command=self.clock.toggle
         ).grid(
             column=0, row=1
         )
         ttk.Button(
             self, text="Reset timer",
-            command=self.controller.model.reset_timer
+            command=self.clock.reset
         ).grid(
             column=1, row=1
         )
         ttk.Button(
             self, text="Split",
-            command=self.controller.model.split_timer
+            command=self.clock.split
         ).grid(
             column=2, row=1
         )
 
 
-class ProblemsView(ttk.Treeview, event.IObserver):
+class ProblemsView(ttk.Treeview, evt.IObserver):
     """GUI class to display list of problems.
     Uses the Observer pattern to update itself whenever underlying
     problem list updates.
@@ -164,8 +159,8 @@ class ProblemsView(ttk.Treeview, event.IObserver):
         self.problem_list.add_observer(self)
         
         self.NOTIFY_ACTIONS = {
-            plist.ProbStatusEvent: self.set_status,
-            plist.ProbTimeEvent: self.set_time,
+            plist.ProbStatusEvent: self.display_status,
+            plist.ProbTimeEvent: self.display_time,
             plist.ProbListEvent: self.refresh_view
         }
         self.status_strings = {
@@ -195,13 +190,7 @@ class ProblemsView(ttk.Treeview, event.IObserver):
         )
         return
     
-    def on_notify(self, event):
-        event_type = type(event)
-        if event_type in self.NOTIFY_ACTIONS:
-            self.NOTIFY_ACTIONS[event_type](event)
-        return
-    
-    def set_time(self, event):
+    def display_time(self, event):
         idx = event.idx
         time = event.time
         # Set time column for item at given index
@@ -210,7 +199,7 @@ class ProblemsView(ttk.Treeview, event.IObserver):
         self.set(id, column="time", value=time_str)
         return
     
-    def set_status(self, event):
+    def display_status(self, event):
         idx = event.idx
         status = event.status
         id = self.get_children()[idx]
@@ -295,7 +284,7 @@ class MainWindow:
     # eventually, refactor menu labels and dialog out into a constant namespace
     def __init__(self, master):
         # Set up data model
-        self.model = model.Model()
+        self.model = model.Model(gui_controller=self)
         # tkinter stuff, set up the main window
         # Reference to tk.Tk() root object
         self.master = master
@@ -336,12 +325,14 @@ class MainWindow:
         
         self.board = BoardCanvas(
             parent=self.boardWrapper, controller=self,
-            position = self.model.active_game.position,
+            game = self.model.active_game,
             width=BoardCanvas.CANVAS_WIDTH, height=BoardCanvas.CANVAS_HEIGHT,
             bg="white"
         )
         self.board.grid(column=0, row=0, sticky="NSEW")
         self.board.bind("<Configure>", self.board.on_resize)
+        self.move_input_handler = MoveInputHandler(self.board)
+        self.move_input_handler.add_observer(self.model)
         
         # Initialise solution text
         self.is_solution_shown = False
@@ -357,10 +348,12 @@ class MainWindow:
         
         # Initialise nav controls and select one to begin with
         self._navcons = {
-            "free" : FreeModeNavControls(parent=self.mainframe,
-                                         controller=self),
-            "speedrun" : SpeedrunNavControls(parent=self.mainframe,
-                                             controller=self)
+            "free" : FreeModeNavControls(
+                parent=self.mainframe, controller=self
+            ),
+            "speedrun" : SpeedrunNavControls(
+                parent=self.mainframe, controller=self
+            )
         }
         for navcon in self._navcons.values():
             navcon.grid(column=0, row=2)
@@ -369,7 +362,10 @@ class MainWindow:
         self.nav_controls.grid()
         
         # Timer controls and display
-        self.timer_controls = TimerPane(parent=self.mainframe, controller=self, clock=self.model.clock)
+        self.timer_controls = TimerPane(
+            parent=self.mainframe, controller=self,
+            clock=self.model.clock
+        )
         self.timer_controls.grid(column=1, row=1)
         self.timer_controls.columnconfigure(0, weight=0)
         self.timer_controls.rowconfigure(0, weight=0)
@@ -393,8 +389,10 @@ class MainWindow:
     def display_problem(self):
         self.board.draw()
         self.hide_solution()
-        self.master.title("KIF folder browser - "
-                          + str(self.model.get_curr_filepath()))
+        self.master.title(
+            "KIF folder browser - "
+            + str(self.model.get_curr_filepath())
+        )
         return
     
     def hide_solution(self):
@@ -426,6 +424,7 @@ class MainWindow:
         res = fn()
         if res:
             self.display_problem()
+            self.move_input_handler.clear_focus()
         return res
     
     def open_folder(self, event=None, recursive=False):

@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 from enum import Enum, EnumMeta, IntEnum, IntFlag
-from typing import Dict, List, Set, Tuple
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from typing import Any, Dict, List, Set, Tuple
 
 
 class MetaEnum(EnumMeta):
@@ -129,6 +132,8 @@ class Koma(IntFlag):
         """
         if self == Koma.NONE:
             return " * "
+        elif self == Koma.INVALID:
+            return "INVALID"
         else:
             side_ch = "-" if (self & Koma.GOTE) else "+"
             return "".join((side_ch, (self & ~Koma.GOTE).name))
@@ -274,10 +279,12 @@ class Square(IntEnum):
 
 
 class Move:
-    """Represents one shogi move.
+    """Represents one shogi move. Contains enough information to be
+    reversible, i.e. a move can be unmade, given the corresponding
+    shogi position as well.
     """
-    def __init__(
-            self, start_sq: Square = Square.NONE,
+    def __init__(self,
+            start_sq: Square = Square.NONE,
             end_sq: Square = Square.NONE,
             is_promotion: bool = False,
             koma: Koma = Koma.NONE, captured: Koma = Koma.NONE
@@ -291,18 +298,23 @@ class Move:
         self.is_drop = self.start_sq == Square.HAND
         return
     
+    def __eq__(self, obj: Any) -> bool:
+        return (
+            isinstance(obj, Move)
+            and self.start_sq == obj.start_sq
+            and self.end_sq == obj.end_sq
+            and self.is_promotion == obj.is_promotion
+            and self.side == obj.side
+            and self.koma == obj.koma
+            and self.captured == obj.captured
+            and self.is_drop == obj.is_drop
+        )
+    
     def __str__(self) -> str:
         return self.to_text()
     
     def is_null(self) -> bool:
         return False
-    
-    def to_bin(self) -> int:
-        return (
-            self.start_sq & 0b11111111
-            | (self.end_sq & 0b11111111) << 8
-            | self.is_promotion & 0b1 << 16
-        )
     
     def to_text(self) -> str:
         """Return easily-parseable string representation of a Move.
@@ -338,7 +350,10 @@ class Move:
         """
         end_col, end_row = self.end_sq.get_cr()
         res: List[str] = []
-        res.extend(["同　"] if is_same else [str(end_col), KanjiNumber(end_row).name])
+        res.extend(["同　"]
+            if is_same
+            else [str(end_col), KanjiNumber(end_row).name]
+        )
         res.append(KANJI_NOTATION_FROM_KTYPE[KomaType.get(self.koma)])
         res.append("成" if self.is_promotion else "")
         res.extend(["打"] if self.is_drop else ["(", str(self.start_sq), ")"])
@@ -354,15 +369,13 @@ class NullMove(Move):
 
 
 class TerminationMove(Move):
-    # a struct for a game-terminating move (e.g. resigns, abort, etc)
+    """Contains information about a game-terminating move (e.g.
+    resigns, abort, etc)
+    """
     def __init__(self, termination: GameTermination) -> None:
         super().__init__()
         self.end = termination
         return
-    
-    def to_bin(self) -> int:
-        # magic number 118 since 0-110 is board, 111-117 is hand
-        return (0b1 << 15 | (CODE_FROM_TERMINATION[self.end] + 118))
     
     def to_text(self) -> str:
         return self.end.name
@@ -370,5 +383,5 @@ class TerminationMove(Move):
     def to_latin(self) -> str:
         return self.end.name
     
-    def to_ja_kif(self) -> str:
-        return self.end.value
+    def to_ja_kif(self, is_same: bool = False) -> str:
+        return str(self.end.value)

@@ -1,24 +1,28 @@
 from __future__ import annotations
 
+import itertools
+import math
 import time
 
-from itertools import accumulate
-from math import fsum
 from typing import TYPE_CHECKING
 
-import tsumemi.src.tsumemi.event as event
+import tsumemi.src.tsumemi.event as evt
 
 if TYPE_CHECKING:
     from typing import List, Iterator, Optional, Tuple
 
 
 def sec_to_hms(seconds: float) -> Tuple[int, int, float]:
-    # Take time in seconds, return tuple of (hours, minutes, seconds).
+    """Take a time in seconds and return a tuple of
+    (hours, minutes, seconds).
+    """
     return (int(seconds // 3600), int((seconds % 3600) // 60), seconds % 60)
 
 
 def _two_digits(num: float) -> str:
-    # Take num, make integer part two chars (clock display), return string
+    """Take a float, make its integer part at least two chars long
+    (clock display), and return it as a string.
+    """
     return "0" + str(num) if num < 10 else str(num)
 
 
@@ -28,16 +32,21 @@ def sec_to_str(seconds: float, places: int = 1) -> str:
     return ":".join([_two_digits(i) for i in hms])
 
 
-class TimerStartEvent(event.Event):
-    pass
+class TimerStartEvent(evt.Event):
+    def __init__(self, clock: Timer) -> None:
+        self.clock: Timer = clock
+        return
 
 
-class TimerStopEvent(event.Event):
-    pass
+class TimerStopEvent(evt.Event):
+    def __init__(self, clock: Timer) -> None:
+        self.clock: Timer = clock
+        return
 
 
-class TimerSplitEvent(event.Event):
-    def __init__(self, lap_time: float) -> None:
+class TimerSplitEvent(evt.Event):
+    def __init__(self, clock: Timer, lap_time: float) -> None:
+        self.clock: Timer = clock
         self.time: float = lap_time
         return
 
@@ -85,8 +94,7 @@ class SplitTimer:
             self.curr_lap_time = 0
             return lap_time
         else:
-            # Taking a split while the timer is paused "has no meaning".
-            # But we implement it anyway.
+            # Splitting while the timer is paused "has no meaning".
             lap_time = self.curr_lap_time
             self.lap_times.append(lap_time)
             self.start_time = None
@@ -101,11 +109,16 @@ class SplitTimer:
         return
     
     def read(self) -> float:
-        if self.is_running:
-            res = (fsum(self.lap_times) + self.curr_lap_time
-                   + time.perf_counter() - self.start_time)
+        if self.start_time is None:
+            return 0
+        elif self.is_running:
+            res = (math.fsum(self.lap_times)
+                + self.curr_lap_time
+                + time.perf_counter()
+                - self.start_time
+            )
         else:
-            res = fsum(self.lap_times) + self.curr_lap_time
+            res = math.fsum(self.lap_times) + self.curr_lap_time
         return res
     
     def get_lap(self) -> Optional[float]:
@@ -116,16 +129,16 @@ class SplitTimer:
     
     def get_split_times(self) -> Iterator[float]:
         # Return a list of split times instead of lap times.
-        return accumulate(self.lap_times)
+        return itertools.accumulate(self.lap_times)
 
 
-class Timer(event.Emitter):
+class Timer(evt.Emitter):
     """Wrapper for the SplitTimer class, with normal stopwatch
     functions. Emits events to be observed by GUI displays of
     the timer (or for other purposes)."""
     def __init__(self) -> None:
         self.clock = SplitTimer()
-        self.observers: List[event.IObserver] = []
+        self.observers: List[evt.IObserver] = []
         return
     
     def read(self) -> float:
@@ -133,23 +146,23 @@ class Timer(event.Emitter):
     
     def reset(self) -> None:
         self.clock.reset()
-        self._notify_observers(TimerStopEvent())
+        self._notify_observers(TimerStopEvent(self))
         return
     
     def split(self) -> Optional[float]:
         time = self.clock.split()
         if time is not None:
-            self._notify_observers(TimerSplitEvent(time))
+            self._notify_observers(TimerSplitEvent(self, time))
         return time
     
     def start(self) -> None:
         self.clock.start()
-        self._notify_observers(TimerStartEvent())
+        self._notify_observers(TimerStartEvent(self))
         return
     
     def stop(self) -> None:
         self.clock.stop()
-        self._notify_observers(TimerStopEvent())
+        self._notify_observers(TimerStopEvent(self))
         return
     
     def toggle(self) -> None:
