@@ -80,6 +80,7 @@ class BoardCanvas(tk.Canvas):
         self.game_adapter = game_adapter
         self.game = game_adapter.game
         self.position = game_adapter.position
+        game_adapter.board_canvas = self
         return
     
     def set_focus(self, sq: Square, ktype: KomaType=KomaType.NONE) -> None:

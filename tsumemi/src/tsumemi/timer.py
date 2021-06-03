@@ -6,7 +6,7 @@ import time
 
 from typing import TYPE_CHECKING
 
-import tsumemi.src.tsumemi.event as event
+import tsumemi.src.tsumemi.event as evt
 
 if TYPE_CHECKING:
     from typing import List, Iterator, Optional, Tuple
@@ -32,16 +32,21 @@ def sec_to_str(seconds: float, places: int = 1) -> str:
     return ":".join([_two_digits(i) for i in hms])
 
 
-class TimerStartEvent(event.Event):
-    pass
+class TimerStartEvent(evt.Event):
+    def __init__(self, clock: Timer) -> None:
+        self.clock: Timer = clock
+        return
 
 
-class TimerStopEvent(event.Event):
-    pass
+class TimerStopEvent(evt.Event):
+    def __init__(self, clock: Timer) -> None:
+        self.clock: Timer = clock
+        return
 
 
-class TimerSplitEvent(event.Event):
-    def __init__(self, lap_time: float) -> None:
+class TimerSplitEvent(evt.Event):
+    def __init__(self, clock: Timer, lap_time: float) -> None:
+        self.clock: Timer = clock
         self.time: float = lap_time
         return
 
@@ -127,13 +132,13 @@ class SplitTimer:
         return itertools.accumulate(self.lap_times)
 
 
-class Timer(event.Emitter):
+class Timer(evt.Emitter):
     """Wrapper for the SplitTimer class, with normal stopwatch
     functions. Emits events to be observed by GUI displays of
     the timer (or for other purposes)."""
     def __init__(self) -> None:
         self.clock = SplitTimer()
-        self.observers: List[event.IObserver] = []
+        self.observers: List[evt.IObserver] = []
         return
     
     def read(self) -> float:
@@ -141,23 +146,23 @@ class Timer(event.Emitter):
     
     def reset(self) -> None:
         self.clock.reset()
-        self._notify_observers(TimerStopEvent())
+        self._notify_observers(TimerStopEvent(self))
         return
     
     def split(self) -> Optional[float]:
         time = self.clock.split()
         if time is not None:
-            self._notify_observers(TimerSplitEvent(time))
+            self._notify_observers(TimerSplitEvent(self, time))
         return time
     
     def start(self) -> None:
         self.clock.start()
-        self._notify_observers(TimerStartEvent())
+        self._notify_observers(TimerStartEvent(self))
         return
     
     def stop(self) -> None:
         self.clock.stop()
-        self._notify_observers(TimerStopEvent())
+        self._notify_observers(TimerStopEvent(self))
         return
     
     def toggle(self) -> None:

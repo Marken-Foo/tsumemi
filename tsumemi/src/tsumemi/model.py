@@ -3,12 +3,13 @@ from __future__ import annotations
 import os
 
 import tsumemi.src.shogi.kif as kif
+import tsumemi.src.tsumemi.event as evt
 import tsumemi.src.tsumemi.timer as timer
 
 from tsumemi.src.tsumemi.problem_list import Problem, ProblemList
 
 
-class Model:
+class Model(evt.IObserver):
     """Main data model of program. Manages reading problems from file
     and maintaining the problem list.
     """
@@ -20,6 +21,11 @@ class Model:
         self.active_game = self.reader.game
         self.clock = timer.Timer()
         self.game_adapter = None
+        
+        self.NOTIFY_ACTIONS: Dict[Type[Event], Callable[..., Any]] = {
+            timer.TimerSplitEvent: self._on_split
+        }
+        self.clock.add_observer(self)
         return
     
     def set_active_problem(self, idx=0):
@@ -111,6 +117,11 @@ class Model:
     
     def set_status(self, status):
         self.prob_buffer.set_status(status)
+        return
+    
+    def _on_split(self, event):
+        if self.clock == event.clock and event.time is not None:
+            self.prob_buffer.set_time(event.time)
         return
     
     # Timer clock controls

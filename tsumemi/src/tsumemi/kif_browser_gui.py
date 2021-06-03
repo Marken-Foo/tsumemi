@@ -5,7 +5,7 @@ import tkinter as tk
 from functools import partial
 from tkinter import filedialog, messagebox, ttk
 
-import tsumemi.src.tsumemi.event as event
+import tsumemi.src.tsumemi.event as evt
 import tsumemi.src.tsumemi.model as model
 import tsumemi.src.tsumemi.problem_list as plist
 import tsumemi.src.tsumemi.timer as timer
@@ -62,7 +62,7 @@ class Menubar(tk.Menu):
         return
 
 
-class TimerDisplay(ttk.Label, event.IObserver):
+class TimerDisplay(ttk.Label, evt.IObserver):
     """GUI class to display a stopwatch/timer.
     """
     def __init__(self, parent, controller, clock, *args, **kwargs):
@@ -85,12 +85,6 @@ class TimerDisplay(ttk.Label, event.IObserver):
             foreground="light sky blue",
             font=("TkDefaultFont", 48)
         )
-    
-    def on_notify(self, event):
-        event_type = type(event)
-        if event_type in self.NOTIFY_ACTIONS:
-            self.NOTIFY_ACTIONS[event_type](event)
-        return
     
     def _on_start(self, event):
         self.is_running = True
@@ -134,25 +128,25 @@ class TimerPane(ttk.Frame):
         # Timer control widgets
         ttk.Button(
             self, text="Start/stop timer",
-            command=self.controller.model.toggle_timer
+            command=self.clock.toggle
         ).grid(
             column=0, row=1
         )
         ttk.Button(
             self, text="Reset timer",
-            command=self.controller.model.reset_timer
+            command=self.clock.reset
         ).grid(
             column=1, row=1
         )
         ttk.Button(
             self, text="Split",
-            command=self.controller.model.split_timer
+            command=self.clock.split
         ).grid(
             column=2, row=1
         )
 
 
-class ProblemsView(ttk.Treeview, event.IObserver):
+class ProblemsView(ttk.Treeview, evt.IObserver):
     """GUI class to display list of problems.
     Uses the Observer pattern to update itself whenever underlying
     problem list updates.
@@ -165,8 +159,8 @@ class ProblemsView(ttk.Treeview, event.IObserver):
         self.problem_list.add_observer(self)
         
         self.NOTIFY_ACTIONS = {
-            plist.ProbStatusEvent: self.set_status,
-            plist.ProbTimeEvent: self.set_time,
+            plist.ProbStatusEvent: self.display_status,
+            plist.ProbTimeEvent: self.display_time,
             plist.ProbListEvent: self.refresh_view
         }
         self.status_strings = {
@@ -196,13 +190,7 @@ class ProblemsView(ttk.Treeview, event.IObserver):
         )
         return
     
-    def on_notify(self, event):
-        event_type = type(event)
-        if event_type in self.NOTIFY_ACTIONS:
-            self.NOTIFY_ACTIONS[event_type](event)
-        return
-    
-    def set_time(self, event):
+    def display_time(self, event):
         idx = event.idx
         time = event.time
         # Set time column for item at given index
@@ -211,7 +199,7 @@ class ProblemsView(ttk.Treeview, event.IObserver):
         self.set(id, column="time", value=time_str)
         return
     
-    def set_status(self, event):
+    def display_status(self, event):
         idx = event.idx
         status = event.status
         id = self.get_children()[idx]

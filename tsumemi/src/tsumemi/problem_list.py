@@ -6,7 +6,7 @@ import re
 from enum import Enum
 from typing import TYPE_CHECKING
 
-import tsumemi.src.tsumemi.event as event
+import tsumemi.src.tsumemi.event as evt
 
 if TYPE_CHECKING:
     import os
@@ -18,20 +18,20 @@ class ProblemStatus(Enum):
     NONE = 0; CORRECT = 1; WRONG = 2; SKIP = 3
 
 
-class ProbListEvent(event.Event):
+class ProbListEvent(evt.Event):
     def __init__(self, prob_list: List[Problem]) -> None:
         self.prob_list = prob_list
         return
 
 
-class ProbStatusEvent(event.Event):
+class ProbStatusEvent(evt.Event):
     def __init__(self, prob_idx: int, status: ProblemStatus) -> None:
         self.idx = prob_idx
         self.status = status
         return
 
 
-class ProbTimeEvent(event.Event):
+class ProbTimeEvent(evt.Event):
     def __init__(self, prob_idx: int, time: float) -> None:
         self.idx = prob_idx
         self.time = time
@@ -55,7 +55,7 @@ class Problem:
         return isinstance(obj, Problem) and self.filepath == obj.filepath
 
 
-class ProblemList(event.Emitter):
+class ProblemList(evt.Emitter):
     """Represent a sortable list of problems with a "pointer" to the
     current active problem. Also stores metadata about problem like
     solve time and status.
@@ -73,7 +73,7 @@ class ProblemList(event.Emitter):
         self.problems: List[Problem] = []
         self.curr_prob: Optional[Problem] = None
         self.curr_prob_idx: Optional[int] = None
-        self.observers: List[event.IObserver] = []
+        self.observers: List[evt.IObserver] = []
         return
     
     def clear(self, suppress=False) -> None:
