@@ -11,6 +11,7 @@ import tsumemi.src.tsumemi.problem_list as plist
 import tsumemi.src.tsumemi.timer as timer
 
 from tsumemi.src.tsumemi.board_canvas import BoardCanvas
+from tsumemi.src.tsumemi.game_adapter import GameAdapter
 from tsumemi.src.tsumemi.nav_controls import FreeModeNavControls, SpeedrunNavControls
 from tsumemi.src.tsumemi.settings_window import SettingsWindow, CONFIG_PATH
 
@@ -342,7 +343,7 @@ class MainWindow:
         )
         self.board.grid(column=0, row=0, sticky="NSEW")
         self.board.bind("<Configure>", self.board.on_resize)
-        self.model.game_adapter = model.GameAdapter(self.model.active_game, self.board)
+        self.model.game_adapter = GameAdapter(self.model.active_game, self.board)
         
         # Initialise solution text
         self.is_solution_shown = False
