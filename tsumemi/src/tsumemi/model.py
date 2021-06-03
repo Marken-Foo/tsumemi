@@ -2,33 +2,47 @@ from __future__ import annotations
 
 import os
 
+from typing import TYPE_CHECKING
+
 import tsumemi.src.shogi.kif as kif
 import tsumemi.src.tsumemi.event as evt
 import tsumemi.src.tsumemi.timer as timer
 
 from tsumemi.src.tsumemi.problem_list import Problem, ProblemList
 
+if TYPE_CHECKING:
+    from typing import Optional, Union
+    from tsumemi.src.shogi.game import Game
+    from tsumemi.src.shogi.kif import ParserVisitor, Reader
+    from tsumemi.src.tsumemi.game_adapter import GameAdapter
+    from tsumemi.src.tsumemi.problem_list import ProblemStatus
+    PathLike = Union[str, os.PathLike]
+
+
+class AnswerChecker:
+    pass
+
 
 class Model(evt.IObserver):
     """Main data model of program. Manages reading problems from file
     and maintaining the problem list.
     """
-    def __init__(self):
-        self.prob_buffer = ProblemList()
-        self.directory = None # not currently used meaningfully
-        self.solution = ""
-        self.reader = kif.KifReader()
-        self.active_game = self.reader.game
-        self.clock = timer.Timer()
-        self.game_adapter = None
+    def __init__(self) -> None:
+        self.prob_buffer: ProblemList = ProblemList()
+        self.directory: PathLike = "" # not currently used meaningfully
+        self.solution: str = ""
+        self.reader: Reader = kif.KifReader()
+        self.active_game: Game = self.reader.game
+        self.clock: timer.Timer = timer.Timer()
+        self.game_adapter: Optional[GameAdapter] = None
         
-        self.NOTIFY_ACTIONS: Dict[Type[Event], Callable[..., Any]] = {
+        self.NOTIFY_ACTIONS = {
             timer.TimerSplitEvent: self._on_split
         }
         self.clock.add_observer(self)
         return
     
-    def set_active_problem(self, idx=0):
+    def set_active_problem(self, idx: int = 0) -> bool:
         if self.prob_buffer.is_empty():
             return False
         else:
@@ -36,7 +50,9 @@ class Model(evt.IObserver):
                 self.read_problem()
             return True
     
-    def read_file(self, filename, reader, visitor):
+    def read_file(self, filename: PathLike,
+            reader: Reader, visitor: ParserVisitor
+        ) -> None:
         encodings = ["cp932", "utf-8"]
         for enc in encodings:
             try:
@@ -48,20 +64,22 @@ class Model(evt.IObserver):
                 break
         return
     
-    def read_problem(self):
+    def read_problem(self) -> None:
         # loads position and moves as a Game in the reader, returns None
-        self.read_file(
-            self.prob_buffer.get_curr_filepath(),
-            reader=self.reader,
+        filepath = self.prob_buffer.get_curr_filepath()
+        if filepath is None:
+            return # error out?
+        self.read_file(filepath, reader=self.reader,
             visitor=kif.GameBuilderPVis()
         )
         self.solution = "　".join(self.reader.game.to_notation_ja_kif())
-        self.reader.game.start()
+        self.active_game = self.reader.game
+        self.active_game.start()
         return
     
-    def add_problems_in_directory(self,
-            directory, recursive=False, suppress=False
-        ):
+    def add_problems_in_directory(self, directory: PathLike,
+            recursive: bool = False, suppress: bool = False
+        ) -> None:
         # Adds all problems in given directory to self.prob_buffer.
         # Does not otherwise alter state of Model.
         if recursive:
@@ -82,7 +100,9 @@ class Model(evt.IObserver):
                 ], suppress=suppress)
         return
     
-    def set_directory(self, directory, recursive=False):
+    def set_directory(self, directory: PathLike,
+            recursive: bool = False
+        ) -> bool:
         self.directory = directory
         self.prob_buffer.clear(suppress=True)
         self.add_problems_in_directory(
@@ -91,57 +111,57 @@ class Model(evt.IObserver):
         self.prob_buffer.sort_by_file()
         return self.set_active_problem()
     
-    def get_curr_filepath(self):
+    def get_curr_filepath(self) -> Optional[PathLike]:
         return self.prob_buffer.get_curr_filepath()
     
-    def open_next_file(self):
+    def open_next_file(self) -> bool:
         if self.prob_buffer.next():
             self.read_problem()
             return True
         else:
             return False
     
-    def open_prev_file(self):
+    def open_prev_file(self) -> bool:
         if self.prob_buffer.prev():
             self.read_problem()
             return True
         else:
             return False
     
-    def open_file(self, idx):
+    def open_file(self, idx: int) -> bool:
         if self.prob_buffer.go_to_idx(idx):
             self.read_problem()
             return True
         else:
             return False
     
-    def set_status(self, status):
+    def set_status(self, status: ProblemStatus) -> None:
         self.prob_buffer.set_status(status)
         return
     
-    def _on_split(self, event):
+    def _on_split(self, event: timer.TimerSplitEvent) -> None:
         if self.clock == event.clock and event.time is not None:
             self.prob_buffer.set_time(event.time)
         return
     
     # Timer clock controls
-    def start_timer(self):
+    def start_timer(self) -> None:
         self.clock.start()
         return
     
-    def stop_timer(self):
+    def stop_timer(self) -> None:
         self.clock.stop()
         return
     
-    def toggle_timer(self):
+    def toggle_timer(self) -> None:
         self.clock.toggle()
         return
     
-    def reset_timer(self):
+    def reset_timer(self) -> None:
         self.clock.reset()
         return
     
-    def split_timer(self):
+    def split_timer(self) -> None:
         time = self.clock.split()
         if time is not None:
             self.prob_buffer.set_time(time)

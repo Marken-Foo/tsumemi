@@ -11,8 +11,8 @@ from tsumemi.src.shogi.basetypes import KomaType
 
 if TYPE_CHECKING:
     from typing import Any, Callable, Dict, Tuple, Union
-    PathLike = Union[str, os.PathLike]
     ImgDict = Dict[Any, ImageTk.PhotoImage]
+    PathLike = Union[str, os.PathLike]
 
 
 BOARD_IMAGES_PATH = os.path.relpath(r"tsumemi/resources/images/boards") 

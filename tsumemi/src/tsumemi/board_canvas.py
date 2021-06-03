@@ -320,8 +320,7 @@ class BoardCanvas(tk.Canvas):
             y = y - k_height
         
         # Draw the komadai base
-        rect = 0
-        rect = self.create_rectangle(
+        self.create_rectangle(
             x-(k_width/2), y,
             x+(k_width/2), y+k_height,
             fill=self.komadai_img_cache.skin.colour,
