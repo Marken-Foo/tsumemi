@@ -24,7 +24,7 @@ class GameAdapter(evt.Emitter):
     Emits MoveEvents when a legal move has been successfully input.
     """
     def __init__(self, board_canvas: BoardCanvas) -> None:
-        self.observers: List[IObserver] = []
+        self.observers: List[evt.IObserver] = []
         self.board_canvas = board_canvas
         self.board_canvas.connect_game_adapter(self)
         self.position = self.board_canvas.game.position

@@ -9,6 +9,7 @@ import tsumemi.src.tsumemi.event as evt
 import tsumemi.src.tsumemi.timer as timer
 import tsumemi.src.tsumemi.game_adapter as gadapt
 
+from tsumemi.src.shogi.basetypes import TerminationMove
 from tsumemi.src.tsumemi.problem_list import Problem, ProblemList
 
 if TYPE_CHECKING:
@@ -20,24 +21,35 @@ if TYPE_CHECKING:
     PathLike = Union[str, os.PathLike]
 
 
+# class AppMode:
+    # """Base class for the states the application can be in.
+    # Currently free browsing mode or speedrun mode.
+    # """
+    # pass
+
+# class FreeMode(AppMode):
+
+
 class Model(evt.IObserver):
     """Main data model of program. Manages reading problems from file
     and maintaining the problem list.
     """
     def __init__(self, gui_controller: kbg.MainWindow) -> None:
+        # References to other control or relevant objects
         self.gui_controller = gui_controller
+        self.reader: Reader = kif.KifReader()
+        # Data
         self.prob_buffer: ProblemList = ProblemList()
         self.directory: PathLike = "" # not currently used meaningfully
         self.solution: str = ""
-        self.reader: Reader = kif.KifReader()
         self.active_game: Game = self.reader.game
         self.clock: timer.Timer = timer.Timer()
+        self.clock.add_observer(self)
         
         self.NOTIFY_ACTIONS = {
             gadapt.MoveEvent: self.verify_move,
             timer.TimerSplitEvent: self._on_split
         }
-        self.clock.add_observer(self)
         return
     
     def set_active_problem(self, idx: int = 0) -> bool:
@@ -143,6 +155,15 @@ class Model(evt.IObserver):
         if move == correct_move:
             self.active_game.make_move(move)
             self.gui_controller.board.draw()
+            if self.active_game.curr_node.is_leaf():
+                pass
+            else:
+                response_move = self.active_game.curr_node.next().move
+                if type(response_move) == TerminationMove:
+                    pass
+                else:
+                    self.active_game.make_move(response_move)
+                    self.gui_controller.board.draw()
         else:
             # self.active_game.make_move(move)
             self.gui_controller.board.draw()

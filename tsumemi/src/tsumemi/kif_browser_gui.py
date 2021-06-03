@@ -424,7 +424,7 @@ class MainWindow:
         res = fn()
         if res:
             self.display_problem()
-            self.model.game_adapter.clear_focus()
+            self.game_adapter.clear_focus()
         return res
     
     def open_folder(self, event=None, recursive=False):
