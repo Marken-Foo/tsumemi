@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from typing import Dict, Optional, Tuple
     from tsumemi.src.shogi.game import Game
     from tsumemi.src.shogi.position import Position
-    from tsumemi.src.tsumemi.game_adapter import MoveInputHandler
+    from tsumemi.src.tsumemi.move_input_handler import MoveInputHandler
 
 
 class BoardCanvas(tk.Canvas):

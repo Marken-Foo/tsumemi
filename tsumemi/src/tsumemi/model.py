@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 import tsumemi.src.shogi.kif as kif
 import tsumemi.src.tsumemi.event as evt
 import tsumemi.src.tsumemi.timer as timer
-import tsumemi.src.tsumemi.game_adapter as gadapt
+import tsumemi.src.tsumemi.move_input_handler as mih
 
 from tsumemi.src.shogi.basetypes import TerminationMove
 from tsumemi.src.tsumemi.problem_list import Problem, ProblemList
@@ -47,7 +47,7 @@ class Model(evt.IObserver):
         self.clock.add_observer(self)
         
         self.NOTIFY_ACTIONS = {
-            gadapt.MoveEvent: self.verify_move,
+            mih.MoveEvent: self.verify_move,
             timer.TimerSplitEvent: self._on_split
         }
         return
@@ -149,7 +149,7 @@ class Model(evt.IObserver):
         self.prob_buffer.set_status(status)
         return
     
-    def verify_move(self, event: gadapt.MoveEvent) -> None:
+    def verify_move(self, event: mih.MoveEvent) -> None:
         move = event.move
         if self.active_game.is_mainline(move):
             # the move is the mainline, so it is correct
