@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import tsumemi.src.shogi.rules as rules
+import tsumemi.src.tsumemi.event as evt
 
 from tsumemi.src.shogi.basetypes import Koma, KomaType, Move, Side, Square
 
@@ -12,15 +13,21 @@ if TYPE_CHECKING:
     from tsumemi.src.tsumemi.board_canvas import BoardCanvas
 
 
-class GameAdapter:
-    """Links a BoardCanvas (frontend) to a Game (backend).
-    Manages the logic flow between the GUI and data model.
+class MoveEvent(evt.Event):
+    def __init__(self, move: Move) -> None:
+        self.move = move
+        return
+
+
+class GameAdapter(evt.Emitter):
+    """Handles logic/legality for move input via frontend BoardCanvas.
+    Emits MoveEvents when a legal move has been successfully input.
     """
-    def __init__(self, game: Game, board_canvas: BoardCanvas) -> None:
-        self.game = game
-        self.position = self.game.position
+    def __init__(self, board_canvas: BoardCanvas) -> None:
+        self.observers: List[IObserver] = []
         self.board_canvas = board_canvas
         self.board_canvas.connect_game_adapter(self)
+        self.position = self.board_canvas.game.position
         self.focused_sq = Square.NONE
         self.focused_ktype = KomaType.NONE
         return
@@ -37,10 +44,8 @@ class GameAdapter:
         self.board_canvas.set_focus(sq)
         return
     
-    def make_move(self, move: Move) -> None:
-        self.game.make_move(move)
-        # send message to GUI to update position
-        self.board_canvas.draw()
+    def send_move(self, move: Move) -> None:
+        self._notify_observers(MoveEvent(move))
         return
     
     def receive_square(self, event,
@@ -90,7 +95,7 @@ class GameAdapter:
                     # Given the end square and koma type, if a valid
                     # drop exists, it's the only one.
                     if rules.is_legal(mvlist[0], self.position):
-                        self.make_move(mvlist[0])
+                        self.send_move(mvlist[0])
                     self.clear_focus()
                 else:
                     self.clear_focus()
@@ -113,7 +118,7 @@ class GameAdapter:
                 # or two (choice between promo or non)
                 if len(mvlist) == 1:
                     if rules.is_legal(mvlist[0], self.position):
-                        self.make_move(mvlist[0])
+                        self.send_move(mvlist[0])
                     self.clear_focus()
                 elif len(mvlist) == 2:
                     # If the promotion is legal, so is the
@@ -151,7 +156,7 @@ class GameAdapter:
                 captured=self.position.get_koma(sq),
                 is_promotion=is_promotion
             )
-            self.make_move(mv)
+            self.send_move(mv)
             self.clear_focus()
         return
     

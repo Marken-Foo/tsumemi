@@ -7,36 +7,34 @@ from typing import TYPE_CHECKING
 import tsumemi.src.shogi.kif as kif
 import tsumemi.src.tsumemi.event as evt
 import tsumemi.src.tsumemi.timer as timer
+import tsumemi.src.tsumemi.game_adapter as gadapt
 
 from tsumemi.src.tsumemi.problem_list import Problem, ProblemList
 
 if TYPE_CHECKING:
     from typing import Optional, Union
+    import tsumemi.src.tsumemi.kif_browser_gui as kbg
     from tsumemi.src.shogi.game import Game
     from tsumemi.src.shogi.kif import ParserVisitor, Reader
-    from tsumemi.src.tsumemi.game_adapter import GameAdapter
     from tsumemi.src.tsumemi.problem_list import ProblemStatus
     PathLike = Union[str, os.PathLike]
-
-
-class AnswerChecker:
-    pass
 
 
 class Model(evt.IObserver):
     """Main data model of program. Manages reading problems from file
     and maintaining the problem list.
     """
-    def __init__(self) -> None:
+    def __init__(self, gui_controller: kbg.MainWindow) -> None:
+        self.gui_controller = gui_controller
         self.prob_buffer: ProblemList = ProblemList()
         self.directory: PathLike = "" # not currently used meaningfully
         self.solution: str = ""
         self.reader: Reader = kif.KifReader()
         self.active_game: Game = self.reader.game
         self.clock: timer.Timer = timer.Timer()
-        self.game_adapter: Optional[GameAdapter] = None
         
         self.NOTIFY_ACTIONS = {
+            gadapt.MoveEvent: self.verify_move,
             timer.TimerSplitEvent: self._on_split
         }
         self.clock.add_observer(self)
@@ -137,6 +135,17 @@ class Model(evt.IObserver):
     
     def set_status(self, status: ProblemStatus) -> None:
         self.prob_buffer.set_status(status)
+        return
+    
+    def verify_move(self, event: gadapt.MoveEvent) -> None:
+        move = event.move
+        correct_move = self.active_game.curr_node.next().move
+        if move == correct_move:
+            self.active_game.make_move(move)
+            self.gui_controller.board.draw()
+        else:
+            # self.active_game.make_move(move)
+            self.gui_controller.board.draw()
         return
     
     def _on_split(self, event: timer.TimerSplitEvent) -> None:

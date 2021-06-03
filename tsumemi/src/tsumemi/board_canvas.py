@@ -78,8 +78,6 @@ class BoardCanvas(tk.Canvas):
         control via GUI.
         """
         self.game_adapter = game_adapter
-        self.game = game_adapter.game
-        self.position = game_adapter.position
         game_adapter.board_canvas = self
         return
     

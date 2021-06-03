@@ -284,7 +284,7 @@ class MainWindow:
     # eventually, refactor menu labels and dialog out into a constant namespace
     def __init__(self, master):
         # Set up data model
-        self.model = model.Model()
+        self.model = model.Model(gui_controller=self)
         # tkinter stuff, set up the main window
         # Reference to tk.Tk() root object
         self.master = master
@@ -331,7 +331,8 @@ class MainWindow:
         )
         self.board.grid(column=0, row=0, sticky="NSEW")
         self.board.bind("<Configure>", self.board.on_resize)
-        self.model.game_adapter = GameAdapter(self.model.active_game, self.board)
+        self.game_adapter = GameAdapter(self.board)
+        self.game_adapter.add_observer(self.model)
         
         # Initialise solution text
         self.is_solution_shown = False
