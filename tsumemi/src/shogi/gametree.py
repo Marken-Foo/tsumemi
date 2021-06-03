@@ -1,18 +1,24 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable, List, Optional
+from typing import TYPE_CHECKING
 
 from tsumemi.src.shogi.basetypes import NullMove
 
 if TYPE_CHECKING:
+    from typing import Any, Callable, List, Optional
     from tsumemi.src.shogi.basetypes import Move
 
 
 class MoveNode:
-    # Node in the gametree
+    """A node in a movetree. Each node contains the move leading to
+    it, and the comment attached to the move, if any.
+    As part of the tree structure, the MoveNode contains a reference
+    to its parent, and a list of child nodes in order of importance
+    (the mainline is the first in the list).
+    """
     def __init__(self, move: Move = NullMove(),
             parent: Optional[MoveNode] = None
-            ) -> None:
+        ) -> None:
         self.move = move # move leading to this node
         self.parent: MoveNode = NullMoveNode() if parent is None else parent
         self.movenum: int = 0 if parent is None else parent.movenum + 1
@@ -77,6 +83,9 @@ class MoveNode:
 
 
 class NullMoveNode(MoveNode):
+    """A NullMoveNode is sometimes needed, e.g. to detect the root of
+    the movetree which can have a NullMoveNode as its parent.
+    """
     def __init__(self, move: Move = NullMove(),
             parent: Optional[MoveNode] = None
             ) -> None:
@@ -92,6 +101,10 @@ class NullMoveNode(MoveNode):
 
 
 class GameNode(MoveNode):
+    """The root node of a movetree. Contains extra information like
+    the starting position (handicap/nonstandard game, or a problem
+    position) and the player names.
+    """
     def __init__(self) -> None:
         super().__init__()
         self.sente = ""

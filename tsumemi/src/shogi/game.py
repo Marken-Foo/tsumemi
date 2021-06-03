@@ -13,6 +13,10 @@ if TYPE_CHECKING:
 
 
 class Game:
+    """Representation of a shogi game. Contains a reference to the
+    root of the movetree, the current active node, and the current
+    position in the game.
+    """
     def __init__(self) -> None:
         self.movetree = GameNode()
         self.curr_node: MoveNode = self.movetree
@@ -20,11 +24,16 @@ class Game:
         return
     
     def reset(self) -> None:
+        """Reset self to a new empty game.
+        """
         self.movetree = GameNode()
         self.curr_node = self.movetree
         self.position.reset()
     
     def make_move(self, move: Move) -> None:
+        """Execute the given move in the position and add it to the
+        movetree if it doesn't already exist.
+        """
         self.curr_node = self.curr_node.add_move(move)
         self.position.make_move(move)
         return
