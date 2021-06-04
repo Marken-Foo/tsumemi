@@ -23,16 +23,6 @@ if TYPE_CHECKING:
     PathLike = Union[str, os.PathLike]
 
 
-class AppMode:
-    """Base class for the states the application can be in.
-    Currently free browsing mode or speedrun mode.
-    """
-    pass
-
-class FreeMode(AppMode):
-    pass
-
-
 class Model(evt.IObserver):
     """Main data model of program. Manages reading problems from file
     and maintaining the problem list.
@@ -132,9 +122,6 @@ class Model(evt.IObserver):
     def get_curr_filepath(self) -> Optional[PathLike]:
         return self.main_prob_buffer.get_curr_filepath()
     
-    #=== REFACTORED FROM MainWindow
-    #=== END REF
-    
     def go_to_next_file(self, event: tk.Event = None) -> bool:
         res = False
         if self.main_prob_buffer.next():
@@ -142,7 +129,7 @@ class Model(evt.IObserver):
             res = True
         if res:
             self.gui_controller.display_problem()
-            self.gui_controller.move_input_handler.clear_focus()
+            self.gui_controller.move_input_handler.set_state("ready")
         return res
     
     def go_to_prev_file(self, event: tk.Event = None) -> bool:
@@ -152,7 +139,7 @@ class Model(evt.IObserver):
             res = True
         if res:
             self.gui_controller.display_problem()
-            self.gui_controller.move_input_handler.clear_focus()
+            self.gui_controller.move_input_handler.set_state("ready")
         return res
     
     def go_to_file(self, idx: int = 0, event: tk.Event = None) -> bool:
@@ -162,7 +149,7 @@ class Model(evt.IObserver):
             res = True
         if res:
             self.gui_controller.display_problem()
-            self.gui_controller.move_input_handler.clear_focus()
+            self.gui_controller.move_input_handler.set_state("ready")
         return res
     
     def set_status(self, status: ProblemStatus) -> None:
