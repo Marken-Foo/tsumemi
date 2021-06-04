@@ -10,7 +10,7 @@ import tsumemi.src.tsumemi.event as evt
 
 if TYPE_CHECKING:
     import os
-    from typing import Any, List, Optional, Union
+    from typing import Any, Iterable, List, Optional, Union
     PathLike = Union[str, os.PathLike]
 
 
@@ -87,7 +87,17 @@ class ProblemList(evt.Emitter):
     def is_empty(self) -> bool:
         return not bool(self.problems)
     
-    def add_problems(self, new_problems, suppress=False) -> None:
+    def add_problem(self, new_problem: Problem,
+            suppress: bool = False
+        ) -> None:
+        self.problems.append(new_problem)
+        if not suppress:
+            self._notify_observers(ProbListEvent(self.problems))
+        return
+    
+    def add_problems(self, new_problems: Iterable[Problem],
+            suppress: bool = False
+        ) -> None:
         self.problems.extend(new_problems)
         if not suppress:
             self._notify_observers(ProbListEvent(self.problems))

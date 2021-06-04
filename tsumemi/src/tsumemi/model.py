@@ -13,6 +13,7 @@ from tsumemi.src.shogi.basetypes import TerminationMove
 from tsumemi.src.tsumemi.problem_list import Problem, ProblemList
 
 if TYPE_CHECKING:
+    import tkinter as tk
     from typing import Optional, Union
     import tsumemi.src.tsumemi.kif_browser_gui as kbg
     from tsumemi.src.shogi.game import Game
@@ -21,26 +22,28 @@ if TYPE_CHECKING:
     PathLike = Union[str, os.PathLike]
 
 
-# class AppMode:
-    # """Base class for the states the application can be in.
-    # Currently free browsing mode or speedrun mode.
-    # """
-    # pass
+class AppMode:
+    """Base class for the states the application can be in.
+    Currently free browsing mode or speedrun mode.
+    """
+    pass
 
-# class FreeMode(AppMode):
+class FreeMode(AppMode):
+    pass
 
 
 class Model(evt.IObserver):
     """Main data model of program. Manages reading problems from file
     and maintaining the problem list.
     """
+    # This is currently actually a mishmash of Model + controller.
+    # Try to refactor the controller bits from MainWindow to here.
     def __init__(self, gui_controller: kbg.MainWindow) -> None:
         # References to other control or relevant objects
         self.gui_controller = gui_controller
         self.reader: Reader = kif.KifReader()
         # Data
-        self.prob_buffer: ProblemList = ProblemList()
-        self.directory: PathLike = "" # not currently used meaningfully
+        self.main_prob_buffer: ProblemList = ProblemList()
         self.solution: str = ""
         self.active_game: Game = self.reader.game
         self.clock: timer.Timer = timer.Timer()
@@ -53,16 +56,18 @@ class Model(evt.IObserver):
         return
     
     def set_active_problem(self, idx: int = 0) -> bool:
-        if self.prob_buffer.is_empty():
+        # Set the active problem for main_prob_buffer
+        if self.main_prob_buffer.is_empty():
             return False
         else:
-            if self.prob_buffer.go_to_idx(idx):
+            if self.main_prob_buffer.go_to_idx(idx):
                 self.read_problem()
             return True
     
     def read_file(self, filename: PathLike,
             reader: Reader, visitor: ParserVisitor
         ) -> None:
+        # Get the given reader to read the given file.
         encodings = ["cp932", "utf-8"]
         for enc in encodings:
             try:
@@ -75,8 +80,9 @@ class Model(evt.IObserver):
         return
     
     def read_problem(self) -> None:
-        # loads position and moves as a Game in the reader, returns None
-        filepath = self.prob_buffer.get_curr_filepath()
+        # Get the active reader to read the current active problem
+        # from file
+        filepath = self.main_prob_buffer.get_curr_filepath()
         if filepath is None:
             return # error out?
         self.read_file(filepath, reader=self.reader,
@@ -90,11 +96,11 @@ class Model(evt.IObserver):
     def add_problems_in_directory(self, directory: PathLike,
             recursive: bool = False, suppress: bool = False
         ) -> None:
-        # Adds all problems in given directory to self.prob_buffer.
+        # Adds all problems in given directory to self.main_prob_buffer.
         # Does not otherwise alter state of Model.
         if recursive:
             for dirpath, _, filenames in os.walk(directory):
-                self.prob_buffer.add_problems([
+                self.main_prob_buffer.add_problems([
                     Problem(os.path.join(dirpath, filename))
                     for filename in filenames
                     if filename.endswith(".kif")
@@ -102,7 +108,7 @@ class Model(evt.IObserver):
                 ], suppress=suppress)
         else:
             with os.scandir(directory) as it:
-                self.prob_buffer.add_problems([
+                self.main_prob_buffer.add_problems([
                     Problem(os.path.join(directory, entry.name))
                     for entry in it
                     if entry.name.endswith(".kif")
@@ -113,43 +119,59 @@ class Model(evt.IObserver):
     def set_directory(self, directory: PathLike,
             recursive: bool = False
         ) -> bool:
-        self.directory = directory
-        self.prob_buffer.clear(suppress=True)
+        # Open the given directory and set main_prob_buffer to its
+        # contents.
+        self.main_prob_buffer.clear(suppress=True)
         self.add_problems_in_directory(
             directory, recursive=recursive, suppress=True
         )
-        self.prob_buffer.sort_by_file()
+        self.main_prob_buffer.sort_by_file()
         return self.set_active_problem()
     
     def get_curr_filepath(self) -> Optional[PathLike]:
-        return self.prob_buffer.get_curr_filepath()
+        return self.main_prob_buffer.get_curr_filepath()
     
-    def open_next_file(self) -> bool:
-        if self.prob_buffer.next():
-            self.read_problem()
-            return True
-        else:
-            return False
+    #=== REFACTORED FROM MainWindow
+    #=== END REF
     
-    def open_prev_file(self) -> bool:
-        if self.prob_buffer.prev():
+    def go_to_next_file(self, event: tk.Event = None) -> bool:
+        res = False
+        if self.main_prob_buffer.next():
             self.read_problem()
-            return True
-        else:
-            return False
+            res = True
+        if res:
+            self.gui_controller.display_problem()
+            self.gui_controller.move_input_handler.clear_focus()
+        return res
     
-    def open_file(self, idx: int) -> bool:
-        if self.prob_buffer.go_to_idx(idx):
+    def go_to_prev_file(self, event: tk.Event = None) -> bool:
+        res = False
+        if self.main_prob_buffer.prev():
             self.read_problem()
-            return True
-        else:
-            return False
+            res = True
+        if res:
+            self.gui_controller.display_problem()
+            self.gui_controller.move_input_handler.clear_focus()
+        return res
+    
+    def go_to_file(self, idx: int = 0, event: tk.Event = None) -> bool:
+        res = False
+        if self.main_prob_buffer.go_to_idx(idx):
+            self.read_problem()
+            res = True
+        if res:
+            self.gui_controller.display_problem()
+            self.gui_controller.move_input_handler.clear_focus()
+        return res
     
     def set_status(self, status: ProblemStatus) -> None:
-        self.prob_buffer.set_status(status)
+        self.main_prob_buffer.set_status(status)
         return
     
     def verify_move(self, event: mih.MoveEvent) -> None:
+        # given a move sent via input event, check if the move is
+        # correct, and if it is, execute the move.
+        # could possibly be refactored? (Single-responsibility)
         move = event.move
         if self.active_game.is_mainline(move):
             # the move is the mainline, so it is correct
@@ -171,7 +193,7 @@ class Model(evt.IObserver):
     
     def _on_split(self, event: timer.TimerSplitEvent) -> None:
         if self.clock == event.clock and event.time is not None:
-            self.prob_buffer.set_time(event.time)
+            self.main_prob_buffer.set_time(event.time)
         return
     
     # Timer clock controls
@@ -194,5 +216,12 @@ class Model(evt.IObserver):
     def split_timer(self) -> None:
         time = self.clock.split()
         if time is not None:
-            self.prob_buffer.set_time(time)
+            self.main_prob_buffer.set_time(time)
         return
+    
+    # Speedrun methods
+    # def end_of_folder(self) -> None:
+        # self.stop_timer()
+        # self.gui_controller.show_end_of_folder_message()
+        # self.gui_controller.abort_speedrun()
+        # return

@@ -190,7 +190,7 @@ class ProblemsView(ttk.Treeview, evt.IObserver):
         
         # Bind double click to go to problem
         self.bind("<Double-1>",
-            lambda e: self.controller.go_to_file(
+            lambda e: self.controller.model.go_to_file(
                 idx=self.get_idx_on_click(e)
             )
         )
@@ -379,7 +379,7 @@ class MainWindow:
         # Problem list
         self.problem_list_pane = ProblemListPane(
             parent=self.mainframe, controller=self,
-            problem_list=self.model.prob_buffer
+            problem_list=self.model.main_prob_buffer
         )
         self.problem_list_pane.grid(column=1, row=0, sticky="NSEW")
         self.problem_list_pane.columnconfigure(0, weight=1)
@@ -391,7 +391,8 @@ class MainWindow:
         self.bindings.bind_shortcuts(self.master, self.bindings.MASTER_SHORTCUTS)
         self.bindings.bind_shortcuts(self.master, self.bindings.FREE_SHORTCUTS)
         return
-        
+    
+    #=== GUI display methods
     def display_problem(self) -> None:
         self.board.draw()
         self.hide_solution()
@@ -418,24 +419,11 @@ class MainWindow:
             self.show_solution()
         return
     
-    def next_file(self, event: Optional[tk.Event] = None) -> bool:
-        return self.go_to_file(fn=self.model.open_next_file, event=event)
+    def flip_board(self, want_upside_down: bool) -> None:
+        self.board.flip_board(want_upside_down)
+        return
     
-    def prev_file(self, event: Optional[tk.Event] = None) -> bool:
-        return self.go_to_file(fn=self.model.open_prev_file, event=event)
-    
-    def go_to_file(self, idx: int = 0,
-            fn: Optional[Callable[..., bool]] = None,
-            event: Optional[tk.Event] = None
-        ) -> bool:
-        if fn is None:
-            fn = partial(self.model.open_file, idx)
-        res = fn()
-        if res:
-            self.display_problem()
-            self.move_input_handler.clear_focus()
-        return res
-    
+    #=== Open folder, needs file open dialog
     def open_folder(self, event: Optional[tk.Event] = None,
             recursive: bool = False
         ) -> None:
@@ -451,10 +439,6 @@ class MainWindow:
     def open_folder_recursive(self, event: Optional[tk.Event] = None) -> None:
         return self.open_folder(event, recursive=True)
     
-    def flip_board(self, want_upside_down: bool) -> None:
-        self.board.flip_board(want_upside_down)
-        return
-    
     # Speedrun mode commands
     def start_speedrun(self) -> None:
         # Make UI changes
@@ -466,7 +450,7 @@ class MainWindow:
         self.problem_list_pane.btn_abort_speedrun.grid()
         # Set application state
         self.bindings.unbind_shortcuts(self.master, self.bindings.FREE_SHORTCUTS)
-        self.go_to_file(idx=0)
+        self.model.go_to_file(idx=0)
         self.model.reset_timer()
         self.model.start_timer()
         return
@@ -487,7 +471,7 @@ class MainWindow:
     def skip(self) -> None:
         self.model.split_timer()
         self.model.set_status(plist.ProblemStatus.SKIP)
-        if not self.next_file():
+        if not self.model.go_to_next_file():
             self.end_of_folder()
         return
     
@@ -500,7 +484,7 @@ class MainWindow:
     
     def mark_correct(self) -> None:
         self.model.set_status(plist.ProblemStatus.CORRECT)
-        if not self.next_file():
+        if not self.model.go_to_next_file():
             self.end_of_folder()
             return
         self.nav_controls.show_sol_skip()
@@ -509,7 +493,7 @@ class MainWindow:
     
     def mark_wrong(self) -> None:
         self.model.set_status(plist.ProblemStatus.WRONG)
-        if not self.next_file():
+        if not self.model.go_to_next_file():
             self.end_of_folder()
             return
         self.nav_controls.show_sol_skip()
@@ -541,8 +525,8 @@ class Bindings:
         self.FREE_SHORTCUTS = {
             "<Key-h>": self.controller.toggle_solution,
             "<Key-H>": self.controller.toggle_solution,
-            "<Left>": self.controller.prev_file,
-            "<Right>": self.controller.next_file
+            "<Left>": self.controller.model.go_to_prev_file,
+            "<Right>": self.controller.model.go_to_next_file
         }
         
         self.SPEEDRUN_SHORTCUTS = {}
