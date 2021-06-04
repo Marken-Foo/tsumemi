@@ -41,7 +41,7 @@ class Model(evt.IObserver):
         self.clock.add_observer(self)
         
         self.NOTIFY_ACTIONS = {
-            mih.MoveEvent: self.verify_move,
+            mih.MoveEvent: self.add_move,
             timer.TimerSplitEvent: self._on_split
         }
         return
@@ -156,9 +156,19 @@ class Model(evt.IObserver):
         self.main_prob_buffer.set_status(status)
         return
     
+    def add_move(self, event: mih.MoveEvent) -> None:
+        """Make the move, regardless of whether the move is in the
+        game or not.
+        """
+        move = event.move
+        self.active_game.add_move(move)
+        self.gui_controller.board.draw()
+        return
+    
     def verify_move(self, event: mih.MoveEvent) -> None:
+        # Used only in speedrun mode
         # given a move sent via input event, check if the move is
-        # correct, and if it is, execute the move.
+        # correct, and if it is, make the move.
         # could possibly be refactored? (Single-responsibility)
         move = event.move
         if self.active_game.is_mainline(move):
@@ -166,17 +176,18 @@ class Model(evt.IObserver):
             self.active_game.make_move(move)
             self.gui_controller.board.draw()
             if self.active_game.is_end():
-                pass
+                self.mark_correct_and_pause()
             else:
                 response_move = self.active_game.get_mainline_move()
                 if type(response_move) == TerminationMove:
-                    pass
+                    self.mark_correct_and_pause()
                 else:
                     self.active_game.make_move(response_move)
                     self.gui_controller.board.draw()
+                    if self.active_game.is_end():
+                        self.mark_correct_and_pause()
         else:
-            # self.active_game.make_move(move)
-            self.gui_controller.board.draw()
+            self.mark_wrong_and_pause()
         return
     
     def _on_split(self, event: timer.TimerSplitEvent) -> None:
@@ -210,6 +221,7 @@ class Model(evt.IObserver):
     # Speedrun mode methods
     def start_speedrun(self) -> None:
         self.go_to_file(idx=0)
+        self.NOTIFY_ACTIONS[mih.MoveEvent] = self.verify_move
         self.gui_controller.set_speedrun_ui()
         self.reset_timer()
         self.start_timer()
@@ -217,6 +229,7 @@ class Model(evt.IObserver):
     
     def abort_speedrun(self) -> None:
         self.stop_timer()
+        self.NOTIFY_ACTIONS[mih.MoveEvent] = self.add_move
         self.gui_controller.remove_speedrun_ui()
         return
     
@@ -227,17 +240,35 @@ class Model(evt.IObserver):
             self.end_of_folder()
         return
     
+    def mark_correct_and_pause(self) -> None:
+        self.set_status(plist.ProblemStatus.CORRECT)
+        self.split_timer()
+        self.stop_timer()
+        self.gui_controller.show_solution()
+        self.gui_controller.nav_controls.show_continue()
+        return
+    
+    def mark_wrong_and_pause(self) -> None:
+        self.set_status(plist.ProblemStatus.WRONG)
+        self.split_timer()
+        self.stop_timer()
+        self.gui_controller.show_solution()
+        self.gui_controller.nav_controls.show_continue()
+        self.gui_controller.board.draw()
+        return
+    
     def mark_correct(self) -> None:
         self.set_status(plist.ProblemStatus.CORRECT)
-        if not self.go_to_next_file():
-            self.end_of_folder()
-            return
-        self.gui_controller.nav_controls.show_sol_skip()
-        self.start_timer()
+        self.continue_speedrun()
         return
     
     def mark_wrong(self) -> None:
         self.set_status(plist.ProblemStatus.WRONG)
+        self.continue_speedrun()
+        return
+    
+    def continue_speedrun(self) -> None:
+        # continue speedrun from a pause, answer-checking state.
         if not self.go_to_next_file():
             self.end_of_folder()
             return

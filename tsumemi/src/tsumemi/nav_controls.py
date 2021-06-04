@@ -40,6 +40,9 @@ class NavControls(ttk.Frame):
             command=lambda: self.controller.flip_board(want_upside_down.get()),
             variable=want_upside_down, onvalue=True, offvalue=False
         )
+    
+    def _add_btn_continue_speedrun(self, text="Next"):
+        return ttk.Button(self, text=text, command=self.controller.model.continue_speedrun)
 
 
 class FreeModeNavControls(NavControls):
@@ -71,6 +74,8 @@ class SpeedrunNavControls(NavControls):
         self.btn_correct.grid(column=0, row=0, sticky="E")
         self.btn_wrong = self._add_btn_wrong()
         self.btn_wrong.grid(column=1, row=0, sticky="W")
+        self.btn_continue_speedrun = self._add_btn_continue_speedrun()
+        self.btn_continue_speedrun.grid(column=0, row=0)
         self.chk_upside_down = self._add_chk_upside_down()
         self.chk_upside_down.grid(column=0, row=1, columnspan=3)
         for child in self.winfo_children():
@@ -84,6 +89,7 @@ class SpeedrunNavControls(NavControls):
         self.btn_skip.grid_remove()
         self.btn_correct.grid()
         self.btn_wrong.grid()
+        self.btn_continue_speedrun.grid_remove()
         return
     
     def show_sol_skip(self):
@@ -91,4 +97,13 @@ class SpeedrunNavControls(NavControls):
         self.btn_skip.grid()
         self.btn_correct.grid_remove()
         self.btn_wrong.grid_remove()
+        self.btn_continue_speedrun.grid_remove()
+        return
+    
+    def show_continue(self):
+        self.btn_view_solution.grid_remove()
+        self.btn_skip.grid_remove()
+        self.btn_correct.grid_remove()
+        self.btn_wrong.grid_remove()
+        self.btn_continue_speedrun.grid()
         return
