@@ -221,6 +221,18 @@ class Model(evt.IObserver):
         return
     
     # Speedrun mode methods
+    def start_speedrun(self) -> None:
+        self.go_to_file(idx=0)
+        self.gui_controller.set_speedrun_ui()
+        self.reset_timer()
+        self.start_timer()
+        return
+    
+    def abort_speedrun(self) -> None:
+        self.stop_timer()
+        self.gui_controller.remove_speedrun_ui()
+        return
+    
     def skip(self) -> None:
         self.split_timer()
         self.set_status(plist.ProblemStatus.SKIP)
@@ -249,5 +261,5 @@ class Model(evt.IObserver):
     def end_of_folder(self) -> None:
         self.stop_timer()
         self.gui_controller.show_end_of_folder_message()
-        self.gui_controller.abort_speedrun()
+        self.abort_speedrun()
         return

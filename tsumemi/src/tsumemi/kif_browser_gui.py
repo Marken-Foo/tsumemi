@@ -269,13 +269,13 @@ class ProblemListPane(ttk.Frame):
         # Make speedrun mode button
         self.btn_speedrun = ttk.Button(
             self, text="Start speedrun",
-            command=controller.start_speedrun
+            command=controller.model.start_speedrun
         )
         self.btn_speedrun.grid(column=0, row=2)
         self.btn_speedrun.grid_remove()
         self.btn_abort_speedrun = ttk.Button(
             self, text="Abort speedrun",
-            command=controller.abort_speedrun
+            command=controller.model.abort_speedrun
         )
         self.btn_abort_speedrun.grid(column=0, row=2)
         self.btn_abort_speedrun.grid_remove()
@@ -440,7 +440,7 @@ class MainWindow:
         return self.open_folder(event, recursive=True)
     
     # Speedrun mode commands
-    def start_speedrun(self) -> None:
+    def set_speedrun_ui(self) -> None:
         # Make UI changes
         self.nav_controls.grid_remove()
         self.nav_controls = self._navcons["speedrun"]
@@ -450,12 +450,9 @@ class MainWindow:
         self.problem_list_pane.btn_abort_speedrun.grid()
         # Set application state
         self.bindings.unbind_shortcuts(self.master, self.bindings.FREE_SHORTCUTS)
-        self.model.go_to_file(idx=0)
-        self.model.reset_timer()
-        self.model.start_timer()
         return
-        
-    def abort_speedrun(self) -> None:
+    
+    def remove_speedrun_ui(self) -> None:
         # Abort speedrun, go back to free browsing
         # Make UI changes
         self.nav_controls.grid_remove()
@@ -465,7 +462,6 @@ class MainWindow:
         self.problem_list_pane.btn_abort_speedrun.grid_remove()
         # Set application state
         self.bindings.bind_shortcuts(self.master, self.bindings.FREE_SHORTCUTS)
-        self.model.stop_timer()
         return
     
     def view_solution(self) -> None:
