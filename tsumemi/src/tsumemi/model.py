@@ -8,6 +8,7 @@ import tsumemi.src.shogi.kif as kif
 import tsumemi.src.tsumemi.event as evt
 import tsumemi.src.tsumemi.timer as timer
 import tsumemi.src.tsumemi.move_input_handler as mih
+import tsumemi.src.tsumemi.problem_list as plist
 
 from tsumemi.src.shogi.basetypes import TerminationMove
 from tsumemi.src.tsumemi.problem_list import Problem, ProblemList
@@ -219,9 +220,34 @@ class Model(evt.IObserver):
             self.main_prob_buffer.set_time(time)
         return
     
-    # Speedrun methods
-    # def end_of_folder(self) -> None:
-        # self.stop_timer()
-        # self.gui_controller.show_end_of_folder_message()
-        # self.gui_controller.abort_speedrun()
-        # return
+    # Speedrun mode methods
+    def skip(self) -> None:
+        self.split_timer()
+        self.set_status(plist.ProblemStatus.SKIP)
+        if not self.go_to_next_file():
+            self.end_of_folder()
+        return
+    
+    def mark_correct(self) -> None:
+        self.set_status(plist.ProblemStatus.CORRECT)
+        if not self.go_to_next_file():
+            self.end_of_folder()
+            return
+        self.gui_controller.nav_controls.show_sol_skip()
+        self.start_timer()
+        return
+    
+    def mark_wrong(self) -> None:
+        self.set_status(plist.ProblemStatus.WRONG)
+        if not self.go_to_next_file():
+            self.end_of_folder()
+            return
+        self.gui_controller.nav_controls.show_sol_skip()
+        self.start_timer()
+        return
+    
+    def end_of_folder(self) -> None:
+        self.stop_timer()
+        self.gui_controller.show_end_of_folder_message()
+        self.gui_controller.abort_speedrun()
+        return

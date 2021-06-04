@@ -25,13 +25,13 @@ class NavControls(ttk.Frame):
         )
     
     def _add_btn_skip(self, text="Skip"):
-        return ttk.Button(self, text=text, command=self.controller.skip)
+        return ttk.Button(self, text=text, command=self.controller.model.skip)
     
     def _add_btn_correct(self, text="Correct"):
-        return ttk.Button(self, text=text, command=self.controller.mark_correct)
+        return ttk.Button(self, text=text, command=self.controller.model.mark_correct)
     
     def _add_btn_wrong(self, text="Wrong"):
-        return ttk.Button(self, text=text, command=self.controller.mark_wrong)
+        return ttk.Button(self, text=text, command=self.controller.model.mark_wrong)
     
     def _add_chk_upside_down(self, text="Upside-down mode"):
         want_upside_down = tk.BooleanVar(value=False)

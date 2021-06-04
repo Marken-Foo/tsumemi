@@ -468,13 +468,6 @@ class MainWindow:
         self.model.stop_timer()
         return
     
-    def skip(self) -> None:
-        self.model.split_timer()
-        self.model.set_status(plist.ProblemStatus.SKIP)
-        if not self.model.go_to_next_file():
-            self.end_of_folder()
-        return
-    
     def view_solution(self) -> None:
         self.model.split_timer()
         self.model.stop_timer()
@@ -482,31 +475,11 @@ class MainWindow:
         self.nav_controls.show_correct_wrong()
         return
     
-    def mark_correct(self) -> None:
-        self.model.set_status(plist.ProblemStatus.CORRECT)
-        if not self.model.go_to_next_file():
-            self.end_of_folder()
-            return
-        self.nav_controls.show_sol_skip()
-        self.model.start_timer()
-        return
-    
-    def mark_wrong(self) -> None:
-        self.model.set_status(plist.ProblemStatus.WRONG)
-        if not self.model.go_to_next_file():
-            self.end_of_folder()
-            return
-        self.nav_controls.show_sol_skip()
-        self.model.start_timer()
-        return
-    
-    def end_of_folder(self) -> None:
-        self.model.stop_timer()
+    def show_end_of_folder_message(self) -> None:
         messagebox.showinfo(
             title="End of folder",
             message="You have reached the end of the speedrun."
         )
-        self.abort_speedrun()
         return
 
 
