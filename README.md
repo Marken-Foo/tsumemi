@@ -1,62 +1,64 @@
 # Tsumemi 詰め見 - KIF browser #
 
-Navigate through a folder of tsumeshogi problems with ease. For each problem, see the board position and view the solution when done solving.
+Navigate through your tsumeshogi problems with ease. Speedrun a set of tsumeshogi problems and record your statistics.
 
 ![](browser.png)
 
-Shogi players may have hundreds of tsumeshogi stored in .kif files. However, as far as I'm aware there isn't a program to quickly go through these files. For stronger players who can solve each problem at a glance, the total time taken opening each file in turn can be many times more than the actual solving.
+Shogi players may have hundreds of tsumeshogi stored in .kif files. For stronger players who can solve each problem at a glance, the total time taken opening each file in turn can be many times longer than the actual solving.
 
-This little bit of Python aims to let shogi players train with their large collections of tsumeshogi quickly and efficiently.
-
-## How to install ##
-
-### From binary ###
-
-For Windows 10 users, you can download a zipped file from the [Releases](https://github.com/Marken-Foo/tsumemi/releases/) tab.
-
-To use, unzip the folder somewhere and run the tsumemi.exe executable file inside.
-
-### From source ###
-
-Dependencies: Python 3.5 (tested with 3.8.1) or later, TKinter 8.6 or later, Pillow (tested with 8.1.0)
-
-Download the repo into the working directory of your choice, e.g. `git svn clone https://github.com/Marken-Foo/tsumemi/trunk` (Git SVN) or `git clone https://github.com/Marken-Foo/tsumemi.git` (Git).
-
-To open the program, either run tsumemi.py (make sure it's in the same directory as the top-level tsumemi folder), or run the tsumemi top-level package from the command line with `python3 -m tsumemi`.
+Tsumemi lets shogi players train with their large collections of tsumeshogi quickly and efficiently.
 
 Comes with a free set of ten 1-te and ten 3-te problems in the folder `/sample_problems`, composed by Marken Foo.
 
-### Less-technical instructions - from source ###
+## How to install ##
+
+### Zip file ###
+
+Windows 10 users can download a zip file from the [Releases](https://github.com/Marken-Foo/tsumemi/releases/) tab.
+
+To use, unzip the folder somewhere and run the `tsumemi.exe` executable file inside.
+
+### From source ###
+
+Dependencies: Python 3.7 (tested with 3.8.1) or later, TKinter 8.6 or later, Pillow (tested with 8.1.0)
+
+Download the repo into the working directory of your choice, e.g. `git svn clone https://github.com/Marken-Foo/tsumemi/trunk` (Git SVN) or `git clone https://github.com/Marken-Foo/tsumemi.git` (Git).
+
+To run, either run tsumemi.py (make sure it's in the same directory as the top-level tsumemi folder), or run the tsumemi top-level package from the command line with `python3 -m tsumemi`.
+
+### From source (for the less technically-inclined) ###
 
 You'll need Python 3, which will help you run Python (.py) code files on your computer. You can download an installer for the latest version from the [official Python website](https://www.python.org/). It also comes with TKinter.
 
-You'll also need Pillow, which lets Python files deal with images. Once you've installed Python (let it change your PATH variable when installing!), open a console (Command Prompt, Windows Powershell, Mac Terminal, Bash, etc). Type `pip install Pillow` and press enter. This should install Pillow.
+You'll also need Pillow, which lets Python files deal with images. Once you've installed Python (let it change your PATH variable when installing!), open a console (Command Prompt, Windows Powershell, Mac Terminal, bash, etc). Type `pip install Pillow` and press Enter. This should install Pillow.
 
 (If you have issues with the above steps, you can consult the first two sections of some [documentation on how to install python packages](https://packaging.python.org/tutorials/installing-packages/).
 
-Download everything in this repository. You can go to the [main page of this repository](https://github.com/Marken-Foo/tsumemi), click the green "Code" at the top right of the file list, and you can download everything as a zip file.
+Download everything in this GitHub repository. You can go to the [main page of this repository](https://github.com/Marken-Foo/tsumemi), click the green "Code" at the top right of the file list, and you can download everything as a zip file.
 
 Finally, to run the program, double click on `tsumemi.py`.
 
 ## How to use ##
 
-From the menu bar, "File -> Open folder...", or Ctrl-O on the keyboard opens the folder selection dialog. Select the folder containing the kifu files you want to browse.
+From the menu bar, "File -> Open folder...", or Ctrl-O opens the folder selection dialog. Select a folder, and all kifu files within the folder will be opened.
 
 ### Free mode ###
 
-The board position of the first file will be shown once you open a folder containing some kifu files. Click "Show/hide solution" or press H to show or hide the solution (it must be entered as the main line in the kifu file).
+The board position of the first kifu file will be shown once you open a folder. Click "Show/hide solution" or press H to show or hide the solution (it must be entered as the main line in the kifu file).
 
 Press "< Prev" (or the left arrow key) or "Next >" (or the right arrow key) to go to the previous or next .kif files in the selected directory.
 
 Check "Upside-down mode" to display the positions from gote's point of view instead, for a different style of training.
 
-There is a simple stopwatch timer under the problem list. "Split" will record the time since the last split as the time taken to solve the current problem.
+There is a simple stopwatch under the problem list. "Split" records the time taken to solve the current problem (time since the last split).
 
 ### Speedrun mode ###
 
 The "Start speedrun" button will enter **speedrun mode**, where you can go through all the problems in the folder in order while your times for solving each are recorded.
 
-For each problem, once you have solved it you can choose *Show solution* to check your answer and select whether you got it right or wrong (the timer will be paused while doing so). If you cannot solve the problem, you can choose to *Skip* to the next problem instead.
+For each problem, you can move pieces to solve it. Illegal moves will be ignored (except uchifuzume/pawn-drop mate), but any wrong move will be flagged as a wrong answer.
+
+Alternatively, *Show solution* lets you check your answer and choose whether you got it right or wrong (the timer will be paused while doing so). If you cannot solve the problem, you can *Skip* to the next problem without seeing the solution.
 
 Your time splits and correct/wrong/skip/unattempted status for each problem are displayed in the panel on the right.
 
@@ -68,7 +70,7 @@ Internationalised pieces are included.
 
 ## Feedback ##
 
-This is just a small bit of code to try making something convenient. If you encounter any bugs, let me know. Including an example of the offending .kif files that it couldn't read would help.
+If you encounter any bugs, let me know. Do include steps of what you were doing to trigger the bug, examples of .kif files that couldn't be read, or even screenshots if they help.
 
 ## Licence ##
 
