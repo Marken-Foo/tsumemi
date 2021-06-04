@@ -424,7 +424,7 @@ class MainWindow:
         res = fn()
         if res:
             self.display_problem()
-            self.move_input_handler.clear_focus()
+            self.move_input_handler.set_state("ready")
         return res
     
     def open_folder(self, event=None, recursive=False):
