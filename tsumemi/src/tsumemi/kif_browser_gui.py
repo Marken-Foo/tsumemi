@@ -1,9 +1,12 @@
+from __future__ import annotations
+
 import configparser
 import os
 import tkinter as tk
 
 from functools import partial
 from tkinter import filedialog, messagebox, ttk
+from typing import TYPE_CHECKING
 
 import tsumemi.src.tsumemi.event as evt
 import tsumemi.src.tsumemi.model as model
@@ -14,6 +17,9 @@ from tsumemi.src.tsumemi.board_canvas import BoardCanvas
 from tsumemi.src.tsumemi.move_input_handler import MoveInputHandler
 from tsumemi.src.tsumemi.nav_controls import FreeModeNavControls, SpeedrunNavControls
 from tsumemi.src.tsumemi.settings_window import SettingsWindow, CONFIG_PATH
+
+if TYPE_CHECKING:
+    from typing import Any, Callable, Optional
 
 
 class Menubar(tk.Menu):
@@ -386,7 +392,7 @@ class MainWindow:
         self.bindings.bind_shortcuts(self.master, self.bindings.FREE_SHORTCUTS)
         return
         
-    def display_problem(self):
+    def display_problem(self) -> None:
         self.board.draw()
         self.hide_solution()
         self.master.title(
@@ -395,30 +401,33 @@ class MainWindow:
         )
         return
     
-    def hide_solution(self):
+    def hide_solution(self) -> None:
         self.solution.set("[solution hidden]")
         self.is_solution_shown = False
         return
     
-    def show_solution(self):
+    def show_solution(self) -> None:
         self.solution.set(self.model.solution)
         self.is_solution_shown = True
         return
     
-    def toggle_solution(self, event=None):
+    def toggle_solution(self, event: Optional[tk.Event] = None) -> None:
         if self.is_solution_shown:
             self.hide_solution()
         else:
             self.show_solution()
         return
     
-    def next_file(self, event=None):
+    def next_file(self, event: Optional[tk.Event] = None) -> bool:
         return self.go_to_file(fn=self.model.open_next_file, event=event)
     
-    def prev_file(self, event=None):
+    def prev_file(self, event: Optional[tk.Event] = None) -> bool:
         return self.go_to_file(fn=self.model.open_prev_file, event=event)
     
-    def go_to_file(self, idx=0, fn=None, event=None):
+    def go_to_file(self, idx: int = 0,
+            fn: Optional[Callable[..., bool]] = None,
+            event: Optional[tk.Event] = None
+        ) -> bool:
         if fn is None:
             fn = partial(self.model.open_file, idx)
         res = fn()
@@ -427,7 +436,9 @@ class MainWindow:
             self.move_input_handler.clear_focus()
         return res
     
-    def open_folder(self, event=None, recursive=False):
+    def open_folder(self, event: Optional[tk.Event] = None,
+            recursive: bool = False
+        ) -> None:
         directory = filedialog.askdirectory()
         if directory == "":
             return
@@ -437,15 +448,15 @@ class MainWindow:
             self.display_problem()
         return
     
-    def open_folder_recursive(self, event=None):
+    def open_folder_recursive(self, event: Optional[tk.Event] = None) -> None:
         return self.open_folder(event, recursive=True)
     
-    def flip_board(self, want_upside_down):
+    def flip_board(self, want_upside_down: bool) -> None:
         self.board.flip_board(want_upside_down)
         return
     
     # Speedrun mode commands
-    def start_speedrun(self):
+    def start_speedrun(self) -> None:
         # Make UI changes
         self.nav_controls.grid_remove()
         self.nav_controls = self._navcons["speedrun"]
@@ -460,7 +471,7 @@ class MainWindow:
         self.model.start_timer()
         return
         
-    def abort_speedrun(self):
+    def abort_speedrun(self) -> None:
         # Abort speedrun, go back to free browsing
         # Make UI changes
         self.nav_controls.grid_remove()
@@ -473,21 +484,21 @@ class MainWindow:
         self.model.stop_timer()
         return
     
-    def skip(self):
+    def skip(self) -> None:
         self.model.split_timer()
         self.model.set_status(plist.ProblemStatus.SKIP)
         if not self.next_file():
             self.end_of_folder()
         return
     
-    def view_solution(self):
+    def view_solution(self) -> None:
         self.model.split_timer()
         self.model.stop_timer()
         self.show_solution()
         self.nav_controls.show_correct_wrong()
         return
     
-    def mark_correct(self):
+    def mark_correct(self) -> None:
         self.model.set_status(plist.ProblemStatus.CORRECT)
         if not self.next_file():
             self.end_of_folder()
@@ -496,7 +507,7 @@ class MainWindow:
         self.model.start_timer()
         return
     
-    def mark_wrong(self):
+    def mark_wrong(self) -> None:
         self.model.set_status(plist.ProblemStatus.WRONG)
         if not self.next_file():
             self.end_of_folder()
@@ -505,7 +516,7 @@ class MainWindow:
         self.model.start_timer()
         return
     
-    def end_of_folder(self):
+    def end_of_folder(self) -> None:
         self.model.stop_timer()
         messagebox.showinfo(
             title="End of folder",
