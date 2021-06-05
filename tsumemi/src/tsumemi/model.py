@@ -34,7 +34,6 @@ class Model(evt.IObserver):
         self.gui_controller = gui_controller
         self.reader: Reader = kif.KifReader()
         # Data
-        self.main_prob_buffer: ProblemList = ProblemList()
         self.solution: str = ""
         self.active_game: Game = self.reader.game
         
@@ -45,11 +44,10 @@ class Model(evt.IObserver):
         return
     
     def set_active_problem(self, idx: int = 0) -> bool:
-        # Set the active problem for main_prob_buffer
-        if self.main_prob_buffer.is_empty():
+        if self.gui_controller.prob_buffer.is_empty():
             return False
         else:
-            if self.main_prob_buffer.go_to_idx(idx):
+            if self.gui_controller.prob_buffer.go_to_idx(idx):
                 self.read_problem()
             return True
     
@@ -71,7 +69,7 @@ class Model(evt.IObserver):
     def read_problem(self) -> None:
         # Get the active reader to read the current active problem
         # from file
-        filepath = self.main_prob_buffer.get_curr_filepath()
+        filepath = self.gui_controller.prob_buffer.get_curr_filepath()
         if filepath is None:
             return # error out?
         self.read_file(filepath, reader=self.reader,
@@ -85,11 +83,11 @@ class Model(evt.IObserver):
     def add_problems_in_directory(self, directory: PathLike,
             recursive: bool = False, suppress: bool = False
         ) -> None:
-        # Adds all problems in given directory to self.main_prob_buffer.
+        # Adds all problems in given directory to self.gui_controller.prob_buffer.
         # Does not otherwise alter state of Model.
         if recursive:
             for dirpath, _, filenames in os.walk(directory):
-                self.main_prob_buffer.add_problems([
+                self.gui_controller.prob_buffer.add_problems([
                     Problem(os.path.join(dirpath, filename))
                     for filename in filenames
                     if filename.endswith(".kif")
@@ -97,7 +95,7 @@ class Model(evt.IObserver):
                 ], suppress=suppress)
         else:
             with os.scandir(directory) as it:
-                self.main_prob_buffer.add_problems([
+                self.gui_controller.prob_buffer.add_problems([
                     Problem(os.path.join(directory, entry.name))
                     for entry in it
                     if entry.name.endswith(".kif")
@@ -108,21 +106,21 @@ class Model(evt.IObserver):
     def set_directory(self, directory: PathLike,
             recursive: bool = False
         ) -> bool:
-        # Open the given directory and set main_prob_buffer to its
+        # Open the given directory and set problem buffer to its
         # contents.
-        self.main_prob_buffer.clear(suppress=True)
+        self.gui_controller.prob_buffer.clear(suppress=True)
         self.add_problems_in_directory(
             directory, recursive=recursive, suppress=True
         )
-        self.main_prob_buffer.sort_by_file()
+        self.gui_controller.prob_buffer.sort_by_file()
         return self.set_active_problem()
     
     def get_curr_filepath(self) -> Optional[PathLike]:
-        return self.main_prob_buffer.get_curr_filepath()
+        return self.gui_controller.prob_buffer.get_curr_filepath()
     
     def go_to_next_file(self, event: tk.Event = None) -> bool:
         res = False
-        if self.main_prob_buffer.next():
+        if self.gui_controller.prob_buffer.next():
             self.read_problem()
             res = True
         if res:
@@ -132,7 +130,7 @@ class Model(evt.IObserver):
     
     def go_to_prev_file(self, event: tk.Event = None) -> bool:
         res = False
-        if self.main_prob_buffer.prev():
+        if self.gui_controller.prob_buffer.prev():
             self.read_problem()
             res = True
         if res:
@@ -142,7 +140,7 @@ class Model(evt.IObserver):
     
     def go_to_file(self, idx: int = 0, event: tk.Event = None) -> bool:
         res = False
-        if self.main_prob_buffer.go_to_idx(idx):
+        if self.gui_controller.prob_buffer.go_to_idx(idx):
             self.read_problem()
             res = True
         if res:
@@ -151,7 +149,7 @@ class Model(evt.IObserver):
         return res
     
     def set_status(self, status: ProblemStatus) -> None:
-        self.main_prob_buffer.set_status(status)
+        self.gui_controller.prob_buffer.set_status(status)
         return
     
     def add_move(self, event: mih.MoveEvent) -> None:
@@ -190,7 +188,7 @@ class Model(evt.IObserver):
     
     def _on_split(self, event: timer.TimerSplitEvent) -> None:
         if self.gui_controller.main_timer.clock == event.clock and event.time is not None:
-            self.main_prob_buffer.set_time(event.time)
+            self.gui_controller.prob_buffer.set_time(event.time)
         return
     
     # Speedrun mode methods

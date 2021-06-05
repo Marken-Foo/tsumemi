@@ -8,11 +8,8 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from typing import TYPE_CHECKING
 
-import tsumemi.src.tsumemi.event as evt
 import tsumemi.src.tsumemi.model as model
-import tsumemi.src.tsumemi.problem_list as plist
 import tsumemi.src.tsumemi.problem_list_controller as plistcon
-import tsumemi.src.tsumemi.timer as timer
 import tsumemi.src.tsumemi.timer_controller as timecon
 
 from tsumemi.src.tsumemi.board_canvas import BoardCanvas
@@ -69,137 +66,6 @@ class Menubar(tk.Menu):
         parent["menu"] = self
         return
 
-'''
-class ProblemsView(ttk.Treeview, evt.IObserver):
-    """GUI class to display list of problems.
-    Uses the Observer pattern to update itself whenever underlying
-    problem list updates.
-    """
-    def __init__(self, parent, controller, problem_list, *args, **kwargs):
-        self.controller = controller
-        super().__init__(parent, *args, **kwargs)
-        self.problem_list = problem_list
-        # Register self as observer of ProblemList
-        self.problem_list.add_observer(self)
-        
-        self.NOTIFY_ACTIONS = {
-            plist.ProbStatusEvent: self.display_status,
-            plist.ProbTimeEvent: self.display_time,
-            plist.ProbListEvent: self.refresh_view
-        }
-        self.status_strings = {
-            plist.ProblemStatus.NONE: "",
-            plist.ProblemStatus.SKIP: "-",
-            plist.ProblemStatus.CORRECT: "O",
-            plist.ProblemStatus.WRONG: "X"
-        }
-        
-        self["columns"] = ("filename", "time", "status")
-        self["show"] = "headings"
-        self.heading("filename", text="Problem", command=self.problem_list.sort_by_file)
-        self.heading("time", text="Time", command=self.problem_list.sort_by_time)
-        self.column("time", width=120)
-        self.heading("status", text="Status", command=self.problem_list.sort_by_status)
-        self.column("status", anchor="center", width=40)
-        # Colours to be decided (accessibility concerns)
-        self.tag_configure("SKIP", background="snow2")
-        self.tag_configure("CORRECT", background="PaleGreen1")
-        self.tag_configure("WRONG", background="LightPink1")
-        
-        # Bind double click to go to problem
-        self.bind("<Double-1>",
-            lambda e: self.controller.model.go_to_file(
-                idx=self.get_idx_on_click(e)
-            )
-        )
-        return
-    
-    def display_time(self, event):
-        idx = event.idx
-        time = event.time
-        # Set time column for item at given index
-        id = self.get_children()[idx]
-        time_str = timer.sec_to_str(time)
-        self.set(id, column="time", value=time_str)
-        return
-    
-    def display_status(self, event):
-        idx = event.idx
-        status = event.status
-        id = self.get_children()[idx]
-        self.set(id, column="status", value=self.status_strings[status])
-        self.item(id, tags=[status.name]) # overrides existing tags
-        return
-    
-    def refresh_view(self, event):
-        # Refresh the entire view as the model changed, e.g. on opening folder
-        problems = event.prob_list
-        self.delete(*self.get_children())
-        for problem in problems:
-            filename = os.path.basename(problem.filepath)
-            time_str = ("-" if problem.time is None
-                        else timer.sec_to_str(problem.time))
-            status_str = self.status_strings[problem.status]
-            self.insert(
-                "", "end",
-                values=(filename, time_str, status_str),
-                tags=[problem.status.name]
-            )
-        return
-    
-    def get_idx_on_click(self, event):
-        if self.identify_region(event.x, event.y) == "cell":
-            return self.index(self.identify_row(event.y))
-        else:
-            return None
-
-
-class ProblemListPane(ttk.Frame):
-    """GUI frame containing view of problem list and associated
-    controls.
-    """
-    def __init__(self, parent, controller, problem_list, *args, **kwargs):
-        self.controller = controller
-        super().__init__(parent, *args, **kwargs)
-        self.problem_list = problem_list
-        
-        # Display problem list as Treeview
-        self.tvw = ProblemsView(
-            parent=self, controller=controller, problem_list=problem_list
-        )
-        self.tvw.grid(column=0, row=0, sticky="NSEW")
-        
-        # Make scrollbar
-        self.scrollbar_tvw = ttk.Scrollbar(
-            self, orient="vertical",
-            command=self.tvw.yview
-        )
-        self.scrollbar_tvw.grid(column=1, row=0, sticky="NS")
-        self.tvw["yscrollcommand"] = self.scrollbar_tvw.set
-        
-        # Make randomise button
-        self.btn_randomise = ttk.Button(
-            self, text="Randomise problems",
-            command=self.problem_list.randomise
-        )
-        self.btn_randomise.grid(column=0, row=1)
-        
-        # Make speedrun mode button
-        self.btn_speedrun = ttk.Button(
-            self, text="Start speedrun",
-            command=controller.model.start_speedrun
-        )
-        self.btn_speedrun.grid(column=0, row=2)
-        self.btn_speedrun.grid_remove()
-        self.btn_abort_speedrun = ttk.Button(
-            self, text="Abort speedrun",
-            command=controller.model.abort_speedrun
-        )
-        self.btn_abort_speedrun.grid(column=0, row=2)
-        self.btn_abort_speedrun.grid_remove()
-        
-        self.btn_speedrun.grid()
-'''
 
 class RootController:
     """Root controller for the application. Manages top-level logic
@@ -290,21 +156,19 @@ class RootController:
         # Timer controls and display
         self.main_timer = timecon.TimerController(parent=self.mainframe)
         self.main_timer.clock.add_observer(self.model)
-        self.timer_controls = self.main_timer.view
-        self.timer_controls.grid(column=1, row=1)
-        self.timer_controls.columnconfigure(0, weight=0)
-        self.timer_controls.rowconfigure(0, weight=0)
+        
+        self.main_timer_view = self.main_timer.view
+        self.main_timer_view.grid(column=1, row=1)
+        self.main_timer_view.columnconfigure(0, weight=0)
+        self.main_timer_view.rowconfigure(0, weight=0)
         
         # Problem list
         self.main_problem_list = plistcon.ProblemListController(
             parent=self.mainframe, controller=self
         )
-        self.model.main_prob_buffer = self.main_problem_list.problem_list
+        self.prob_buffer = self.main_problem_list.problem_list
+        
         self.problem_list_pane = self.main_problem_list.view
-        # self.problem_list_pane = ProblemListPane(
-            # parent=self.mainframe, controller=self,
-            # problem_list=self.model.main_prob_buffer
-        # )
         self.problem_list_pane.grid(column=1, row=0, sticky="NSEW")
         self.problem_list_pane.columnconfigure(0, weight=1)
         self.problem_list_pane.rowconfigure(0, weight=1)
@@ -367,7 +231,7 @@ class RootController:
     def split_timer(self) -> None:
         time = self.main_timer.clock.split()
         if time is not None:
-            self.model.main_prob_buffer.set_time(time)
+            self.prob_buffer.set_time(time)
         return
     
     def set_speedrun_ui(self) -> None:

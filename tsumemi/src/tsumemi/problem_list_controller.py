@@ -15,7 +15,6 @@ if TYPE_CHECKING:
     tkWidget = Union[ttk.Widget, tk.Widget]
 
 
-
 class ProblemListController:
     """Controller object for a problem list. Handles access to its
     underlying problem list (model) and GUI (view).
@@ -32,8 +31,7 @@ class ProblemListController:
 
 class ProblemsView(ttk.Treeview, evt.IObserver):
     """GUI class to display list of problems.
-    Uses the Observer pattern to update itself whenever underlying
-    problem list updates.
+    Observes underlying problem list and updates its view as needed.
     """
     def __init__(self, parent: tkWidget, controller: Any,
             problem_list: plist.ProblemList,
