@@ -29,7 +29,7 @@ class Model(evt.IObserver):
     """
     # This is currently actually a mishmash of Model + controller.
     # Try to refactor the controller bits from MainWindow to here.
-    def __init__(self, gui_controller: kbg.MainWindow) -> None:
+    def __init__(self, gui_controller: kbg.RootController) -> None:
         # References to other control or relevant objects
         self.gui_controller = gui_controller
         self.reader: Reader = kif.KifReader()
@@ -37,8 +37,6 @@ class Model(evt.IObserver):
         self.main_prob_buffer: ProblemList = ProblemList()
         self.solution: str = ""
         self.active_game: Game = self.reader.game
-        self.clock: timer.Timer = timer.Timer()
-        self.clock.add_observer(self)
         
         self.NOTIFY_ACTIONS = {
             mih.MoveEvent: self.add_move,
@@ -191,31 +189,8 @@ class Model(evt.IObserver):
         return
     
     def _on_split(self, event: timer.TimerSplitEvent) -> None:
-        if self.clock == event.clock and event.time is not None:
+        if self.gui_controller.main_timer.clock == event.clock and event.time is not None:
             self.main_prob_buffer.set_time(event.time)
-        return
-    
-    # Timer clock controls
-    def start_timer(self) -> None:
-        self.clock.start()
-        return
-    
-    def stop_timer(self) -> None:
-        self.clock.stop()
-        return
-    
-    def toggle_timer(self) -> None:
-        self.clock.toggle()
-        return
-    
-    def reset_timer(self) -> None:
-        self.clock.reset()
-        return
-    
-    def split_timer(self) -> None:
-        time = self.clock.split()
-        if time is not None:
-            self.main_prob_buffer.set_time(time)
         return
     
     # Speedrun mode methods
@@ -223,18 +198,18 @@ class Model(evt.IObserver):
         self.go_to_file(idx=0)
         self.NOTIFY_ACTIONS[mih.MoveEvent] = self.verify_move
         self.gui_controller.set_speedrun_ui()
-        self.reset_timer()
-        self.start_timer()
+        self.gui_controller.main_timer.clock.reset()
+        self.gui_controller.main_timer.clock.start()
         return
     
     def abort_speedrun(self) -> None:
-        self.stop_timer()
+        self.gui_controller.main_timer.clock.stop()
         self.NOTIFY_ACTIONS[mih.MoveEvent] = self.add_move
         self.gui_controller.remove_speedrun_ui()
         return
     
     def skip(self) -> None:
-        self.split_timer()
+        self.gui_controller.split_timer()
         self.set_status(plist.ProblemStatus.SKIP)
         if not self.go_to_next_file():
             self.end_of_folder()
@@ -242,16 +217,16 @@ class Model(evt.IObserver):
     
     def mark_correct_and_pause(self) -> None:
         self.set_status(plist.ProblemStatus.CORRECT)
-        self.split_timer()
-        self.stop_timer()
+        self.gui_controller.split_timer()
+        self.gui_controller.main_timer.clock.stop()
         self.gui_controller.show_solution()
         self.gui_controller.nav_controls.show_continue()
         return
     
     def mark_wrong_and_pause(self) -> None:
         self.set_status(plist.ProblemStatus.WRONG)
-        self.split_timer()
-        self.stop_timer()
+        self.gui_controller.split_timer()
+        self.gui_controller.main_timer.clock.stop()
         self.gui_controller.show_solution()
         self.gui_controller.nav_controls.show_continue()
         self.gui_controller.board.draw()
@@ -273,11 +248,11 @@ class Model(evt.IObserver):
             self.end_of_folder()
             return
         self.gui_controller.nav_controls.show_sol_skip()
-        self.start_timer()
+        self.gui_controller.main_timer.clock.start()
         return
     
     def end_of_folder(self) -> None:
-        self.stop_timer()
+        self.gui_controller.main_timer.clock.stop()
         self.gui_controller.show_end_of_folder_message()
         self.abort_speedrun()
         return

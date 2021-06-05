@@ -97,7 +97,7 @@ class SplitTimer:
             # Splitting while the timer is paused "has no meaning".
             lap_time = self.curr_lap_time
             self.lap_times.append(lap_time)
-            self.start_time = None
+            self.start_time = self.read()
             self.curr_lap_time = 0
             return lap_time
     

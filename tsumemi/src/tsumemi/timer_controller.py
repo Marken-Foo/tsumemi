@@ -17,12 +17,12 @@ class TimerController:
     """Controller object for a stopwatch timer. Handles access to its
     timer (model) and GUI (view).
     """
-    def __init__(self, parent, *args, **kwargs) -> None:
+    def __init__(self, parent: tkWidget, *args, **kwargs) -> None:
         self.clock: timer.Timer = timer.Timer()
         self.view: TimerPane = TimerPane(parent, self.clock, *args, **kwargs)
         return
     
-    def make_new_view(self, parent, *args, **kwargs) -> None:
+    def make_new_view(self, parent: tkWidget, *args, **kwargs) -> None:
         self.view = TimerPane(parent, self.clock, *args, **kwargs)
         return
 
@@ -35,7 +35,6 @@ class TimerDisplay(ttk.Label, evt.IObserver):
         super().__init__(parent, *args, **kwargs)
         self.clock: timer.Timer = clock
         self.clock.add_observer(self)
-        
         self.NOTIFY_ACTIONS = {
             timer.TimerStartEvent: self._on_start,
             timer.TimerStopEvent: self._on_stop

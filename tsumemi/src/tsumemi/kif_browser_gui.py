@@ -1,16 +1,17 @@
 from __future__ import annotations
 
 import configparser
+import functools
 import os
 import tkinter as tk
 
-from functools import partial
 from tkinter import filedialog, messagebox, ttk
 from typing import TYPE_CHECKING
 
 import tsumemi.src.tsumemi.event as evt
 import tsumemi.src.tsumemi.model as model
 import tsumemi.src.tsumemi.problem_list as plist
+import tsumemi.src.tsumemi.problem_list_controller as plistcon
 import tsumemi.src.tsumemi.timer as timer
 import tsumemi.src.tsumemi.timer_controller as timecon
 
@@ -58,7 +59,7 @@ class Menubar(tk.Menu):
         # Help
         menu_help.add_command(
             label="About kif-browser",
-            command=partial(
+            command=functools.partial(
                 messagebox.showinfo,
                 title="About kif-browser",
                 message="Written in Python 3 for the shogi community. KIF files sold separately."
@@ -68,7 +69,7 @@ class Menubar(tk.Menu):
         parent["menu"] = self
         return
 
-
+'''
 class ProblemsView(ttk.Treeview, evt.IObserver):
     """GUI class to display list of problems.
     Uses the Observer pattern to update itself whenever underlying
@@ -198,23 +199,20 @@ class ProblemListPane(ttk.Frame):
         self.btn_abort_speedrun.grid_remove()
         
         self.btn_speedrun.grid()
+'''
 
-
-class MainWindow:
-    """GUI class for the main window of the application.
-    Acts as controller for the application.
+class RootController:
+    """Root controller for the application. Manages top-level logic
+    and GUI elements.
     """
     # eventually, refactor menu labels and dialog out into a constant namespace
-    def __init__(self, master):
-        # Set up data model
-        self.model = model.Model(gui_controller=self)
+    def __init__(self, root: tk.Tk) -> None:
         # tkinter stuff, set up the main window
-        # Reference to tk.Tk() root object
-        self.master = master
-        self.master.option_add("*tearOff", False)
-        self.master.columnconfigure(0, weight=1)
-        self.master.rowconfigure(0, weight=1)
-        self.master.title("KIF folder browser")
+        self.root: tk.Tk = root
+        self.root.option_add("*tearOff", False)
+        self.root.columnconfigure(0, weight=1)
+        self.root.rowconfigure(0, weight=1)
+        self.root.title("KIF folder browser")
         
         # Create settings file if none exists
         self.config = configparser.ConfigParser(dict_type=dict)
@@ -230,14 +228,19 @@ class MainWindow:
                 configfile.write("komadai = WHITE\n")
             with open(CONFIG_PATH, "r") as configfile:
                 self.config.read_file(configfile)
-        self.mainframe = ttk.Frame(self.master)
+        
+        # mainframe is the main frame of the root window
+        self.mainframe = ttk.Frame(self.root)
         self.mainframe.grid(column=0, row=0, sticky="NSEW")
         self.mainframe.columnconfigure(0, weight=1)
         self.mainframe.columnconfigure(1, weight=1)
         self.mainframe.rowconfigure(0, weight=1)
         
         # Make menubar
-        self.menubar = Menubar(parent=self.master, controller=self)
+        self.menubar = Menubar(parent=self.root, controller=self)
+        
+        # Set up data model
+        self.model = model.Model(gui_controller=self)
         
         # Make canvas for board
         self.boardWrapper = ttk.Frame(self.mainframe)
@@ -287,17 +290,21 @@ class MainWindow:
         # Timer controls and display
         self.main_timer = timecon.TimerController(parent=self.mainframe)
         self.main_timer.clock.add_observer(self.model)
-        self.model.clock = self.main_timer.clock
         self.timer_controls = self.main_timer.view
         self.timer_controls.grid(column=1, row=1)
         self.timer_controls.columnconfigure(0, weight=0)
         self.timer_controls.rowconfigure(0, weight=0)
         
         # Problem list
-        self.problem_list_pane = ProblemListPane(
-            parent=self.mainframe, controller=self,
-            problem_list=self.model.main_prob_buffer
+        self.main_problem_list = plistcon.ProblemListController(
+            parent=self.mainframe, controller=self
         )
+        self.model.main_prob_buffer = self.main_problem_list.problem_list
+        self.problem_list_pane = self.main_problem_list.view
+        # self.problem_list_pane = ProblemListPane(
+            # parent=self.mainframe, controller=self,
+            # problem_list=self.model.main_prob_buffer
+        # )
         self.problem_list_pane.grid(column=1, row=0, sticky="NSEW")
         self.problem_list_pane.columnconfigure(0, weight=1)
         self.problem_list_pane.rowconfigure(0, weight=1)
@@ -305,15 +312,15 @@ class MainWindow:
         
         # Keyboard shortcuts
         self.bindings = Bindings(self)
-        self.bindings.bind_shortcuts(self.master, self.bindings.MASTER_SHORTCUTS)
-        self.bindings.bind_shortcuts(self.master, self.bindings.FREE_SHORTCUTS)
+        self.bindings.bind_shortcuts(self.root, self.bindings.MASTER_SHORTCUTS)
+        self.bindings.bind_shortcuts(self.root, self.bindings.FREE_SHORTCUTS)
         return
     
     #=== GUI display methods
     def display_problem(self) -> None:
         self.board.draw()
         self.hide_solution()
-        self.master.title(
+        self.root.title(
             "KIF folder browser - "
             + str(self.model.get_curr_filepath())
         )
@@ -357,6 +364,12 @@ class MainWindow:
         return self.open_folder(event, recursive=True)
     
     # Speedrun mode commands
+    def split_timer(self) -> None:
+        time = self.main_timer.clock.split()
+        if time is not None:
+            self.model.main_prob_buffer.set_time(time)
+        return
+    
     def set_speedrun_ui(self) -> None:
         # Make UI changes
         self.nav_controls.grid_remove()
@@ -366,7 +379,7 @@ class MainWindow:
         self.problem_list_pane.btn_speedrun.grid_remove()
         self.problem_list_pane.btn_abort_speedrun.grid()
         # Set application state
-        self.bindings.unbind_shortcuts(self.master, self.bindings.FREE_SHORTCUTS)
+        self.bindings.unbind_shortcuts(self.root, self.bindings.FREE_SHORTCUTS)
         return
     
     def remove_speedrun_ui(self) -> None:
@@ -378,12 +391,12 @@ class MainWindow:
         self.problem_list_pane.btn_speedrun.grid()
         self.problem_list_pane.btn_abort_speedrun.grid_remove()
         # Set application state
-        self.bindings.bind_shortcuts(self.master, self.bindings.FREE_SHORTCUTS)
+        self.bindings.bind_shortcuts(self.root, self.bindings.FREE_SHORTCUTS)
         return
     
     def view_solution(self) -> None:
-        self.model.split_timer()
-        self.model.stop_timer()
+        self.split_timer()
+        self.main_timer.clock.stop()
         self.show_solution()
         self.nav_controls.show_correct_wrong()
         return
@@ -446,7 +459,7 @@ def run():
                   background=fixed_map("background"))
 
     root = tk.Tk()
-    main_window = MainWindow(root)
+    root_controller = RootController(root)
     apply_theme_fix()
     root.minsize(width=400, height=200) # stopgap vs canvas overshrinking bug
     root.mainloop()
