@@ -12,6 +12,7 @@ import tsumemi.src.tsumemi.event as evt
 import tsumemi.src.tsumemi.model as model
 import tsumemi.src.tsumemi.problem_list as plist
 import tsumemi.src.tsumemi.timer as timer
+import tsumemi.src.tsumemi.timer_controller as timecon
 
 from tsumemi.src.tsumemi.board_canvas import BoardCanvas
 from tsumemi.src.tsumemi.move_input_handler import MoveInputHandler
@@ -66,90 +67,6 @@ class Menubar(tk.Menu):
         # Bind to main window
         parent["menu"] = self
         return
-
-
-class TimerDisplay(ttk.Label, evt.IObserver):
-    """GUI class to display a stopwatch/timer.
-    """
-    def __init__(self, parent, controller, clock, *args, **kwargs):
-        self.controller = controller
-        super().__init__(parent, *args, **kwargs)
-        self.clock = clock
-        # Register self as observer of clock
-        self.clock.add_observer(self)
-        
-        self.NOTIFY_ACTIONS = {
-            timer.TimerStartEvent: self._on_start,
-            timer.TimerStopEvent: self._on_stop
-        }
-        # we assume the observed timer is in reset state, initialise to match
-        self.is_running = False
-        self.time_str = tk.StringVar(value=timer.sec_to_str(0.0))
-        self["textvariable"] = self.time_str
-        self.configure(
-            background="black",
-            foreground="light sky blue",
-            font=("TkDefaultFont", 48)
-        )
-    
-    def _on_start(self, event):
-        self.is_running = True
-        self.refresh()
-        return
-        
-    def _on_stop(self, event):
-        self.is_running = False
-        self.refresh()
-        return
-    
-    def refresh(self):
-        self.time_str.set(
-            timer.sec_to_str(
-                self.clock.read()
-            )
-        )
-        if self.is_running:
-            self.after(40, self.refresh)
-        return
-
-
-class TimerPane(ttk.Frame):
-    """GUI frame containing a timer display and associated controls.
-    """
-    def __init__(self, parent, controller, clock, *args, **kwargs):
-        self.controller = controller
-        super().__init__(parent, *args, **kwargs)
-        
-        # Basic timer
-        self.clock = clock
-        # Display updates automatically by watching timer (Observer pattern).
-        self.timer_display = TimerDisplay(
-            parent=self,
-            controller=self.controller,
-            clock = self.clock
-        )
-        self.timer_display.grid(
-            column=0, row=0, columnspan=3
-        )
-        # Timer control widgets
-        ttk.Button(
-            self, text="Start/stop timer",
-            command=self.clock.toggle
-        ).grid(
-            column=0, row=1
-        )
-        ttk.Button(
-            self, text="Reset timer",
-            command=self.clock.reset
-        ).grid(
-            column=1, row=1
-        )
-        ttk.Button(
-            self, text="Split",
-            command=self.clock.split
-        ).grid(
-            column=2, row=1
-        )
 
 
 class ProblemsView(ttk.Treeview, evt.IObserver):
@@ -368,10 +285,10 @@ class MainWindow:
         self.nav_controls.grid()
         
         # Timer controls and display
-        self.timer_controls = TimerPane(
-            parent=self.mainframe, controller=self,
-            clock=self.model.clock
-        )
+        self.main_timer = timecon.TimerController(parent=self.mainframe)
+        self.main_timer.clock.add_observer(self.model)
+        self.model.clock = self.main_timer.clock
+        self.timer_controls = self.main_timer.view
         self.timer_controls.grid(column=1, row=1)
         self.timer_controls.columnconfigure(0, weight=0)
         self.timer_controls.rowconfigure(0, weight=0)
