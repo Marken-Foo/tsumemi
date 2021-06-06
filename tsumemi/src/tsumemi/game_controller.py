@@ -12,7 +12,8 @@ from tsumemi.src.shogi.game import Game
 
 if TYPE_CHECKING:
     import tkinter as tk
-    from typing import Any
+    from typing import Any, List
+    import tsumemi.src.tsumemi.img_handlers as imghand
 
 
 class GameEndEvent(evt.Event):
@@ -26,24 +27,31 @@ class WrongMoveEvent(evt.Event):
 
 
 class GameController(evt.Emitter, evt.IObserver):
-    def __init__(self, parent: tk.Widget, controller: Any, *args, **kwargs
-        ) -> None:
+    def __init__(self) -> None:
         evt.Emitter.__init__(self)
         self.NOTIFY_ACTIONS = {}
         self.game = Game()
-        self.board_canvas: bc.BoardCanvas = bc.BoardCanvas(
-            parent, controller, self.game,
-            bg="white", *args, **kwargs
-        )
-        self.move_input_handler = mih.MoveInputHandler(self.board_canvas)
-        self.move_input_handler.add_observer(self)
+        self.views: List[bc.BoardCanvas] = []
         
         self.set_free_mode()
         return
     
+    def make_board_canvas(self, parent: tk.Widget,
+            skin_settings: imghand.SkinSettings,
+            *args, **kwargs
+        ) -> bc.BoardCanvas:
+        board_canvas = bc.BoardCanvas(parent, self.game, skin_settings,
+            bg="white", *args, **kwargs
+        )
+        move_input_handler = mih.MoveInputHandler(board_canvas)
+        move_input_handler.add_observer(self)
+        self.views.append(board_canvas)
+        return board_canvas
+    
     def set_game(self, game: Game) -> None:
         self.game = game
-        self.board_canvas.set_position(game.position)
+        for board_canvas in self.views:
+            board_canvas.set_position(game.position)
         return
     
     def set_speedrun_mode(self) -> None:
@@ -60,7 +68,8 @@ class GameController(evt.Emitter, evt.IObserver):
         """
         move = event.move
         self.game.add_move(move)
-        self.board_canvas.draw()
+        for board_canvas in self.views:
+            board_canvas.draw()
         return
     
     def verify_move(self, event: mih.MoveEvent) -> None:
@@ -69,7 +78,8 @@ class GameController(evt.Emitter, evt.IObserver):
         if self.game.is_mainline(move):
             # the move is the mainline, so it is correct
             self.game.make_move(move)
-            self.board_canvas.draw()
+            for board_canvas in self.views:
+                board_canvas.draw()
             if self.game.is_end():
                 self._notify_observers(GameEndEvent())
                 return
@@ -80,7 +90,8 @@ class GameController(evt.Emitter, evt.IObserver):
                     return
                 else:
                     self.game.make_move(response_move)
-                    self.board_canvas.draw()
+                    for board_canvas in self.views:
+                        board_canvas.draw()
                     if self.game.is_end():
                         self._notify_observers(GameEndEvent())
                     return

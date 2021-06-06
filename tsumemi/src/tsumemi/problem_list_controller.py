@@ -16,16 +16,18 @@ if TYPE_CHECKING:
 
 class ProblemListController:
     """Controller object for a problem list. Handles access to its
-    underlying problem list (model) and GUI (view).
+    underlying problem list (model).
     """
-    def __init__(self, parent: tk.Widget, controller: Any, *args, **kwargs
-        ) -> None:
+    def __init__(self) -> None:
         self.problem_list: plist.ProblemList = plist.ProblemList()
-        self.view: ProblemListPane = ProblemListPane(
-            parent, controller, self.problem_list,
+        return
+    
+    def make_problem_list_pane(self, parent: tk.Widget, controller: Any,
+            *args, **kwargs
+        ) -> ProblemListPane:
+        return ProblemListPane(parent, controller, self.problem_list,
             *args, **kwargs
         )
-        return
 
 
 class ProblemsView(ttk.Treeview, evt.IObserver):

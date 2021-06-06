@@ -3,7 +3,7 @@ import tkinter as tk
 
 from tkinter import ttk
 
-from tsumemi.src.tsumemi.img_handlers import BoardSkin, PieceSkin
+import tsumemi.src.tsumemi.img_handlers as imghand
 
 
 CONFIG_PATH = os.path.relpath(r"tsumemi/resources/config.ini")
@@ -20,7 +20,7 @@ class SettingsWindow(tk.Toplevel):
         piece_palette.grid(column=0, row=0, sticky="EW")
         self.svar_pieces = tk.StringVar(value="TEXT")
         rdo_piece_skin = []
-        for n, skin in enumerate(PieceSkin):
+        for n, skin in enumerate(imghand.PieceSkin):
             rdo_piece_skin.append(self._add_rdo_pieceskin(piece_palette, skin))
             rdo_piece_skin[-1].grid(column=0, row=n, sticky="W")
         
@@ -33,7 +33,7 @@ class SettingsWindow(tk.Toplevel):
         self.svar_komadai = tk.StringVar(value="WHITE")
         rdo_board_skin = []
         rdo_komadai_skin = []
-        for n, skin in enumerate(BoardSkin):
+        for n, skin in enumerate(imghand.BoardSkin):
             rdo_board_skin.append(self._add_rdo_boardskin(board_palette, skin))
             rdo_board_skin[-1].grid(column=0, row=n+1, sticky="W")
             rdo_komadai_skin.append(self._add_rdo_komadaiskin(board_palette, skin))
@@ -62,13 +62,16 @@ class SettingsWindow(tk.Toplevel):
             "board": self.svar_board.get(),
             "komadai": self.svar_komadai.get()
         }
-        with open(CONFIG_PATH, "w") as configfile:
-            self.controller.config.write(configfile)
+        with open(CONFIG_PATH, "w") as f:
+            self.controller.config.write(f)
         # tell the board what skins to use
-        self.controller.board.apply_board_skin(BoardSkin[self.svar_board.get()])
-        self.controller.board.apply_piece_skin(PieceSkin[self.svar_pieces.get()])
-        self.controller.board.apply_komadai_skin(BoardSkin[self.svar_komadai.get()])
-        self.controller.display_problem()
+        piece_skin: imghand.PieceSkin = imghand.PieceSkin[self.svar_pieces.get()]
+        board_skin: imghand.BoardSkin = imghand.BoardSkin[self.svar_board.get()]
+        komadai_skin: imghand.BoardSkin = imghand.BoardSkin[self.svar_komadai.get()]
+        skin_settings = imghand.SkinSettings(
+            piece_skin, board_skin, komadai_skin
+        )
+        self.controller.apply_skin_settings(skin_settings)
         return
     
     def save_and_quit(self):

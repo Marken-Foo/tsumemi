@@ -10,16 +10,14 @@ import tsumemi.src.tsumemi.timer as timer
 
 class TimerController:
     """Controller object for a stopwatch timer. Handles access to its
-    timer (model) and GUI (view).
+    timer (model).
     """
-    def __init__(self, parent: tk.Widget, *args, **kwargs) -> None:
+    def __init__(self) -> None:
         self.clock: timer.Timer = timer.Timer()
-        self.view: TimerPane = TimerPane(parent, self.clock, *args, **kwargs)
         return
     
-    def make_new_view(self, parent: tk.Widget, *args, **kwargs) -> None:
-        self.view = TimerPane(parent, self.clock, *args, **kwargs)
-        return
+    def make_timer_pane(self, parent: tk.Widget, *args, **kwargs) -> TimerPane:
+        return TimerPane(parent, self.clock, *args, **kwargs)
 
 
 class TimerDisplay(ttk.Label, evt.IObserver):

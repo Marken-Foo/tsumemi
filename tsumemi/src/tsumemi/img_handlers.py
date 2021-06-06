@@ -60,6 +60,22 @@ class PieceSkin(Enum):
         return
 
 
+class SkinSettings:
+    """Contains a set of skins needed to draw a board.
+    """
+    def __init__(self, piece_skin: PieceSkin = PieceSkin.TEXT,
+            board_skin: BoardSkin = BoardSkin.WHITE,
+            komadai_skin: BoardSkin = BoardSkin.WHITE
+        ) -> None:
+        self.piece_skin = piece_skin
+        self.board_skin = board_skin
+        self.komadai_skin = komadai_skin
+        return
+    
+    def get(self) -> Tuple[PieceSkin, BoardSkin, BoardSkin]:
+        return self.piece_skin, self.board_skin, self.komadai_skin
+
+
 class BoardMeasurements:
     """Parameter object calculating and storing the various
     measurements of the shogiban.
@@ -277,19 +293,12 @@ class BoardImgManager(ImgManager):
             sq_h = measurements.sq_h
             # +1 pixel to avoid gaps
             return 9*sq_w+1, 9*sq_h+1
-        def _komadai_piece_size() -> Tuple[int, int]:
-            kpc_w = measurements.komadai_piece_size
-            return kpc_w, kpc_w
         # Populate default images
         self.tile_sized = ImgSizingDict(_board_sq_size)
         self.tile_sized.add_image("transparent", IMG_TRANSPARENT)
         self.tile_sized.add_image("highlight", IMG_HIGHLIGHT)
         self.board_sized = ImgSizingDict(_board_size)
         self.board_sized.add_image("semi-transparent", IMG_SEMI_TRANSPARENT)
-        self.komadai_piece_sized = ImgSizingDict(_komadai_piece_size)
-        self.komadai_piece_sized.add_image(
-            "highlight", IMG_HIGHLIGHT
-        )
         # Other members
         self.measurements = measurements
         self.load(skin)
@@ -301,7 +310,6 @@ class BoardImgManager(ImgManager):
         if filepath:
             img = Image.open(filepath)
             self.tile_sized.add_image("board", img)
-            self.komadai_piece_sized.add_image("komadai", img)
             self.skin = skin # after loading, in case anything goes wrong
             return
         else:
@@ -311,7 +319,7 @@ class BoardImgManager(ImgManager):
     
     def resize_images(self) -> None:
         if self.skin.path:
-            imgdicts = (self.tile_sized, self.board_sized, self.komadai_piece_sized)
+            imgdicts = (self.tile_sized, self.board_sized)
             for imgdict in imgdicts:
                 imgdict.update_sizes()
                 imgdict.resize_images()
@@ -321,8 +329,6 @@ class BoardImgManager(ImgManager):
         # stringly-typed, should change
         if size == "board":
             return self.board_sized.get_dict()
-        elif size == "komadai":
-            return self.komadai_piece_sized.get_dict()
         else:
             return self.tile_sized.get_dict()
 

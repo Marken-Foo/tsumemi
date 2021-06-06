@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 
 import tsumemi.src.tsumemi.model as model
 import tsumemi.src.tsumemi.game_controller as gamecon
+import tsumemi.src.tsumemi.img_handlers as imghand
 import tsumemi.src.tsumemi.problem_list_controller as plistcon
 import tsumemi.src.tsumemi.timer_controller as timecon
 
@@ -17,7 +18,9 @@ from tsumemi.src.tsumemi.nav_controls import FreeModeNavControls, SpeedrunNavCon
 from tsumemi.src.tsumemi.settings_window import SettingsWindow, CONFIG_PATH
 
 if TYPE_CHECKING:
-    from typing import Optional
+    from typing import List, Optional, Union
+    import tsumemi.src.tsumemi.board_canvas as bc
+    PathLike = Union[str, os.PathLike]
 
 
 class Menubar(tk.Menu):
@@ -66,33 +69,63 @@ class Menubar(tk.Menu):
         return
 
 
+def read_config_file(config: configparser.ConfigParser, filepath: PathLike
+    ) -> imghand.SkinSettings:
+    """Attempts to read config file; if not found, attempts to write a
+    default config file.
+    """
+    try:
+        with open(filepath, "r") as f:
+            config.read_file(f)
+    except FileNotFoundError:
+        with open(filepath, "w+") as f:
+            f.write("[skins]\n")
+            f.write("pieces = TEXT\n")
+            f.write("board = BROWN\n")
+            f.write("komadai = WHITE\n")
+        with open(filepath, "r") as f:
+            config.read_file(f)
+    
+    skins = config["skins"]
+    try:
+        piece_skin = imghand.PieceSkin[skins.get("pieces")]
+    except KeyError:
+        piece_skin = imghand.PieceSkin.TEXT
+    try:
+        board_skin = imghand.BoardSkin[skins.get("board")]
+    except KeyError:
+        board_skin = imghand.BoardSkin.WHITE
+    try:
+        komadai_skin = imghand.BoardSkin[skins.get("komadai")]
+    except KeyError:
+        komadai_skin = imghand.BoardSkin.WHITE
+    return imghand.SkinSettings(piece_skin, board_skin, komadai_skin)
+
+
 class RootController:
     """Root controller for the application. Manages top-level logic
     and GUI elements.
     """
     # eventually, refactor menu labels and dialog out into a constant namespace
     def __init__(self, root: tk.Tk) -> None:
+        # Program data
+        self.model = model.Model(gui_controller=self) # To refactor
+        self.config = configparser.ConfigParser(dict_type=dict)
+        self.skin_settings = read_config_file(self.config, CONFIG_PATH)
+        self.main_game = gamecon.GameController()
+        self.main_timer = timecon.TimerController()
+        self.main_timer.clock.add_observer(self.model)
+        self.main_problem_list = plistcon.ProblemListController()
+        self.prob_buffer = self.main_problem_list.problem_list
+        self.is_solution_shown: bool = False
+        self.solution_text: str = ""
+        
         # tkinter stuff, set up the main window
         self.root: tk.Tk = root
         self.root.option_add("*tearOff", False)
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
         self.root.title("KIF folder browser")
-        
-        # Create settings file if none exists
-        self.config = configparser.ConfigParser(dict_type=dict)
-        try:
-            with open(CONFIG_PATH, "r") as configfile:
-                self.config.read_file(configfile)
-        except FileNotFoundError:
-            with open(CONFIG_PATH, "w+") as configfile:
-                # write a default config.ini
-                configfile.write("[skins]\n")
-                configfile.write("pieces = TEXT\n")
-                configfile.write("board = BROWN\n")
-                configfile.write("komadai = WHITE\n")
-            with open(CONFIG_PATH, "r") as configfile:
-                self.config.read_file(configfile)
         
         # mainframe is the main frame of the root window
         self.mainframe = ttk.Frame(self.root)
@@ -104,9 +137,6 @@ class RootController:
         # Make menubar
         self.menubar = Menubar(parent=self.root, controller=self)
         
-        # Set up data model
-        self.model = model.Model(gui_controller=self)
-        
         # Make canvas for board
         self.board_wrapper = ttk.Frame(self.mainframe)
         self.board_wrapper.grid(column=0, row=0, sticky="NSEW")
@@ -114,18 +144,19 @@ class RootController:
         self.board_wrapper.rowconfigure(0, weight=1)
         self.board_wrapper.grid_configure(padx=5, pady=5)
         
-        self.main_game = gamecon.GameController(
-            parent=self.board_wrapper, controller=self
+        self.board = self.main_game.make_board_canvas(
+            parent=self.board_wrapper,
+            skin_settings=self.skin_settings
         )
-        self.board = self.main_game.board_canvas
         self.main_game.add_observer(self.model)
         self.board.grid(column=0, row=0, sticky="NSEW")
         self.board.bind("<Configure>", self.board.on_resize)
         
+        self.board_views: List[bc.BoardCanvas] = []
+        self.board_views.append(self.board)
+        
         # Initialise solution text
-        self.is_solution_shown = False
         self.solution = tk.StringVar(value="Open a folder of problems to display.")
-        self.solution_text: str = ""
         self.lbl_solution = ttk.Label(
             self.mainframe, textvariable=self.solution,
             justify="left", wraplength=self.board.width
@@ -151,21 +182,17 @@ class RootController:
         self.nav_controls.grid()
         
         # Timer controls and display
-        self.main_timer = timecon.TimerController(parent=self.mainframe)
-        self.main_timer.clock.add_observer(self.model)
-        
-        self.main_timer_view = self.main_timer.view
+        self.main_timer_view = self.main_timer.make_timer_pane(
+            parent=self.mainframe
+        )
         self.main_timer_view.grid(column=1, row=1)
         self.main_timer_view.columnconfigure(0, weight=0)
         self.main_timer_view.rowconfigure(0, weight=0)
         
         # Problem list
-        self.main_problem_list = plistcon.ProblemListController(
+        self.problem_list_pane = self.main_problem_list.make_problem_list_pane(
             parent=self.mainframe, controller=self
         )
-        self.prob_buffer = self.main_problem_list.problem_list
-        
-        self.problem_list_pane = self.main_problem_list.view
         self.problem_list_pane.grid(column=1, row=0, sticky="NSEW")
         self.problem_list_pane.columnconfigure(0, weight=1)
         self.problem_list_pane.rowconfigure(0, weight=1)
@@ -206,6 +233,17 @@ class RootController:
     
     def flip_board(self, want_upside_down: bool) -> None:
         self.board.flip_board(want_upside_down)
+        return
+    
+    def apply_skin_settings(self, settings: imghand.SkinSettings
+        ) -> None:
+        self.skin_settings = settings
+        piece_skin, board_skin, komadai_skin = settings.get()
+        for board_canvas in self.board_views:
+            board_canvas.apply_piece_skin(piece_skin)
+            board_canvas.apply_board_skin(board_skin)
+            board_canvas.apply_komadai_skin(komadai_skin)
+            board_canvas.draw()
         return
     
     #=== Open folder, needs file open dialog

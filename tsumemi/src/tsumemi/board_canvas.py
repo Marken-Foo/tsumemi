@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 from tsumemi.src.shogi.basetypes import KanjiNumber, KomaType, Side, Square
 from tsumemi.src.shogi.basetypes import HAND_TYPES, KANJI_FROM_KTYPE
-from tsumemi.src.tsumemi.img_handlers import BoardImgManager, BoardMeasurements, BoardSkin, KomaImgManager, KomadaiImgManager, PieceSkin
+from tsumemi.src.tsumemi.img_handlers import BoardImgManager, SkinSettings, BoardMeasurements, BoardSkin, KomaImgManager, KomadaiImgManager, PieceSkin
 
 if TYPE_CHECKING:
     from typing import Any, Dict, Optional, Tuple
@@ -26,7 +26,8 @@ class BoardCanvas(tk.Canvas):
     drawing on itself, delegating other tasks like size calculation to
     other objects.
     """
-    def __init__(self, parent: tk.Widget, controller: Any, game: Game,
+    def __init__(self, parent: tk.Widget, game: Game,
+            skin_settings: SkinSettings,
             width: int = DEFAULT_CANVAS_WIDTH,
             height: int = DEFAULT_CANVAS_HEIGHT,
             *args, **kwargs
@@ -36,31 +37,15 @@ class BoardCanvas(tk.Canvas):
         """
         self.width: int = width
         self.height: int = height
-        self.controller = controller
         self.is_upside_down: bool = False
         super().__init__(parent, width=width, height=height, *args, **kwargs)
         # Specify source of board data
         self.move_input_handler: Optional[MoveInputHandler] = None
         self.position: Position = game.position
-        config = self.controller.config
         # Initialise measurements, used for many other things
         self.measurements = BoardMeasurements(width, height)
         # Load skins
-        try:
-            name = config["skins"]["pieces"]
-            piece_skin = PieceSkin[name]
-        except KeyError:
-            piece_skin = PieceSkin.TEXT
-        try:
-            name = config["skins"]["board"]
-            board_skin = BoardSkin[name]
-        except KeyError:
-            board_skin = BoardSkin.WHITE
-        try:
-            name = config["skins"]["komadai"]
-            komadai_skin = BoardSkin[name]
-        except KeyError:
-            komadai_skin = BoardSkin.WHITE
+        piece_skin, board_skin, komadai_skin = skin_settings.get()
         # Cached images and image settings
         self.koma_img_cache = KomaImgManager(self.measurements, piece_skin)
         self.board_img_cache = BoardImgManager(self.measurements, board_skin)

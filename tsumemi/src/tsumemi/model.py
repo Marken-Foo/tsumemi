@@ -101,7 +101,7 @@ class Model(evt.IObserver):
             res = True
         if res:
             self.gui_controller.display_problem()
-            self.gui_controller.main_game.move_input_handler.enable()
+            self.gui_controller.board.move_input_handler.enable()
         return res
     
     def go_to_prev_file(self, event: tk.Event = None) -> bool:
@@ -111,7 +111,7 @@ class Model(evt.IObserver):
             res = True
         if res:
             self.gui_controller.display_problem()
-            self.gui_controller.main_game.move_input_handler.enable()
+            self.gui_controller.board.move_input_handler.enable()
         return res
     
     def go_to_file(self, idx: int = 0, event: tk.Event = None) -> bool:
@@ -121,7 +121,7 @@ class Model(evt.IObserver):
             res = True
         if res:
             self.gui_controller.display_problem()
-            self.gui_controller.main_game.move_input_handler.enable()
+            self.gui_controller.board.move_input_handler.enable()
         return res
     
     def set_status(self, status: plist.ProblemStatus) -> None:
