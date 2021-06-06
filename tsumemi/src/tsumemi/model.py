@@ -10,16 +10,13 @@ import tsumemi.src.tsumemi.game_controller as gamecon
 import tsumemi.src.tsumemi.timer as timer
 import tsumemi.src.tsumemi.problem_list as plist
 
-from tsumemi.src.shogi.basetypes import TerminationMove
-from tsumemi.src.tsumemi.problem_list import Problem, ProblemList
+from tsumemi.src.tsumemi.problem_list import Problem
 
 if TYPE_CHECKING:
     import tkinter as tk
     from typing import Optional, Union
     import tsumemi.src.tsumemi.kif_browser_gui as kbg
-    from tsumemi.src.shogi.game import Game
     from tsumemi.src.shogi.kif import ParserVisitor, Reader
-    from tsumemi.src.tsumemi.problem_list import ProblemStatus
     PathLike = Union[str, os.PathLike]
 
 
@@ -124,7 +121,7 @@ class Model(evt.IObserver):
             res = True
         if res:
             self.gui_controller.display_problem()
-            self.gui_controller.move_input_handler.set_state("ready")
+            self.gui_controller.main_game.move_input_handler.set_state("ready")
         return res
     
     def go_to_prev_file(self, event: tk.Event = None) -> bool:
@@ -134,7 +131,7 @@ class Model(evt.IObserver):
             res = True
         if res:
             self.gui_controller.display_problem()
-            self.gui_controller.move_input_handler.set_state("ready")
+            self.gui_controller.main_game.move_input_handler.set_state("ready")
         return res
     
     def go_to_file(self, idx: int = 0, event: tk.Event = None) -> bool:
@@ -144,10 +141,10 @@ class Model(evt.IObserver):
             res = True
         if res:
             self.gui_controller.display_problem()
-            self.gui_controller.move_input_handler.set_state("ready")
+            self.gui_controller.main_game.move_input_handler.set_state("ready")
         return res
     
-    def set_status(self, status: ProblemStatus) -> None:
+    def set_status(self, status: plist.ProblemStatus) -> None:
         self.gui_controller.prob_buffer.set_status(status)
         return
     

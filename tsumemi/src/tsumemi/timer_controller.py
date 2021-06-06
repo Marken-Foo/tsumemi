@@ -3,26 +3,21 @@ from __future__ import annotations
 import tkinter as tk
 
 from tkinter import ttk
-from typing import TYPE_CHECKING
 
 import tsumemi.src.tsumemi.event as evt
 import tsumemi.src.tsumemi.timer as timer
-
-if TYPE_CHECKING:
-    from typing import Union
-    tkWidget = Union[ttk.Widget, tk.Widget]
 
 
 class TimerController:
     """Controller object for a stopwatch timer. Handles access to its
     timer (model) and GUI (view).
     """
-    def __init__(self, parent: tkWidget, *args, **kwargs) -> None:
+    def __init__(self, parent: tk.Widget, *args, **kwargs) -> None:
         self.clock: timer.Timer = timer.Timer()
         self.view: TimerPane = TimerPane(parent, self.clock, *args, **kwargs)
         return
     
-    def make_new_view(self, parent: tkWidget, *args, **kwargs) -> None:
+    def make_new_view(self, parent: tk.Widget, *args, **kwargs) -> None:
         self.view = TimerPane(parent, self.clock, *args, **kwargs)
         return
 
@@ -30,7 +25,7 @@ class TimerController:
 class TimerDisplay(ttk.Label, evt.IObserver):
     """GUI class to display a stopwatch/timer.
     """
-    def __init__(self, parent: tkWidget, clock: timer.Timer, *args, **kwargs
+    def __init__(self, parent: tk.Widget, clock: timer.Timer, *args, **kwargs
         ) -> None:
         super().__init__(parent, *args, **kwargs)
         self.clock: timer.Timer = clock
@@ -74,7 +69,7 @@ class TimerDisplay(ttk.Label, evt.IObserver):
 class TimerPane(ttk.Frame):
     """GUI frame containing a timer display and associated controls.
     """
-    def __init__(self, parent: tkWidget, clock: timer.Timer, *args, **kwargs
+    def __init__(self, parent: tk.Widget, clock: timer.Timer, *args, **kwargs
         ) -> None:
         super().__init__(parent, *args, **kwargs)
         self.timer_display: TimerDisplay = TimerDisplay(

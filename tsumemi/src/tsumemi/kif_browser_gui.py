@@ -13,13 +13,11 @@ import tsumemi.src.tsumemi.game_controller as gamecon
 import tsumemi.src.tsumemi.problem_list_controller as plistcon
 import tsumemi.src.tsumemi.timer_controller as timecon
 
-from tsumemi.src.tsumemi.board_canvas import BoardCanvas
-from tsumemi.src.tsumemi.move_input_handler import MoveInputHandler
 from tsumemi.src.tsumemi.nav_controls import FreeModeNavControls, SpeedrunNavControls
 from tsumemi.src.tsumemi.settings_window import SettingsWindow, CONFIG_PATH
 
 if TYPE_CHECKING:
-    from typing import Any, Callable, Optional
+    from typing import Optional
 
 
 class Menubar(tk.Menu):
@@ -116,26 +114,20 @@ class RootController:
         self.boardWrapper.rowconfigure(0, weight=1)
         self.boardWrapper.grid_configure(padx=5, pady=5)
         
-        self.main_game = gamecon.GameController(parent=self.boardWrapper, controller=self, width=BoardCanvas.CANVAS_WIDTH, height=BoardCanvas.CANVAS_HEIGHT, bg="white")
+        self.main_game = gamecon.GameController(
+            parent=self.boardWrapper, controller=self
+        )
         self.board = self.main_game.board_canvas
         self.main_game.add_observer(self.model)
-        # self.board = BoardCanvas(
-            # parent=self.boardWrapper, controller=self,
-            # game = self.model.active_game,
-            # width=BoardCanvas.CANVAS_WIDTH, height=BoardCanvas.CANVAS_HEIGHT,
-            # bg="white"
-        # )
         self.board.grid(column=0, row=0, sticky="NSEW")
         self.board.bind("<Configure>", self.board.on_resize)
-        self.move_input_handler = MoveInputHandler(self.board)
-        self.move_input_handler.add_observer(self.model)
         
         # Initialise solution text
         self.is_solution_shown = False
         self.solution = tk.StringVar(value="Open a folder of problems to display.")
         self.lbl_solution = ttk.Label(
             self.mainframe, textvariable=self.solution,
-            justify="left", wraplength=self.board.CANVAS_WIDTH
+            justify="left", wraplength=self.board.width
         )
         self.lbl_solution.grid(
             column=0, row=1, sticky="W"

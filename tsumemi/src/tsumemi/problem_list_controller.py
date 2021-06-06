@@ -11,15 +11,14 @@ import tsumemi.src.tsumemi.timer as timer
 
 if TYPE_CHECKING:
     import tkinter as tk
-    from typing import Any, Dict, Optional, Union
-    tkWidget = Union[ttk.Widget, tk.Widget]
+    from typing import Any, Dict, Optional
 
 
 class ProblemListController:
     """Controller object for a problem list. Handles access to its
     underlying problem list (model) and GUI (view).
     """
-    def __init__(self, parent: tkWidget, controller: Any, *args, **kwargs
+    def __init__(self, parent: tk.Widget, controller: Any, *args, **kwargs
         ) -> None:
         self.problem_list: plist.ProblemList = plist.ProblemList()
         self.view: ProblemListPane = ProblemListPane(
@@ -33,7 +32,7 @@ class ProblemsView(ttk.Treeview, evt.IObserver):
     """GUI class to display list of problems.
     Observes underlying problem list and updates its view as needed.
     """
-    def __init__(self, parent: tkWidget, controller: Any,
+    def __init__(self, parent: tk.Widget, controller: Any,
             problem_list: plist.ProblemList,
             *args, **kwargs
         ) -> None:
@@ -121,7 +120,7 @@ class ProblemListPane(ttk.Frame):
     """GUI frame containing view of problem list and associated
     controls.
     """
-    def __init__(self, parent: tkWidget, controller: Any,
+    def __init__(self, parent: tk.Widget, controller: Any,
             problem_list: plist.ProblemList,
             *args, **kwargs
         ) -> None :

@@ -12,9 +12,7 @@ from tsumemi.src.shogi.game import Game
 
 if TYPE_CHECKING:
     import tkinter as tk
-    from typing import Any, Union
-    from tsumemi.src.shogi.basetypes import Move
-    tkWidget = Union[ttk.Widget, tk.Widget]
+    from typing import Any
 
 
 class GameEndEvent(evt.Event):
@@ -28,12 +26,13 @@ class WrongMoveEvent(evt.Event):
 
 
 class GameController(evt.Emitter, evt.IObserver):
-    def __init__(self, parent: tkWidget, controller: Any, *args, **kwargs
+    def __init__(self, parent: tk.Widget, controller: Any, *args, **kwargs
         ) -> None:
         evt.Emitter.__init__(self)
         self.game = Game()
         self.board_canvas: bc.BoardCanvas = bc.BoardCanvas(
-            parent, controller, self.game, *args, **kwargs
+            parent, controller, self.game,
+            bg="white", *args, **kwargs
         )
         self.move_input_handler = mih.MoveInputHandler(self.board_canvas)
         self.NOTIFY_ACTIONS = {}
