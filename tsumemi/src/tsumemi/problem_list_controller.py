@@ -69,7 +69,7 @@ class ProblemsView(ttk.Treeview, evt.IObserver):
         
         # Bind double click to go to problem
         self.bind("<Double-1>",
-            lambda e: self.controller.model.go_to_file(
+            lambda e: self.controller.go_to_file(
                 idx=self.get_idx_on_click(e)
             )
         )
@@ -152,14 +152,14 @@ class ProblemListPane(ttk.Frame):
         
         self.btn_speedrun: ttk.Button = ttk.Button(
             self, text="Start speedrun",
-            command=controller.model.start_speedrun
+            command=controller.start_speedrun
         )
         self.btn_speedrun.grid(column=0, row=2)
         self.btn_speedrun.grid_remove()
         
         self.btn_abort_speedrun: ttk.Button = ttk.Button(
             self, text="Abort speedrun",
-            command=controller.model.abort_speedrun
+            command=controller.abort_speedrun
         )
         self.btn_abort_speedrun.grid(column=0, row=2)
         self.btn_abort_speedrun.grid_remove()

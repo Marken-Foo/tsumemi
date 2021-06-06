@@ -9,10 +9,10 @@ class NavControls(ttk.Frame):
         super().__init__(parent, *args, **kwargs)
      
     def _add_btn_prev(self, text="< Prev"):
-        return ttk.Button(self, text=text, command=self.controller.model.go_to_prev_file)
+        return ttk.Button(self, text=text, command=self.controller.go_to_prev_file)
     
     def _add_btn_next(self, text="Next >"):
-        return ttk.Button(self, text=text, command=self.controller.model.go_to_next_file)
+        return ttk.Button(self, text=text, command=self.controller.go_to_next_file)
     
     def _add_btn_toggle_solution(self, text="Show/hide solution"):
         return ttk.Button(
@@ -25,13 +25,13 @@ class NavControls(ttk.Frame):
         )
     
     def _add_btn_skip(self, text="Skip"):
-        return ttk.Button(self, text=text, command=self.controller.model.skip)
+        return ttk.Button(self, text=text, command=self.controller.skip)
     
     def _add_btn_correct(self, text="Correct"):
-        return ttk.Button(self, text=text, command=self.controller.model.mark_correct)
+        return ttk.Button(self, text=text, command=self.controller.mark_correct)
     
     def _add_btn_wrong(self, text="Wrong"):
-        return ttk.Button(self, text=text, command=self.controller.model.mark_wrong)
+        return ttk.Button(self, text=text, command=self.controller.mark_wrong)
     
     def _add_chk_upside_down(self, text="Upside-down mode"):
         want_upside_down = tk.BooleanVar(value=False)
@@ -42,7 +42,7 @@ class NavControls(ttk.Frame):
         )
     
     def _add_btn_continue_speedrun(self, text="Next"):
-        return ttk.Button(self, text=text, command=self.controller.model.continue_speedrun)
+        return ttk.Button(self, text=text, command=self.controller.continue_speedrun)
 
 
 class FreeModeNavControls(NavControls):

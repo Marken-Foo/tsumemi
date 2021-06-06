@@ -8,10 +8,13 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from typing import TYPE_CHECKING
 
-import tsumemi.src.tsumemi.model as model
+import tsumemi.src.shogi.kif as kif
+import tsumemi.src.tsumemi.event as evt
 import tsumemi.src.tsumemi.game_controller as gamecon
 import tsumemi.src.tsumemi.img_handlers as imghand
+import tsumemi.src.tsumemi.problem_list as plist
 import tsumemi.src.tsumemi.problem_list_controller as plistcon
+import tsumemi.src.tsumemi.timer as timer
 import tsumemi.src.tsumemi.timer_controller as timecon
 
 from tsumemi.src.tsumemi.nav_controls import FreeModeNavControls, SpeedrunNavControls
@@ -102,23 +105,29 @@ def read_config_file(config: configparser.ConfigParser, filepath: PathLike
     return imghand.SkinSettings(piece_skin, board_skin, komadai_skin)
 
 
-class RootController:
+class RootController(evt.IObserver):
     """Root controller for the application. Manages top-level logic
     and GUI elements.
     """
     # eventually, refactor menu labels and dialog out into a constant namespace
     def __init__(self, root: tk.Tk) -> None:
         # Program data
-        self.model = model.Model(gui_controller=self) # To refactor
         self.config = configparser.ConfigParser(dict_type=dict)
         self.skin_settings = read_config_file(self.config, CONFIG_PATH)
         self.main_game = gamecon.GameController()
+        self.main_game.add_observer(self)
         self.main_timer = timecon.TimerController()
-        self.main_timer.clock.add_observer(self.model)
+        self.main_timer.clock.add_observer(self)
         self.main_problem_list = plistcon.ProblemListController()
         self.prob_buffer = self.main_problem_list.problem_list
         self.is_solution_shown: bool = False
         self.solution_text: str = ""
+        
+        self.NOTIFY_ACTIONS = {
+            timer.TimerSplitEvent: self._on_split,
+            gamecon.GameEndEvent: self.mark_correct_and_pause,
+            gamecon.WrongMoveEvent: self.mark_wrong_and_pause,
+        }
         
         # tkinter stuff, set up the main window
         self.root: tk.Tk = root
@@ -148,7 +157,6 @@ class RootController:
             parent=self.board_wrapper,
             skin_settings=self.skin_settings
         )
-        self.main_game.add_observer(self.model)
         self.board.grid(column=0, row=0, sticky="NSEW")
         self.board.bind("<Configure>", self.board.on_resize)
         
@@ -204,13 +212,166 @@ class RootController:
         self.bindings.bind_shortcuts(self.root, self.bindings.FREE_SHORTCUTS)
         return
     
+    #=== Methods on the model layer
+    def set_directory(self, directory: PathLike, recursive: bool = False
+        ) -> bool:
+        # Open the given directory and set problem buffer to its
+        # contents.
+        self.prob_buffer.clear(suppress=True)
+        self.add_problems_in_directory(
+            directory, recursive=recursive, suppress=True
+        )
+        self.prob_buffer.sort_by_file()
+        return self.set_active_problem()
+    
+    def add_problems_in_directory(self, directory: PathLike,
+            recursive: bool = False, suppress: bool = False
+        ) -> None:
+        # Adds all problems in given directory to self.prob_buffer.
+        if recursive:
+            for dirpath, _, filenames in os.walk(directory):
+                self.prob_buffer.add_problems([
+                    plist.Problem(os.path.join(dirpath, filename))
+                    for filename in filenames
+                    if filename.endswith(".kif")
+                    or filename.endswith(".kifu")
+                ], suppress=suppress)
+        else:
+            with os.scandir(directory) as it:
+                self.prob_buffer.add_problems([
+                    plist.Problem(os.path.join(directory, entry.name))
+                    for entry in it
+                    if entry.name.endswith(".kif")
+                    or entry.name.endswith(".kifu")
+                ], suppress=suppress)
+        return
+    
+    def set_status(self, status: plist.ProblemStatus) -> None:
+        self.prob_buffer.set_status(status)
+        return
+    
+    def set_active_problem(self, idx: int = 0) -> bool:
+        if self.prob_buffer.is_empty():
+            return False
+        else:
+            if self.prob_buffer.go_to_idx(idx):
+                self.read_problem()
+            return True
+    
+    def read_problem(self) -> None:
+        filepath = self.prob_buffer.get_curr_filepath()
+        if filepath is None:
+            return # error out?
+        game = kif.read_kif(filepath)
+        if game is None:
+            return # file unreadable, error out
+        move_string_list = game.to_notation_ja_kif() # at end of game
+        self.solution_text = "　".join(move_string_list)
+        game.start()
+        self.main_game.set_game(game)
+        return
+    
+    def go_to_next_file(self, event: tk.Event = None) -> bool:
+        res = False
+        if self.prob_buffer.next():
+            self.read_problem()
+            res = True
+        if res:
+            self.display_problem()
+            self.board.move_input_handler.enable()
+        return res
+    
+    def go_to_prev_file(self, event: tk.Event = None) -> bool:
+        res = False
+        if self.prob_buffer.prev():
+            self.read_problem()
+            res = True
+        if res:
+            self.display_problem()
+            self.board.move_input_handler.enable()
+        return res
+    
+    def go_to_file(self, idx: int = 0, event: tk.Event = None) -> bool:
+        res = False
+        if self.prob_buffer.go_to_idx(idx):
+            self.read_problem()
+            res = True
+        if res:
+            self.display_problem()
+            self.board.move_input_handler.enable()
+        return res
+    
+    #=== Speedrun controller commands
+    def start_speedrun(self) -> None:
+        self.go_to_file(idx=0)
+        self.main_game.set_speedrun_mode()
+        self.set_speedrun_ui()
+        self.main_timer.clock.reset()
+        self.main_timer.clock.start()
+        return
+    
+    def abort_speedrun(self) -> None:
+        self.main_timer.clock.stop()
+        self.main_game.set_free_mode()
+        self.remove_speedrun_ui()
+        return
+    
+    def continue_speedrun(self) -> None:
+        # continue speedrun from a pause, answer-checking state.
+        if not self.go_to_next_file():
+            self.end_of_folder()
+            return
+        self.nav_controls.show_sol_skip()
+        self.main_timer.clock.start()
+        return
+    
+    def end_of_folder(self) -> None:
+        self.main_timer.clock.stop()
+        self.show_end_of_folder_message()
+        self.abort_speedrun()
+        return
+    
+    def skip(self) -> None:
+        self.split_timer()
+        self.set_status(plist.ProblemStatus.SKIP)
+        if not self.go_to_next_file():
+            self.end_of_folder()
+        return
+    
+    def mark_correct(self) -> None:
+        self.set_status(plist.ProblemStatus.CORRECT)
+        self.continue_speedrun()
+        return
+    
+    def mark_wrong(self) -> None:
+        self.set_status(plist.ProblemStatus.WRONG)
+        self.continue_speedrun()
+        return
+    
+    def mark_correct_and_pause(self, event: evt.Event) -> None:
+        self.set_status(plist.ProblemStatus.CORRECT)
+        self.split_timer()
+        self.main_timer.clock.stop()
+        self.show_solution()
+        self.nav_controls.show_continue()
+        return
+    
+    def mark_wrong_and_pause(self, event: evt.Event) -> None:
+        self.set_status(plist.ProblemStatus.WRONG)
+        self.split_timer()
+        self.main_timer.clock.stop()
+        self.show_solution()
+        self.nav_controls.show_continue()
+        self.board.draw()
+        return
+    
     #=== GUI display methods
     def display_problem(self) -> None:
         self.board.draw()
         self.hide_solution()
         self.root.title(
             "KIF folder browser - "
-            + str(self.model.get_curr_filepath())
+            + str(self.prob_buffer.get_curr_filepath())
         )
         return
     
@@ -254,7 +415,7 @@ class RootController:
         if directory == "":
             return
         directory = os.path.normpath(directory)
-        if self.model.set_directory(directory, recursive=recursive):
+        if self.set_directory(directory, recursive=recursive):
             # Iff any KIF files were found, read the first and show it
             self.display_problem()
         return
@@ -266,6 +427,12 @@ class RootController:
     def split_timer(self) -> None:
         time = self.main_timer.clock.split()
         if time is not None:
+            self.prob_buffer.set_time(time)
+        return
+    
+    def _on_split(self, event: timer.TimerSplitEvent) -> None:
+        time = event.time
+        if self.main_timer.clock == event.clock and time is not None:
             self.prob_buffer.set_time(time)
         return
     
@@ -323,8 +490,8 @@ class Bindings:
         self.FREE_SHORTCUTS = {
             "<Key-h>": self.controller.toggle_solution,
             "<Key-H>": self.controller.toggle_solution,
-            "<Left>": self.controller.model.go_to_prev_file,
-            "<Right>": self.controller.model.go_to_next_file
+            "<Left>": self.controller.go_to_prev_file,
+            "<Right>": self.controller.go_to_next_file
         }
         
         self.SPEEDRUN_SHORTCUTS = {}
