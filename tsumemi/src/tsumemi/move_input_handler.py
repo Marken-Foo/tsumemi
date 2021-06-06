@@ -210,6 +210,7 @@ class ReadyState(MoveInputHandlerState):
             return
         elif koma.side() == caller.position.turn:
             caller.set_state("board", sq)
+            return
         else: # enemy piece selected
             caller.set_state("ready")
             return

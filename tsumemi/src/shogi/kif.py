@@ -21,8 +21,8 @@ def read_kif(filepath: PathLike) -> Optional[Game]:
     """Read a KIF file and return the complete game.
     """
     encodings = ["cp932", "utf-8"]
-    visitor = GameBuilderPVis()
-    reader = KifReader()
+    visitor = GAME_BUILDER_PVIS
+    reader = KIF_READER
     game = None
     for enc in encodings:
         try:
@@ -292,3 +292,10 @@ class KifReader(Reader):
             line = handle.readline()
         self.game.start()
         return self.game
+
+
+# Since these are essentially just collections of methods a single
+# instance suffices for speed. (Actually, are classes even needed for
+# polymorphism?)
+KIF_READER = KifReader()
+GAME_BUILDER_PVIS = GameBuilderPVis()

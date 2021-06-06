@@ -16,7 +16,6 @@ if TYPE_CHECKING:
     import tkinter as tk
     from typing import Optional, Union
     import tsumemi.src.tsumemi.kif_browser_gui as kbg
-    from tsumemi.src.shogi.kif import ParserVisitor, Reader
     PathLike = Union[str, os.PathLike]
 
 
@@ -28,8 +27,6 @@ class Model(evt.IObserver):
     # Try to refactor the controller bits from MainWindow to here.
     def __init__(self, gui_controller: kbg.RootController) -> None:
         self.gui_controller = gui_controller
-        self.reader: Reader = kif.KifReader()
-        self.solution: str = ""
         
         self.NOTIFY_ACTIONS = {
             timer.TimerSplitEvent: self._on_split,
@@ -46,32 +43,15 @@ class Model(evt.IObserver):
                 self.read_problem()
             return True
     
-    def read_file(self, filename: PathLike,
-            reader: Reader, visitor: ParserVisitor
-        ) -> None:
-        # Get the given reader to read the given file.
-        encodings = ["cp932", "utf-8"]
-        for enc in encodings:
-            try:
-                with open(filename, "r", encoding=enc) as kif:
-                    reader.read(kif, visitor)
-            except UnicodeDecodeError:
-                pass
-            else:
-                break
-        return
-    
     def read_problem(self) -> None:
-        # Get the active reader to read the current active problem
-        # from file
         filepath = self.gui_controller.prob_buffer.get_curr_filepath()
         if filepath is None:
             return # error out?
-        self.read_file(filepath, reader=self.reader,
-            visitor=kif.GameBuilderPVis()
-        )
-        self.solution = "　".join(self.reader.game.to_notation_ja_kif())
-        game = self.reader.game
+        game = kif.read_kif(filepath)
+        if game is None:
+            return # file unreadable, error out
+        move_string_list = game.to_notation_ja_kif() # at end of game
+        self.gui_controller.solution_text = "　".join(move_string_list)
         game.start()
         self.gui_controller.main_game.set_game(game)
         return

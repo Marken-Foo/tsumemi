@@ -108,14 +108,14 @@ class RootController:
         self.model = model.Model(gui_controller=self)
         
         # Make canvas for board
-        self.boardWrapper = ttk.Frame(self.mainframe)
-        self.boardWrapper.grid(column=0, row=0, sticky="NSEW")
-        self.boardWrapper.columnconfigure(0, weight=1)
-        self.boardWrapper.rowconfigure(0, weight=1)
-        self.boardWrapper.grid_configure(padx=5, pady=5)
+        self.board_wrapper = ttk.Frame(self.mainframe)
+        self.board_wrapper.grid(column=0, row=0, sticky="NSEW")
+        self.board_wrapper.columnconfigure(0, weight=1)
+        self.board_wrapper.rowconfigure(0, weight=1)
+        self.board_wrapper.grid_configure(padx=5, pady=5)
         
         self.main_game = gamecon.GameController(
-            parent=self.boardWrapper, controller=self
+            parent=self.board_wrapper, controller=self
         )
         self.board = self.main_game.board_canvas
         self.main_game.add_observer(self.model)
@@ -125,6 +125,7 @@ class RootController:
         # Initialise solution text
         self.is_solution_shown = False
         self.solution = tk.StringVar(value="Open a folder of problems to display.")
+        self.solution_text: str = ""
         self.lbl_solution = ttk.Label(
             self.mainframe, textvariable=self.solution,
             justify="left", wraplength=self.board.width
@@ -192,7 +193,7 @@ class RootController:
         return
     
     def show_solution(self) -> None:
-        self.solution.set(self.model.solution)
+        self.solution.set(self.solution_text)
         self.is_solution_shown = True
         return
     
