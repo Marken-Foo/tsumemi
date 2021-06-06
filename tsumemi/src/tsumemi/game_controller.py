@@ -29,27 +29,21 @@ class GameController(evt.Emitter, evt.IObserver):
     def __init__(self, parent: tk.Widget, controller: Any, *args, **kwargs
         ) -> None:
         evt.Emitter.__init__(self)
+        self.NOTIFY_ACTIONS = {}
         self.game = Game()
         self.board_canvas: bc.BoardCanvas = bc.BoardCanvas(
             parent, controller, self.game,
             bg="white", *args, **kwargs
         )
         self.move_input_handler = mih.MoveInputHandler(self.board_canvas)
-        self.NOTIFY_ACTIONS = {}
-        
         self.move_input_handler.add_observer(self)
-        self.board_canvas.sync_input_handler(self.move_input_handler)
         
         self.set_free_mode()
         return
     
     def set_game(self, game: Game) -> None:
         self.game = game
-        self.board_canvas.game = game
-        self.board_canvas.position = self.board_canvas.game.position
-        self.move_input_handler.position = self.board_canvas.game.position
-        self.board_canvas.sync_input_handler(self.move_input_handler)
-        self.board_canvas.draw()
+        self.board_canvas.set_position(game.position)
         return
     
     def set_speedrun_mode(self) -> None:

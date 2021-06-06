@@ -26,7 +26,6 @@ class BoardCanvas(tk.Canvas):
     drawing on itself, delegating other tasks like size calculation to
     other objects.
     """
-    
     def __init__(self, parent: tk.Widget, controller: Any, game: Game,
             width: int = DEFAULT_CANVAS_WIDTH,
             height: int = DEFAULT_CANVAS_HEIGHT,
@@ -41,7 +40,6 @@ class BoardCanvas(tk.Canvas):
         self.is_upside_down: bool = False
         super().__init__(parent, width=width, height=height, *args, **kwargs)
         # Specify source of board data
-        self.game: Game = game
         self.move_input_handler: Optional[MoveInputHandler] = None
         self.position: Position = game.position
         config = self.controller.config
@@ -79,13 +77,14 @@ class BoardCanvas(tk.Canvas):
         self.highlighted_ktype = KomaType.NONE
         return
     
-    def sync_input_handler(self, move_input_handler: MoveInputHandler
-        ) -> None:
-        """Register a MoveInputHandler with self, to enable move input and
-        control via GUI.
+    def set_position(self, pos: Position) -> None:
+        """Set the internal position (and of any associated input
+        handler) to the given Position object.
         """
-        self.move_input_handler = move_input_handler
-        move_input_handler.board_canvas = self
+        self.position = pos
+        if self.move_input_handler is not None:
+            self.move_input_handler.position = pos
+        self.draw()
         return
     
     def set_focus(self, sq: Square, ktype: KomaType=KomaType.NONE) -> None:

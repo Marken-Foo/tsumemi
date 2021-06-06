@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     import tkinter.Event as tkEvent
     from typing import Dict, List, Optional, Tuple
     from tsumemi.src.shogi.game import Game
+    from tsumemi.src.shogi.position import Position
     from tsumemi.src.tsumemi.board_canvas import BoardCanvas
 
 
@@ -27,9 +28,7 @@ class MoveInputHandler(evt.Emitter):
     """
     def __init__(self, board_canvas: BoardCanvas) -> None:
         self.observers: List[evt.IObserver] = []
-        self.board_canvas = board_canvas
-        self.board_canvas.sync_input_handler(self)
-        self.position = self.board_canvas.game.position
+        self.position: Position
         self.focused_sq = Square.NONE
         self.focused_ktype = KomaType.NONE
         # Move input handling logic uses a state machine.
@@ -37,9 +36,14 @@ class MoveInputHandler(evt.Emitter):
             "ready": ReadyState(),
             "hand": HandState(),
             "board": BoardState(),
-            "wait_for_promotion": WaitForPromotionState()
+            "wait_for_promotion": WaitForPromotionState(),
+            "disabled": DisabledState(),
         }
         self.active_state: MoveInputHandlerState = ReadyState()
+        # sync with board canvas
+        self.board_canvas = board_canvas
+        board_canvas.move_input_handler = self
+        self.position = board_canvas.position
         return
     
     def receive_square(self, event: tkEvent,
@@ -67,13 +71,21 @@ class MoveInputHandler(evt.Emitter):
         )
         return
     
-    def set_state(self, key: str,
+    def enable(self) -> None:
+        self._set_state("ready")
+        return
+    
+    def disable(self) -> None:
+        self._set_state("disabled")
+        return
+    
+    def _set_state(self, key: str,
             sq: Square = Square.NONE,
             hand_ktype: KomaType = KomaType.NONE
         ) -> None:
         """Set the state machine's state and take any actions needed.
         """
-        if key == "ready":
+        if (key == "ready") or (key == "disabled"):
             self.focused_sq = Square.NONE
             self.focused_ktype = KomaType.NONE
             self.board_canvas.set_focus(Square.NONE)
@@ -190,6 +202,23 @@ class MoveInputHandlerState(ABC):
         raise RuntimeError("Unexpected promotion input to MoveInputHandler")
 
 
+class DisabledState(MoveInputHandlerState):
+    """The state when the move input handler is to ignore attempts at
+    user input.
+    """
+    def receive_input(self, event: tkEvent, caller: MoveInputHandler,
+            sq: Square, hand_ktype: KomaType = KomaType.NONE,
+            hand_side: Side = Side.SENTE
+        ) -> None:
+        return
+    
+    def receive_promotion(self, caller: MoveInputHandler,
+            is_promotion: Optional[bool],
+            sq: Square, ktype: KomaType
+        ) -> None:
+        return
+
+
 class ReadyState(MoveInputHandlerState):
     """Represents the state where nothing has been selected.
     """
@@ -199,20 +228,20 @@ class ReadyState(MoveInputHandlerState):
         ) -> None:
         if sq == Square.HAND:
             if hand_side == caller.position.turn:
-                caller.set_state("hand", sq=sq, hand_ktype=hand_ktype)
+                caller._set_state("hand", sq=sq, hand_ktype=hand_ktype)
                 return
             else:
-                caller.set_state("ready")
+                caller._set_state("ready")
                 return
         koma = caller.position.get_koma(sq)
         if koma == Koma.NONE:
-            caller.set_state("ready")
+            caller._set_state("ready")
             return
         elif koma.side() == caller.position.turn:
-            caller.set_state("board", sq)
+            caller._set_state("board", sq)
             return
         else: # enemy piece selected
-            caller.set_state("ready")
+            caller._set_state("ready")
             return
 
 
@@ -226,25 +255,25 @@ class HandState(MoveInputHandlerState):
         ) -> None:
         if sq == Square.HAND:
             if hand_side != caller.position.turn:
-                caller.set_state("ready")
+                caller._set_state("ready")
                 return
             elif hand_ktype == caller.focused_ktype:
-                caller.set_state("ready")
+                caller._set_state("ready")
                 return
             else:
-                caller.set_state("hand", sq, hand_ktype)
+                caller._set_state("hand", sq, hand_ktype)
                 return
         koma = caller.position.get_koma(sq)
         if koma == Koma.NONE:
             caller._attempt_drop(sq)
             # regardless of success, will transition to ReadyState.
-            caller.set_state("ready")
+            caller._set_state("ready")
             return
         elif koma.side() == caller.position.turn:
-            caller.set_state("board", sq)
+            caller._set_state("board", sq)
             return
         else:
-            caller.set_state("ready")
+            caller._set_state("ready")
             return
 
 
@@ -258,35 +287,35 @@ class BoardState(MoveInputHandlerState):
         ) -> None:
         if sq == Square.HAND:
             if hand_side == caller.position.turn:
-                caller.set_state("hand", sq, hand_ktype)
+                caller._set_state("hand", sq, hand_ktype)
                 return
             else:
-                caller.set_state("ready")
+                caller._set_state("ready")
                 return
         koma = caller.position.get_koma(sq)
         if koma == Koma.NONE:
             is_completed = caller._attempt_move(sq)
             if is_completed is None:
                 # waiting for promotion
-                caller.set_state("wait_for_promotion")
+                caller._set_state("wait_for_promotion")
                 return
             else:
-                caller.set_state("ready")
+                caller._set_state("ready")
                 return
         elif koma.side() == caller.position.turn:
             if sq == caller.focused_sq:
-                caller.set_state("ready")
+                caller._set_state("ready")
                 return
             else:
-                caller.set_state("board", sq)
+                caller._set_state("board", sq)
                 return
         else:
             is_completed = caller._attempt_move(sq)
             if is_completed:
-                caller.set_state("ready")
+                caller._set_state("ready")
                 return
             else:
-                caller.set_state("wait_for_promotion")
+                caller._set_state("wait_for_promotion")
                 return
 
 
@@ -308,7 +337,7 @@ class WaitForPromotionState(MoveInputHandlerState):
         ) -> None:
         if is_promotion is None:
             # This means promotion choice is cancelled
-            caller.set_state("ready")
+            caller._set_state("ready")
             return
         else:
             # Promotion choice is made, yes or no
@@ -319,5 +348,5 @@ class WaitForPromotionState(MoveInputHandlerState):
                 is_promotion=is_promotion
             )
             caller._send_move(mv)
-            caller.set_state("ready")
+            caller._set_state("ready")
             return
