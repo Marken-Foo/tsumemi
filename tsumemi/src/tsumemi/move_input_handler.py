@@ -28,7 +28,7 @@ class MoveInputHandler(evt.Emitter):
     def __init__(self, board_canvas: BoardCanvas) -> None:
         self.observers: List[evt.IObserver] = []
         self.board_canvas = board_canvas
-        self.board_canvas.connect_game_adapter(self)
+        self.board_canvas.sync_input_handler(self)
         self.position = self.board_canvas.game.position
         self.focused_sq = Square.NONE
         self.focused_ktype = KomaType.NONE

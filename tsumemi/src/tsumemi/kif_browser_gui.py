@@ -9,6 +9,7 @@ from tkinter import filedialog, messagebox, ttk
 from typing import TYPE_CHECKING
 
 import tsumemi.src.tsumemi.model as model
+import tsumemi.src.tsumemi.game_controller as gamecon
 import tsumemi.src.tsumemi.problem_list_controller as plistcon
 import tsumemi.src.tsumemi.timer_controller as timecon
 
@@ -115,12 +116,15 @@ class RootController:
         self.boardWrapper.rowconfigure(0, weight=1)
         self.boardWrapper.grid_configure(padx=5, pady=5)
         
-        self.board = BoardCanvas(
-            parent=self.boardWrapper, controller=self,
-            game = self.model.active_game,
-            width=BoardCanvas.CANVAS_WIDTH, height=BoardCanvas.CANVAS_HEIGHT,
-            bg="white"
-        )
+        self.main_game = gamecon.GameController(parent=self.boardWrapper, controller=self, width=BoardCanvas.CANVAS_WIDTH, height=BoardCanvas.CANVAS_HEIGHT, bg="white")
+        self.board = self.main_game.board_canvas
+        self.main_game.add_observer(self.model)
+        # self.board = BoardCanvas(
+            # parent=self.boardWrapper, controller=self,
+            # game = self.model.active_game,
+            # width=BoardCanvas.CANVAS_WIDTH, height=BoardCanvas.CANVAS_HEIGHT,
+            # bg="white"
+        # )
         self.board.grid(column=0, row=0, sticky="NSEW")
         self.board.bind("<Configure>", self.board.on_resize)
         self.move_input_handler = MoveInputHandler(self.board)

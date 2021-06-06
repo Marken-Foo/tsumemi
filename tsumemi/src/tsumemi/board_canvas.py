@@ -73,7 +73,7 @@ class BoardCanvas(tk.Canvas):
         self.highlighted_ktype = KomaType.NONE
         return
     
-    def connect_game_adapter(self, move_input_handler: MoveInputHandler
+    def sync_input_handler(self, move_input_handler: MoveInputHandler
         ) -> None:
         """Register a MoveInputHandler with self, to enable move input and
         control via GUI.

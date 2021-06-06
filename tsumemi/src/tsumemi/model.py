@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING
 
 import tsumemi.src.shogi.kif as kif
 import tsumemi.src.tsumemi.event as evt
+import tsumemi.src.tsumemi.game_controller as gamecon
 import tsumemi.src.tsumemi.timer as timer
-import tsumemi.src.tsumemi.move_input_handler as mih
 import tsumemi.src.tsumemi.problem_list as plist
 
 from tsumemi.src.shogi.basetypes import TerminationMove
@@ -30,16 +30,14 @@ class Model(evt.IObserver):
     # This is currently actually a mishmash of Model + controller.
     # Try to refactor the controller bits from MainWindow to here.
     def __init__(self, gui_controller: kbg.RootController) -> None:
-        # References to other control or relevant objects
         self.gui_controller = gui_controller
         self.reader: Reader = kif.KifReader()
-        # Data
         self.solution: str = ""
-        self.active_game: Game = self.reader.game
         
         self.NOTIFY_ACTIONS = {
-            mih.MoveEvent: self.add_move,
-            timer.TimerSplitEvent: self._on_split
+            timer.TimerSplitEvent: self._on_split,
+            gamecon.GameEndEvent: self.mark_correct_and_pause,
+            gamecon.WrongMoveEvent: self.mark_wrong_and_pause,
         }
         return
     
@@ -76,8 +74,9 @@ class Model(evt.IObserver):
             visitor=kif.GameBuilderPVis()
         )
         self.solution = "　".join(self.reader.game.to_notation_ja_kif())
-        self.active_game = self.reader.game
-        self.active_game.start()
+        game = self.reader.game
+        game.start()
+        self.gui_controller.main_game.set_game(game)
         return
     
     def add_problems_in_directory(self, directory: PathLike,
@@ -152,40 +151,6 @@ class Model(evt.IObserver):
         self.gui_controller.prob_buffer.set_status(status)
         return
     
-    def add_move(self, event: mih.MoveEvent) -> None:
-        """Make the move, regardless of whether the move is in the
-        game or not.
-        """
-        move = event.move
-        self.active_game.add_move(move)
-        self.gui_controller.board.draw()
-        return
-    
-    def verify_move(self, event: mih.MoveEvent) -> None:
-        # Used only in speedrun mode
-        # given a move sent via input event, check if the move is
-        # correct, and if it is, make the move.
-        # could possibly be refactored? (Single-responsibility)
-        move = event.move
-        if self.active_game.is_mainline(move):
-            # the move is the mainline, so it is correct
-            self.active_game.make_move(move)
-            self.gui_controller.board.draw()
-            if self.active_game.is_end():
-                self.mark_correct_and_pause()
-            else:
-                response_move = self.active_game.get_mainline_move()
-                if type(response_move) == TerminationMove:
-                    self.mark_correct_and_pause()
-                else:
-                    self.active_game.make_move(response_move)
-                    self.gui_controller.board.draw()
-                    if self.active_game.is_end():
-                        self.mark_correct_and_pause()
-        else:
-            self.mark_wrong_and_pause()
-        return
-    
     def _on_split(self, event: timer.TimerSplitEvent) -> None:
         if self.gui_controller.main_timer.clock == event.clock and event.time is not None:
             self.gui_controller.prob_buffer.set_time(event.time)
@@ -194,7 +159,7 @@ class Model(evt.IObserver):
     # Speedrun mode methods
     def start_speedrun(self) -> None:
         self.go_to_file(idx=0)
-        self.NOTIFY_ACTIONS[mih.MoveEvent] = self.verify_move
+        self.gui_controller.main_game.set_speedrun_mode()
         self.gui_controller.set_speedrun_ui()
         self.gui_controller.main_timer.clock.reset()
         self.gui_controller.main_timer.clock.start()
@@ -202,7 +167,7 @@ class Model(evt.IObserver):
     
     def abort_speedrun(self) -> None:
         self.gui_controller.main_timer.clock.stop()
-        self.NOTIFY_ACTIONS[mih.MoveEvent] = self.add_move
+        self.gui_controller.main_game.set_free_mode()
         self.gui_controller.remove_speedrun_ui()
         return
     
@@ -213,7 +178,7 @@ class Model(evt.IObserver):
             self.end_of_folder()
         return
     
-    def mark_correct_and_pause(self) -> None:
+    def mark_correct_and_pause(self, event: evt.Event) -> None:
         self.set_status(plist.ProblemStatus.CORRECT)
         self.gui_controller.split_timer()
         self.gui_controller.main_timer.clock.stop()
@@ -221,7 +186,7 @@ class Model(evt.IObserver):
         self.gui_controller.nav_controls.show_continue()
         return
     
-    def mark_wrong_and_pause(self) -> None:
+    def mark_wrong_and_pause(self, event: evt.Event) -> None:
         self.set_status(plist.ProblemStatus.WRONG)
         self.gui_controller.split_timer()
         self.gui_controller.main_timer.clock.stop()
