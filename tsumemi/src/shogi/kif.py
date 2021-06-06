@@ -11,8 +11,28 @@ from tsumemi.src.shogi.basetypes import HAND_TYPES, KTYPE_FROM_KANJI
 from tsumemi.src.shogi.game import Game
 
 if TYPE_CHECKING:
-    from typing import Dict, Sequence
+    import os
+    from typing import Dict, Optional, Sequence, Union
     from tsumemi.src.shogi.basetypes import KomaType
+    PathLike = Union[str, os.PathLike]
+
+
+def read_kif(filepath: PathLike) -> Optional[Game]:
+    """Read a KIF file and return the complete game.
+    """
+    encodings = ["cp932", "utf-8"]
+    visitor = GameBuilderPVis()
+    reader = KifReader()
+    game = None
+    for enc in encodings:
+        try:
+            with open(filepath, "r", encoding=enc) as f:
+                game = reader.read(f, visitor)
+        except UnicodeDecodeError:
+            pass
+        else:
+            break
+    return game
 
 
 SFEN_FROM_HANDICAP: Dict[str, str] = {
@@ -227,8 +247,8 @@ class Reader:
         self.game = Game()
         return
     
-    def read(self, handle: typing.TextIO, visitor: ParserVisitor) -> None:
-        pass
+    def read(self, handle: typing.TextIO, visitor: ParserVisitor) -> Game:
+        return self.game
 
 
 class KifReader(Reader):
@@ -236,7 +256,7 @@ class KifReader(Reader):
         self.game = Game()
         return
     
-    def read(self, handle: typing.TextIO, visitor: ParserVisitor) -> None:
+    def read(self, handle: typing.TextIO, visitor: ParserVisitor) -> Game:
         self.game.reset()
         line = handle.readline()
         while line != "":
@@ -253,7 +273,7 @@ class KifReader(Reader):
                     bod_lines.append(line.lstrip().rstrip())
                 visitor.visit_board(self, bod_lines)
             elif line.startswith("手数--"):
-                # movesection delineation, no action needed
+                # movesection delineation
                 pass
             elif line[0].isdigit():
                 # Signals a move; thus, requires moves to be numbered.
@@ -270,4 +290,5 @@ class KifReader(Reader):
                 pass
             # MUST fallthrough to here to complete one while iteration
             line = handle.readline()
-        return
+        self.game.start()
+        return self.game

@@ -1,5 +1,6 @@
 import unittest
 
+import tsumemi.src.shogi.kif as kif
 from tsumemi.src.shogi.kif import SFEN_FROM_HANDICAP, GameBuilderPVis, KifReader
 
 
@@ -40,6 +41,15 @@ class TestReadKifu(unittest.TestCase):
             # print(reader.game.position)
             # print(reader.game.position.to_sfen())
             # print(str(reader.game.movetree))
+    
+    def test_read_kif(self):
+        reader = KifReader()
+        read_file(r"./tsumemi/test/test_kifus/testlinear.kifu", reader, GameBuilderPVis())
+        reference = reader.game
+        reference.end()
+        game = kif.read_kif(r"./tsumemi/test/test_kifus/testlinear.kifu")
+        game.end()
+        self.assertEqual(reference.position.to_sfen(), game.position.to_sfen())
     
     def test_branched(self):
         reader = KifReader()
