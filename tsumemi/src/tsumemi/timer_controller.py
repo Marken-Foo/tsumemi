@@ -3,9 +3,13 @@ from __future__ import annotations
 import tkinter as tk
 
 from tkinter import ttk
+from typing import TYPE_CHECKING
 
 import tsumemi.src.tsumemi.event as evt
 import tsumemi.src.tsumemi.timer as timer
+
+if TYPE_CHECKING:
+    from typing import Optional
 
 
 class TimerController:
@@ -18,6 +22,18 @@ class TimerController:
     
     def make_timer_pane(self, parent: tk.Widget, *args, **kwargs) -> TimerPane:
         return TimerPane(parent, self.clock, *args, **kwargs)
+    
+    def start(self) -> None:
+        return self.clock.start()
+    
+    def stop(self) -> None:
+        return self.clock.stop()
+    
+    def reset(self) -> None:
+        return self.clock.reset()
+    
+    def split(self) -> Optional[float]:
+        return self.clock.split()
 
 
 class TimerDisplay(ttk.Label, evt.IObserver):

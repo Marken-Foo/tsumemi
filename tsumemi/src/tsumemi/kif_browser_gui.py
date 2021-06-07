@@ -289,115 +289,22 @@ class RootController(evt.IObserver):
     
     #=== Speedrun controller commands
     def start_speedrun(self) -> None:
+        # GUI callback
         self.show_problem(idx=0)
         self.main_game.set_speedrun_mode()
-        self.set_speedrun_ui()
-        self.main_timer.clock.reset()
-        self.main_timer.clock.start()
+        self._set_speedrun_ui()
+        self.main_timer.reset()
+        self.main_timer.start()
         return
     
     def abort_speedrun(self) -> None:
-        self.main_timer.clock.stop()
+        # GUI callback
+        self.main_timer.stop()
         self.main_game.set_free_mode()
-        self.remove_speedrun_ui()
+        self._remove_speedrun_ui()
         return
     
-    def continue_speedrun(self) -> None:
-        # continue speedrun from a pause, answer-checking state.
-        if not self.go_to_next_file():
-            self.end_of_folder()
-            return
-        self.nav_controls.show_sol_skip()
-        self.main_timer.clock.start()
-        return
-    
-    def end_of_folder(self) -> None:
-        self.main_timer.clock.stop()
-        self.show_end_of_folder_message()
-        self.abort_speedrun()
-        return
-    
-    def skip(self) -> None:
-        self.split_timer()
-        self.main_problem_list.set_status(plist.ProblemStatus.SKIP)
-        if not self.go_to_next_file():
-            self.end_of_folder()
-        return
-    
-    def mark_correct_and_continue(self) -> None:
-        self.main_problem_list.set_status(plist.ProblemStatus.CORRECT)
-        self.continue_speedrun()
-        return
-    
-    def mark_wrong_and_continue(self) -> None:
-        self.main_problem_list.set_status(plist.ProblemStatus.WRONG)
-        self.continue_speedrun()
-        return
-    
-    def mark_correct_and_pause(self, event: evt.Event) -> None:
-        self.main_problem_list.set_status(plist.ProblemStatus.CORRECT)
-        self.split_timer()
-        self.main_timer.clock.stop()
-        self.show_solution()
-        self.nav_controls.show_continue()
-        return
-    
-    def mark_wrong_and_pause(self, event: evt.Event) -> None:
-        self.main_problem_list.set_status(plist.ProblemStatus.WRONG)
-        self.split_timer()
-        self.main_timer.clock.stop()
-        self.show_solution()
-        self.nav_controls.show_continue()
-        self.board.draw()
-        return
-    
-    #=== GUI display methods
-    def hide_solution(self) -> None:
-        self.solution.set("[solution hidden]")
-        self.is_solution_shown = False
-        return
-    
-    def show_solution(self) -> None:
-        self.solution.set(self.solution_text)
-        self.is_solution_shown = True
-        return
-    
-    def toggle_solution(self, event: Optional[tk.Event] = None) -> None:
-        if self.is_solution_shown:
-            self.hide_solution()
-        else:
-            self.show_solution()
-        return
-    
-    def flip_board(self, want_upside_down: bool) -> None:
-        self.board.flip_board(want_upside_down)
-        return
-    
-    def apply_skin_settings(self, settings: imghand.SkinSettings
-        ) -> None:
-        self.skin_settings = settings
-        piece_skin, board_skin, komadai_skin = settings.get()
-        for board_canvas in self.board_views:
-            board_canvas.apply_piece_skin(piece_skin)
-            board_canvas.apply_board_skin(board_skin)
-            board_canvas.apply_komadai_skin(komadai_skin)
-            board_canvas.draw()
-        return
-    
-    # Speedrun mode commands
-    def split_timer(self) -> None:
-        time = self.main_timer.clock.split()
-        if time is not None:
-            self.main_problem_list.set_time(time)
-        return
-    
-    def _on_split(self, event: timer.TimerSplitEvent) -> None:
-        time = event.time
-        if self.main_timer.clock == event.clock and time is not None:
-            self.main_problem_list.set_time(time)
-        return
-    
-    def set_speedrun_ui(self) -> None:
+    def _set_speedrun_ui(self) -> None:
         # Make UI changes
         self.nav_controls.grid_remove()
         self.nav_controls = self._navcons["speedrun"]
@@ -409,7 +316,7 @@ class RootController(evt.IObserver):
         self.bindings.unbind_shortcuts(self.root, self.bindings.FREE_SHORTCUTS)
         return
     
-    def remove_speedrun_ui(self) -> None:
+    def _remove_speedrun_ui(self) -> None:
         # Abort speedrun, go back to free browsing
         # Make UI changes
         self.nav_controls.grid_remove()
@@ -421,18 +328,116 @@ class RootController(evt.IObserver):
         self.bindings.bind_shortcuts(self.root, self.bindings.FREE_SHORTCUTS)
         return
     
-    def view_solution(self) -> None:
-        self.split_timer()
-        self.main_timer.clock.stop()
-        self.show_solution()
-        self.nav_controls.show_correct_wrong()
+    def continue_speedrun(self) -> None:
+        # GUI callback and local method
+        # continue speedrun from a pause, answer-checking state.
+        if not self.go_to_next_file():
+            self.end_of_folder()
+            return
+        self.nav_controls.show_sol_skip()
+        self.main_timer.start()
         return
     
-    def show_end_of_folder_message(self) -> None:
+    def end_of_folder(self) -> None:
+        # local method
+        self.main_timer.stop()
         messagebox.showinfo(
             title="End of folder",
             message="You have reached the end of the speedrun."
         )
+        self.abort_speedrun()
+        return
+    
+    def skip(self) -> None:
+        # GUI callback
+        self.main_timer.split()
+        self.main_problem_list.set_status(plist.ProblemStatus.SKIP)
+        if not self.go_to_next_file():
+            self.end_of_folder()
+        return
+    
+    def mark_correct_and_continue(self) -> None:
+        # GUI callback
+        self.main_problem_list.set_status(plist.ProblemStatus.CORRECT)
+        self.continue_speedrun()
+        return
+    
+    def mark_wrong_and_continue(self) -> None:
+        # GUI callback
+        self.main_problem_list.set_status(plist.ProblemStatus.WRONG)
+        self.continue_speedrun()
+        return
+    
+    def mark_correct_and_pause(self, event: evt.Event) -> None:
+        # Observer callback
+        self.main_problem_list.set_status(plist.ProblemStatus.CORRECT)
+        self.main_timer.split()
+        self.main_timer.stop()
+        self.show_solution()
+        self.nav_controls.show_continue()
+        return
+    
+    def mark_wrong_and_pause(self, event: evt.Event) -> None:
+        # Observer callback
+        self.main_problem_list.set_status(plist.ProblemStatus.WRONG)
+        self.main_timer.split()
+        self.main_timer.stop()
+        self.show_solution()
+        self.nav_controls.show_continue()
+        self.board.draw()
+        return
+    
+    #=== GUI display methods
+    def hide_solution(self) -> None:
+        # local method
+        self.solution.set("[solution hidden]")
+        self.is_solution_shown = False
+        return
+    
+    def show_solution(self) -> None:
+        # local method
+        self.solution.set(self.solution_text)
+        self.is_solution_shown = True
+        return
+    
+    def toggle_solution(self, event: Optional[tk.Event] = None) -> None:
+        # GUI callback
+        if self.is_solution_shown:
+            self.hide_solution()
+        else:
+            self.show_solution()
+        return
+    
+    def flip_board(self, want_upside_down: bool) -> None:
+        # GUI callback
+        self.board.flip_board(want_upside_down)
+        return
+    
+    def apply_skin_settings(self, settings: imghand.SkinSettings
+        ) -> None:
+        # GUI callback
+        self.skin_settings = settings
+        piece_skin, board_skin, komadai_skin = settings.get()
+        for board_canvas in self.board_views:
+            board_canvas.apply_piece_skin(piece_skin)
+            board_canvas.apply_board_skin(board_skin)
+            board_canvas.apply_komadai_skin(komadai_skin)
+            board_canvas.draw()
+        return
+    
+    def _on_split(self, event: timer.TimerSplitEvent) -> None:
+        # Observer callback
+        time = event.time
+        if self.main_timer.clock == event.clock and time is not None:
+            self.main_problem_list.set_time(time)
+        return
+    
+    def view_solution(self) -> None:
+        # GUI callback
+        self.main_timer.split()
+        self.main_timer.stop()
+        self.show_solution()
+        self.nav_controls.show_correct_wrong()
         return
 
 
