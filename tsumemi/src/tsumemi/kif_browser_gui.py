@@ -115,20 +115,21 @@ class RootController(evt.IObserver):
         self.config = configparser.ConfigParser(dict_type=dict)
         self.skin_settings = read_config_file(self.config, CONFIG_PATH)
         self.main_game = gamecon.GameController()
-        self.main_game.add_observer(self)
         self.main_timer = timecon.TimerController()
-        self.main_timer.clock.add_observer(self)
         self.main_problem_list = plistcon.ProblemListController()
+        
         self.prob_buffer = self.main_problem_list.problem_list
         self.is_solution_shown: bool = False
         self.solution_text: str = ""
         
+        self.main_game.add_observer(self)
+        self.main_timer.clock.add_observer(self)
         self.NOTIFY_ACTIONS = {
             timer.TimerSplitEvent: self._on_split,
             gamecon.GameEndEvent: self.mark_correct_and_pause,
             gamecon.WrongMoveEvent: self.mark_wrong_and_pause,
         }
-        
+        # Everything after this point should be GUI
         # tkinter stuff, set up the main window
         self.root: tk.Tk = root
         self.root.option_add("*tearOff", False)
@@ -212,54 +213,33 @@ class RootController(evt.IObserver):
         self.bindings.bind_shortcuts(self.root, self.bindings.FREE_SHORTCUTS)
         return
     
-    #=== Methods on the model layer
-    def set_directory(self, directory: PathLike, recursive: bool = False
-        ) -> bool:
-        # Open the given directory and set problem buffer to its
-        # contents.
-        self.prob_buffer.clear(suppress=True)
-        self.add_problems_in_directory(
-            directory, recursive=recursive, suppress=True
-        )
-        self.prob_buffer.sort_by_file()
-        return self.set_active_problem()
-    
-    def add_problems_in_directory(self, directory: PathLike,
-            recursive: bool = False, suppress: bool = False
+    #=== Open folder, needs file open dialog
+    # TODO: Refactor this into problem_list_controller.
+    # After that, each "open folder" can open it either in a cliplist or
+    # in a new problemlist in a self.plists: Dict (?) with the foldername?
+    # as the key and/or name of the problemlist, possibly with "recursed"
+    # somewhere inside.
+    def open_folder(self, event: Optional[tk.Event] = None,
+            recursive: bool = False
         ) -> None:
-        # Adds all problems in given directory to self.prob_buffer.
-        if recursive:
-            for dirpath, _, filenames in os.walk(directory):
-                self.prob_buffer.add_problems([
-                    plist.Problem(os.path.join(dirpath, filename))
-                    for filename in filenames
-                    if filename.endswith(".kif")
-                    or filename.endswith(".kifu")
-                ], suppress=suppress)
-        else:
-            with os.scandir(directory) as it:
-                self.prob_buffer.add_problems([
-                    plist.Problem(os.path.join(directory, entry.name))
-                    for entry in it
-                    if entry.name.endswith(".kif")
-                    or entry.name.endswith(".kifu")
-                ], suppress=suppress)
+        """Prompt user for a folder, open into main_problem_list.
+        """
+        directory = filedialog.askdirectory()
+        if directory == "":
+            return
+        directory = os.path.normpath(directory)
+        prob = self.main_problem_list.set_directory(directory, recursive=recursive)
+        if prob is not None:
+            # Iff any KIF files were found, read the first and show it
+            self.read_problem(prob)
+            self.display_problem()
         return
     
-    def set_status(self, status: plist.ProblemStatus) -> None:
-        self.prob_buffer.set_status(status)
-        return
+    def open_folder_recursive(self, event: Optional[tk.Event] = None) -> None:
+        return self.open_folder(event, recursive=True)
     
-    def set_active_problem(self, idx: int = 0) -> bool:
-        if self.prob_buffer.is_empty():
-            return False
-        else:
-            if self.prob_buffer.go_to_idx(idx):
-                self.read_problem()
-            return True
-    
-    def read_problem(self) -> None:
-        filepath = self.prob_buffer.get_curr_filepath()
+    def read_problem(self, prob: plist.Problem) -> None:
+        filepath = prob.filepath
         if filepath is None:
             return # error out?
         game = kif.read_kif(filepath)
@@ -271,39 +251,37 @@ class RootController(evt.IObserver):
         self.main_game.set_game(game)
         return
     
-    def go_to_next_file(self, event: tk.Event = None) -> bool:
-        res = False
-        if self.prob_buffer.next():
-            self.read_problem()
-            res = True
-        if res:
+    def go_to_next_file(self, event: Optional[tk.Event] = None) -> bool:
+        prob = self.prob_buffer.next()
+        if prob is not None:
+            self.read_problem(prob)
             self.display_problem()
             self.board.move_input_handler.enable()
-        return res
+            return True
+        return False
     
-    def go_to_prev_file(self, event: tk.Event = None) -> bool:
-        res = False
-        if self.prob_buffer.prev():
-            self.read_problem()
-            res = True
-        if res:
+    def go_to_prev_file(self, event: Optional[tk.Event] = None) -> bool:
+        prob = self.prob_buffer.prev()
+        if prob is not None:
+            self.read_problem(prob)
             self.display_problem()
             self.board.move_input_handler.enable()
-        return res
+            return True
+        return False
     
-    def go_to_file(self, idx: int = 0, event: tk.Event = None) -> bool:
-        res = False
-        if self.prob_buffer.go_to_idx(idx):
-            self.read_problem()
-            res = True
-        if res:
+    def show_problem(self, event: Optional[tk.Event] = None, idx: int = 0
+        ) -> bool:
+        prob = self.main_problem_list.go_to_problem(idx)
+        if prob is not None:
+            self.read_problem(prob)
             self.display_problem()
             self.board.move_input_handler.enable()
-        return res
+            return True
+        return False
     
     #=== Speedrun controller commands
     def start_speedrun(self) -> None:
-        self.go_to_file(idx=0)
+        self.show_problem(idx=0)
         self.main_game.set_speedrun_mode()
         self.set_speedrun_ui()
         self.main_timer.clock.reset()
@@ -333,23 +311,23 @@ class RootController(evt.IObserver):
     
     def skip(self) -> None:
         self.split_timer()
-        self.set_status(plist.ProblemStatus.SKIP)
+        self.prob_buffer.set_status(plist.ProblemStatus.SKIP)
         if not self.go_to_next_file():
             self.end_of_folder()
         return
     
-    def mark_correct(self) -> None:
-        self.set_status(plist.ProblemStatus.CORRECT)
+    def mark_correct_and_continue(self) -> None:
+        self.prob_buffer.set_status(plist.ProblemStatus.CORRECT)
         self.continue_speedrun()
         return
     
-    def mark_wrong(self) -> None:
-        self.set_status(plist.ProblemStatus.WRONG)
+    def mark_wrong_and_continue(self) -> None:
+        self.prob_buffer.set_status(plist.ProblemStatus.WRONG)
         self.continue_speedrun()
         return
     
     def mark_correct_and_pause(self, event: evt.Event) -> None:
-        self.set_status(plist.ProblemStatus.CORRECT)
+        self.prob_buffer.set_status(plist.ProblemStatus.CORRECT)
         self.split_timer()
         self.main_timer.clock.stop()
         self.show_solution()
@@ -357,7 +335,7 @@ class RootController(evt.IObserver):
         return
     
     def mark_wrong_and_pause(self, event: evt.Event) -> None:
-        self.set_status(plist.ProblemStatus.WRONG)
+        self.prob_buffer.set_status(plist.ProblemStatus.WRONG)
         self.split_timer()
         self.main_timer.clock.stop()
         self.show_solution()
@@ -406,22 +384,6 @@ class RootController(evt.IObserver):
             board_canvas.apply_komadai_skin(komadai_skin)
             board_canvas.draw()
         return
-    
-    #=== Open folder, needs file open dialog
-    def open_folder(self, event: Optional[tk.Event] = None,
-            recursive: bool = False
-        ) -> None:
-        directory = filedialog.askdirectory()
-        if directory == "":
-            return
-        directory = os.path.normpath(directory)
-        if self.set_directory(directory, recursive=recursive):
-            # Iff any KIF files were found, read the first and show it
-            self.display_problem()
-        return
-    
-    def open_folder_recursive(self, event: Optional[tk.Event] = None) -> None:
-        return self.open_folder(event, recursive=True)
     
     # Speedrun mode commands
     def split_timer(self) -> None:

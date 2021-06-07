@@ -11,7 +11,8 @@ import tsumemi.src.tsumemi.timer as timer
 
 if TYPE_CHECKING:
     import tkinter as tk
-    from typing import Any, Dict, Optional
+    from typing import Any, Dict, List, Optional, Union
+    PathLike = Union[str, os.PathLike]
 
 
 class ProblemListController:
@@ -28,6 +29,44 @@ class ProblemListController:
         return ProblemListPane(parent, controller, self.problem_list,
             *args, **kwargs
         )
+    
+    def set_directory(self, directory: PathLike, recursive: bool = False
+        ) -> Optional[plist.Problem]:
+        """Open directory and set own problem list to contents.
+        """
+        self.problem_list.clear(suppress=True)
+        self._add_problems_in_directory(
+            directory, recursive=recursive, suppress=True
+        )
+        self.problem_list.sort_by_file()
+        return self.go_to_problem(0)
+    
+    def _add_problems_in_directory(self, directory: PathLike,
+            recursive: bool = False, suppress: bool = False
+        ) -> None:
+        # Adds all problems in given directory.
+        new_problems: List[plist.Problem] = []
+        if recursive:
+            for dirpath, _, filenames in os.walk(directory):
+                new_problems.extend([
+                    plist.Problem(os.path.join(dirpath, filename))
+                    for filename in filenames
+                    if filename.endswith(".kif")
+                    or filename.endswith(".kifu")
+                ])
+        else:
+            with os.scandir(directory) as it:
+                new_problems = [
+                    plist.Problem(os.path.join(directory, entry.name))
+                    for entry in it
+                    if entry.name.endswith(".kif")
+                    or entry.name.endswith(".kifu")
+                ]
+        self.problem_list.add_problems(new_problems, suppress=suppress)
+        return
+    
+    def go_to_problem(self, idx: int = 0) -> Optional[plist.Problem]:
+        return self.problem_list.go_to_idx(idx)
 
 
 class ProblemsView(ttk.Treeview, evt.IObserver):
@@ -69,7 +108,7 @@ class ProblemsView(ttk.Treeview, evt.IObserver):
         
         # Bind double click to go to problem
         self.bind("<Double-1>",
-            lambda e: self.controller.go_to_file(
+            lambda e: self.controller.show_problem(
                 idx=self.get_idx_on_click(e)
             )
         )

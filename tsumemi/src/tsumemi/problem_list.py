@@ -123,25 +123,24 @@ class ProblemList(evt.Emitter):
             self._notify_observers(ProbTimeEvent(self.curr_prob_idx, time))
         return
     
-    def next(self) -> bool:
-        return (False if self.curr_prob_idx is None
+    def next(self) -> Optional[Problem]:
+        return (None if self.curr_prob_idx is None
             else self.go_to_idx(self.curr_prob_idx + 1))
     
-    def prev(self) -> bool:
-        return (False if self.curr_prob_idx is None
+    def prev(self) -> Optional[Problem]:
+        return (None if self.curr_prob_idx is None
             else self.go_to_idx(self.curr_prob_idx - 1))
     
-    def go_to_idx(self, idx: int) -> bool:
-        """Change current problem to the one given by index. Return
-        value indicates if current problem was successfully changed.
+    def go_to_idx(self, idx: int) -> Optional[Problem]:
+        """Change current problem to the given index and return it.
         """
-        if idx is None or idx >= len(self.problems) or idx < 0:
-            return False
+        if idx >= len(self.problems) or idx < 0:
+            return None
         self.curr_prob = self.problems[idx]
         self.curr_prob_idx = idx
-        return True
+        return self.curr_prob
     
-    def set_active_problem(self, prob) -> bool:
+    def _set_active_problem(self, prob) -> bool:
         if prob in self.problems:
             idx = self.problems.index(prob)
             self.curr_prob_idx = idx
@@ -155,7 +154,7 @@ class ProblemList(evt.Emitter):
         problem before and after the sort."""
         prob = self.curr_prob
         self.problems.sort(key=key)
-        self.set_active_problem(prob)
+        self._set_active_problem(prob)
         if not suppress:
             self._notify_observers(ProbListEvent(self.problems))
         return
