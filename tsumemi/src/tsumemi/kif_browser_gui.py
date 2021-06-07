@@ -128,7 +128,7 @@ class RootController(evt.IObserver):
         # Program data
         self.config = configparser.ConfigParser(dict_type=dict)
         self.skin_settings = _read_config_file(self.config, CONFIG_PATH)
-        self.main_game = gamecon.GameController()
+        self.main_game = gamecon.GameController(self.skin_settings)
         self.main_timer = timecon.TimerController()
         self.main_problem_list = plistcon.ProblemListController()
         
@@ -155,10 +155,7 @@ class RootController(evt.IObserver):
         board_frame.rowconfigure(0, weight=1)
         board_frame.grid_configure(padx=5, pady=5)
         
-        board_canvas = self.main_game.make_board_canvas(
-            parent=board_frame,
-            skin_settings=self.skin_settings
-        )
+        self.nav_frame, board_canvas = self.main_game.make_navigable_view(parent=board_frame)
         board_canvas.grid(column=0, row=0, sticky="NSEW")
         board_canvas.bind("<Configure>", board_canvas.on_resize)
         
@@ -403,6 +400,7 @@ class RootController(evt.IObserver):
         ) -> None:
         # GUI callback
         self.skin_settings = settings
+        self.main_game.skin_settings = settings
         piece_skin, board_skin, komadai_skin = settings.get()
         for board_canvas in self.board_views:
             board_canvas.apply_piece_skin(piece_skin)
