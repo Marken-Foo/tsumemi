@@ -72,7 +72,7 @@ class Menubar(tk.Menu):
         return
 
 
-def read_config_file(config: configparser.ConfigParser, filepath: PathLike
+def _read_config_file(config: configparser.ConfigParser, filepath: PathLike
     ) -> imghand.SkinSettings:
     """Attempts to read config file; if not found, attempts to write a
     default config file.
@@ -105,6 +105,20 @@ def read_config_file(config: configparser.ConfigParser, filepath: PathLike
     return imghand.SkinSettings(piece_skin, board_skin, komadai_skin)
 
 
+def _setup_main_window(root: tk.Tk) -> ttk.Frame:
+    root.option_add("*tearOff", False)
+    root.columnconfigure(0, weight=1)
+    root.rowconfigure(0, weight=1)
+    root.title("tsumemi")
+    # mainframe is the main frame of the root window
+    mainframe = ttk.Frame(root)
+    mainframe.grid(column=0, row=0, sticky="NSEW")
+    mainframe.columnconfigure(0, weight=1)
+    mainframe.columnconfigure(1, weight=1)
+    mainframe.rowconfigure(0, weight=1)
+    return mainframe
+
+
 class RootController(evt.IObserver):
     """Root controller for the application. Manages top-level logic
     and GUI elements.
@@ -113,13 +127,14 @@ class RootController(evt.IObserver):
     def __init__(self, root: tk.Tk) -> None:
         # Program data
         self.config = configparser.ConfigParser(dict_type=dict)
-        self.skin_settings = read_config_file(self.config, CONFIG_PATH)
+        self.skin_settings = _read_config_file(self.config, CONFIG_PATH)
         self.main_game = gamecon.GameController()
         self.main_timer = timecon.TimerController()
         self.main_problem_list = plistcon.ProblemListController()
         
         self.is_solution_shown: bool = False
         self.solution_text: str = ""
+        self.solution = tk.StringVar(value="Open a folder of problems to display.")
         
         self.main_game.add_observer(self)
         self.main_timer.clock.add_observer(self)
@@ -129,51 +144,33 @@ class RootController(evt.IObserver):
             gamecon.WrongMoveEvent: self._mark_wrong_and_pause,
         }
         # Everything after this point should be GUI
-        # tkinter stuff, set up the main window
         self.root: tk.Tk = root
-        self.root.option_add("*tearOff", False)
-        self.root.columnconfigure(0, weight=1)
-        self.root.rowconfigure(0, weight=1)
-        self.root.title("KIF folder browser")
-        # mainframe is the main frame of the root window
-        self.mainframe = ttk.Frame(self.root)
-        self.mainframe.grid(column=0, row=0, sticky="NSEW")
-        self.mainframe.columnconfigure(0, weight=1)
-        self.mainframe.columnconfigure(1, weight=1)
-        self.mainframe.rowconfigure(0, weight=1)
+        self.mainframe: ttk.Frame = _setup_main_window(root)
+        self.menubar: Menubar = Menubar(parent=self.root, controller=self)
         
-        # Make menubar
-        self.menubar = Menubar(parent=self.root, controller=self)
+        # Main board canvas
+        board_frame = ttk.Frame(self.mainframe)
+        board_frame.grid(column=0, row=0, sticky="NSEW")
+        board_frame.columnconfigure(0, weight=1)
+        board_frame.rowconfigure(0, weight=1)
+        board_frame.grid_configure(padx=5, pady=5)
         
-        # Make canvas for board
-        self.board_wrapper = ttk.Frame(self.mainframe)
-        self.board_wrapper.grid(column=0, row=0, sticky="NSEW")
-        self.board_wrapper.columnconfigure(0, weight=1)
-        self.board_wrapper.rowconfigure(0, weight=1)
-        self.board_wrapper.grid_configure(padx=5, pady=5)
-        
-        self.board = self.main_game.make_board_canvas(
-            parent=self.board_wrapper,
+        board_canvas = self.main_game.make_board_canvas(
+            parent=board_frame,
             skin_settings=self.skin_settings
         )
-        self.board.grid(column=0, row=0, sticky="NSEW")
-        self.board.bind("<Configure>", self.board.on_resize)
+        board_canvas.grid(column=0, row=0, sticky="NSEW")
+        board_canvas.bind("<Configure>", board_canvas.on_resize)
         
-        self.board_views: List[bc.BoardCanvas] = []
-        self.board_views.append(self.board)
-        
-        # Initialise solution text
-        self.solution = tk.StringVar(value="Open a folder of problems to display.")
-        self.lbl_solution = ttk.Label(
-            self.mainframe, textvariable=self.solution,
-            justify="left", wraplength=self.board.width
+        # Solution text label.
+        # The wraplength isn't right.
+        lbl_solution = ttk.Label(self.mainframe, textvariable=self.solution,
+            justify="left", wraplength=board_canvas.width
         )
-        self.lbl_solution.grid(
-            column=0, row=1, sticky="W"
-        )
-        self.lbl_solution.grid_configure(padx=5, pady=5)
+        lbl_solution.grid(column=0, row=1, sticky="W")
+        lbl_solution.grid_configure(padx=5, pady=5)
         
-        # Initialise nav controls and select one to begin with
+        # Problem navigation controls
         self._navcons = {
             "free" : FreeModeNavControls(
                 parent=self.mainframe, controller=self
@@ -188,22 +185,31 @@ class RootController(evt.IObserver):
         self.nav_controls = self._navcons["free"]
         self.nav_controls.grid()
         
-        # Timer controls and display
-        self.main_timer_view = self.main_timer.make_timer_pane(
+        # Main timer
+        main_timer_view = self.main_timer.make_timer_pane(
             parent=self.mainframe
         )
-        self.main_timer_view.grid(column=1, row=1)
-        self.main_timer_view.columnconfigure(0, weight=0)
-        self.main_timer_view.rowconfigure(0, weight=0)
+        main_timer_view.grid(column=1, row=1)
+        main_timer_view.columnconfigure(0, weight=0)
+        main_timer_view.rowconfigure(0, weight=0)
         
-        # Problem list
-        self.problem_list_pane = self.main_problem_list.make_problem_list_pane(
+        # Main problem list
+        problem_list_pane = self.main_problem_list.make_problem_list_pane(
             parent=self.mainframe, controller=self
         )
-        self.problem_list_pane.grid(column=1, row=0, sticky="NSEW")
-        self.problem_list_pane.columnconfigure(0, weight=1)
-        self.problem_list_pane.rowconfigure(0, weight=1)
-        self.problem_list_pane.grid_configure(padx=5, pady=5)
+        problem_list_pane.grid(column=1, row=0, sticky="NSEW")
+        problem_list_pane.columnconfigure(0, weight=1)
+        problem_list_pane.rowconfigure(0, weight=1)
+        problem_list_pane.grid_configure(padx=5, pady=5)
+        
+        # assign all views to self for later reference if needed.
+        self.board_frame = board_frame
+        self.board = board_canvas
+        self.board_views: List[bc.BoardCanvas] = []
+        self.board_views.append(board_canvas)
+        self.lbl_solution = lbl_solution
+        self.main_timer_view = main_timer_view
+        self.problem_list_pane = problem_list_pane
         
         # Keyboard shortcuts
         self.bindings = Bindings(self)
