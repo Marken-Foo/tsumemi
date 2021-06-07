@@ -10,12 +10,12 @@ class NavControls(ttk.Frame):
      
     def _add_btn_prev(self, text="< Prev"):
         return ttk.Button(self, text=text,
-            command=self.controller.go_to_prev_file
+            command=self.controller.go_prev_file
         )
     
     def _add_btn_next(self, text="Next >"):
         return ttk.Button(self, text=text,
-            command=self.controller.go_to_next_file
+            command=self.controller.go_next_file
         )
     
     def _add_btn_toggle_solution(self, text="Show/hide solution"):

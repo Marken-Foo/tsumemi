@@ -125,8 +125,8 @@ class RootController(evt.IObserver):
         self.main_timer.clock.add_observer(self)
         self.NOTIFY_ACTIONS = {
             timer.TimerSplitEvent: self._on_split,
-            gamecon.GameEndEvent: self.mark_correct_and_pause,
-            gamecon.WrongMoveEvent: self.mark_wrong_and_pause,
+            gamecon.GameEndEvent: self._mark_correct_and_pause,
+            gamecon.WrongMoveEvent: self._mark_wrong_and_pause,
         }
         # Everything after this point should be GUI
         # tkinter stuff, set up the main window
@@ -211,12 +211,6 @@ class RootController(evt.IObserver):
         self.bindings.bind_shortcuts(self.root, self.bindings.FREE_SHORTCUTS)
         return
     
-    #=== Open folder, needs file open dialog
-    # TODO: Refactor this into problem_list_controller.
-    # After that, each "open folder" can open it either in a cliplist or
-    # in a new problemlist in a self.plists: Dict (?) with the foldername?
-    # as the key and/or name of the problemlist, possibly with "recursed"
-    # somewhere inside.
     def open_folder(self, event: Optional[tk.Event] = None,
             recursive: bool = False
         ) -> None:
@@ -228,15 +222,23 @@ class RootController(evt.IObserver):
         directory = os.path.normpath(directory)
         prob = self.main_problem_list.set_directory(directory, recursive=recursive)
         if prob is not None:
-            # Iff any KIF files were found, read the first and show it
-            self.read_problem(prob)
-            self.display_problem()
+            self.show_problem(prob)
         return
     
     def open_folder_recursive(self, event: Optional[tk.Event] = None) -> None:
         return self.open_folder(event, recursive=True)
     
-    def read_problem(self, prob: plist.Problem) -> None:
+    def show_problem(self, prob: plist.Problem) -> None:
+        """Display the given problem in the GUI and enable move input.
+        """
+        self._read_problem(prob)
+        self._display_problem()
+        self.board.move_input_handler.enable()
+        return
+    
+    def _read_problem(self, prob: plist.Problem) -> None:
+        """Read the problem data from file into the program.
+        """
         filepath = prob.filepath
         if filepath is None:
             return # error out?
@@ -249,7 +251,9 @@ class RootController(evt.IObserver):
         self.main_game.set_game(game)
         return
     
-    def display_problem(self) -> None:
+    def _display_problem(self) -> None:
+        """Displays the current game data in the main GUI.
+        """
         self.board.draw()
         self.hide_solution()
         prob = self.main_problem_list.get_current_problem()
@@ -259,38 +263,33 @@ class RootController(evt.IObserver):
         )
         return
     
-    def go_to_next_file(self, event: Optional[tk.Event] = None) -> bool:
+    def go_next_file(self, event: Optional[tk.Event] = None) -> bool:
         prob = self.main_problem_list.go_next_problem()
         if prob is not None:
-            self.read_problem(prob)
-            self.display_problem()
-            self.board.move_input_handler.enable()
+            self.show_problem(prob)
             return True
         return False
     
-    def go_to_prev_file(self, event: Optional[tk.Event] = None) -> bool:
+    def go_prev_file(self, event: Optional[tk.Event] = None) -> bool:
         prob = self.main_problem_list.go_prev_problem()
         if prob is not None:
-            self.read_problem(prob)
-            self.display_problem()
-            self.board.move_input_handler.enable()
+            self.show_problem(prob)
             return True
         return False
     
-    def show_problem(self, event: Optional[tk.Event] = None, idx: int = 0
+    def go_to_file(self, event: Optional[tk.Event] = None, idx: int = 0
         ) -> bool:
+        # GUI callback
         prob = self.main_problem_list.go_to_problem(idx)
         if prob is not None:
-            self.read_problem(prob)
-            self.display_problem()
-            self.board.move_input_handler.enable()
+            self.show_problem(prob)
             return True
         return False
     
     #=== Speedrun controller commands
     def start_speedrun(self) -> None:
         # GUI callback
-        self.show_problem(idx=0)
+        self.go_to_file(idx=0)
         self.main_game.set_speedrun_mode()
         self._set_speedrun_ui()
         self.main_timer.reset()
@@ -331,7 +330,7 @@ class RootController(evt.IObserver):
     def continue_speedrun(self) -> None:
         # GUI callback and local method
         # continue speedrun from a pause, answer-checking state.
-        if not self.go_to_next_file():
+        if not self.go_next_file():
             self.end_of_folder()
             return
         self.nav_controls.show_sol_skip()
@@ -352,7 +351,7 @@ class RootController(evt.IObserver):
         # GUI callback
         self.main_timer.split()
         self.main_problem_list.set_status(plist.ProblemStatus.SKIP)
-        if not self.go_to_next_file():
+        if not self.go_next_file():
             self.end_of_folder()
         return
     
@@ -366,25 +365,6 @@ class RootController(evt.IObserver):
         # GUI callback
         self.main_problem_list.set_status(plist.ProblemStatus.WRONG)
         self.continue_speedrun()
-        return
-    
-    def mark_correct_and_pause(self, event: evt.Event) -> None:
-        # Observer callback
-        self.main_problem_list.set_status(plist.ProblemStatus.CORRECT)
-        self.main_timer.split()
-        self.main_timer.stop()
-        self.show_solution()
-        self.nav_controls.show_continue()
-        return
-    
-    def mark_wrong_and_pause(self, event: evt.Event) -> None:
-        # Observer callback
-        self.main_problem_list.set_status(plist.ProblemStatus.WRONG)
-        self.main_timer.split()
-        self.main_timer.stop()
-        self.show_solution()
-        self.nav_controls.show_continue()
-        self.board.draw()
         return
     
     #=== GUI display methods
@@ -425,6 +405,15 @@ class RootController(evt.IObserver):
             board_canvas.draw()
         return
     
+    def view_solution(self) -> None:
+        # GUI callback
+        self.main_timer.split()
+        self.main_timer.stop()
+        self.show_solution()
+        self.nav_controls.show_correct_wrong()
+        return
+    
+    # Observer callbacks
     def _on_split(self, event: timer.TimerSplitEvent) -> None:
         # Observer callback
         time = event.time
@@ -432,12 +421,23 @@ class RootController(evt.IObserver):
             self.main_problem_list.set_time(time)
         return
     
-    def view_solution(self) -> None:
-        # GUI callback
+    def _mark_correct_and_pause(self, event: evt.Event) -> None:
+        # Observer callback
+        self.main_problem_list.set_status(plist.ProblemStatus.CORRECT)
         self.main_timer.split()
         self.main_timer.stop()
         self.show_solution()
-        self.nav_controls.show_correct_wrong()
+        self.nav_controls.show_continue()
+        return
+    
+    def _mark_wrong_and_pause(self, event: evt.Event) -> None:
+        # Observer callback
+        self.main_problem_list.set_status(plist.ProblemStatus.WRONG)
+        self.main_timer.split()
+        self.main_timer.stop()
+        self.show_solution()
+        self.nav_controls.show_continue()
+        self.board.draw()
         return
 
 
@@ -456,8 +456,8 @@ class Bindings:
         self.FREE_SHORTCUTS = {
             "<Key-h>": self.controller.toggle_solution,
             "<Key-H>": self.controller.toggle_solution,
-            "<Left>": self.controller.go_to_prev_file,
-            "<Right>": self.controller.go_to_next_file
+            "<Left>": self.controller.go_prev_file,
+            "<Right>": self.controller.go_next_file
         }
         
         self.SPEEDRUN_SHORTCUTS = {}

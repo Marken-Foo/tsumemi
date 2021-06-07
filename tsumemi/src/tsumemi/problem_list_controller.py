@@ -125,7 +125,7 @@ class ProblemsView(ttk.Treeview, evt.IObserver):
         
         # Bind double click to go to problem
         self.bind("<Double-1>",
-            lambda e: self.controller.show_problem(
+            lambda e: self.controller.go_to_file(
                 idx=self.get_idx_on_click(e)
             )
         )
