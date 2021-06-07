@@ -108,15 +108,15 @@ def _read_config_file(config: configparser.ConfigParser, filepath: PathLike
 
 def _setup_main_window(root: tk.Tk) -> ttk.Frame:
     root.option_add("*tearOff", False)
-    root.columnconfigure(0, weight=1)
-    root.rowconfigure(0, weight=1)
+    root.grid_columnconfigure(0, weight=1)
+    root.grid_rowconfigure(0, weight=1)
     root.title("tsumemi")
     # mainframe is the main frame of the root window
     mainframe = ttk.Frame(root)
     mainframe.grid(column=0, row=0, sticky="NSEW")
-    mainframe.columnconfigure(0, weight=1)
-    mainframe.columnconfigure(1, weight=1)
-    mainframe.rowconfigure(0, weight=1)
+    mainframe.grid_columnconfigure(0, weight=1)
+    mainframe.grid_columnconfigure(1, weight=1)
+    mainframe.grid_rowconfigure(0, weight=1)
     return mainframe
 
 
@@ -152,8 +152,8 @@ class RootController(evt.IObserver):
         # Main board canvas
         board_frame = ttk.Frame(self.mainframe)
         board_frame.grid(column=0, row=0, sticky="NSEW")
-        board_frame.columnconfigure(0, weight=1)
-        board_frame.rowconfigure(0, weight=1)
+        board_frame.grid_columnconfigure(0, weight=1)
+        board_frame.grid_rowconfigure(0, weight=1)
         board_frame.grid_configure(padx=5, pady=5)
         
         _, board_canvas = self.main_game.make_navigable_view(parent=board_frame)
@@ -192,16 +192,16 @@ class RootController(evt.IObserver):
             parent=self.mainframe
         )
         main_timer_view.grid(column=1, row=1)
-        main_timer_view.columnconfigure(0, weight=0)
-        main_timer_view.rowconfigure(0, weight=0)
+        main_timer_view.grid_columnconfigure(0, weight=0)
+        main_timer_view.grid_rowconfigure(0, weight=0)
         
         # Main problem list
         problem_list_pane = self.main_problem_list.make_problem_list_pane(
             parent=self.mainframe, controller=self
         )
         problem_list_pane.grid(column=1, row=0, sticky="NSEW")
-        problem_list_pane.columnconfigure(0, weight=1)
-        problem_list_pane.rowconfigure(0, weight=1)
+        problem_list_pane.grid_columnconfigure(0, weight=1)
+        problem_list_pane.grid_rowconfigure(0, weight=1)
         problem_list_pane.grid_configure(padx=5, pady=5)
         
         # assign all views to self for later reference if needed.
