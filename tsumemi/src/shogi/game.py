@@ -67,7 +67,7 @@ class Game:
         else:
             return next_node.move
     
-    def next(self) -> bool:
+    def go_next_move(self) -> bool:
         """Go one move further into the game, following the mainline.
         """
         if self.curr_node.is_leaf():
@@ -78,7 +78,7 @@ class Game:
             self.curr_node = next_node
             return True
     
-    def prev(self) -> None:
+    def go_prev_move(self) -> None:
         """Step one move back in the game.
         """
         if self.curr_node.prev() == self.curr_node:
@@ -88,39 +88,39 @@ class Game:
             self.curr_node = self.curr_node.prev()
             return
     
-    def start(self) -> None:
+    def go_to_start(self) -> None:
         """Go to the start of the game.
         """
         self.position.from_sfen(self.movetree.start_pos)
         self.curr_node = self.movetree
         return
     
-    def end(self) -> None:
+    def go_to_end(self) -> None:
         """Go to the end of the current branch.
         """
         has_next = True
         while has_next:
-            has_next = self.next()
+            has_next = self.go_next_move()
         return
     
     def to_notation(self) -> List[str]:
         # Return human-readable notation format for mainline
-        self.start()
+        self.go_to_start()
         res = []
         while not self.curr_node.is_leaf():
-            self.next()
+            self.go_next_move()
             res.append(self.curr_node.move.to_latin())
         return res
     
     def to_notation_ja_kif(self) -> List[str]:
         """Returns"""
         # Return human-readable KIF notation format for mainline
-        self.start()
+        self.go_to_start()
         res = []
         prev_move: Move = NullMove()
         while not self.curr_node.is_leaf():
             prev_move = self.curr_node.move
-            self.next()
+            self.go_next_move()
             mv: Move = self.curr_node.move
             if (not prev_move.is_null()) and (mv.end_sq == prev_move.end_sq):
                 res.append(mv.to_ja_kif(is_same=True))

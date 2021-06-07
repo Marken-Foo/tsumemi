@@ -250,7 +250,7 @@ class RootController(evt.IObserver):
             return # file unreadable, error out
         move_string_list = game.to_notation_ja_kif() # at end of game
         self.solution_text = "　".join(move_string_list)
-        game.start()
+        game.go_to_start()
         self.main_game.set_game(game)
         return
     
