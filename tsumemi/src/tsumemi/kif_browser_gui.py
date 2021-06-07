@@ -5,7 +5,7 @@ import functools
 import os
 import tkinter as tk
 
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, font, messagebox, ttk
 from typing import TYPE_CHECKING
 
 import tsumemi.src.shogi.kif as kif
@@ -161,9 +161,13 @@ class RootController(evt.IObserver):
         
         # Solution text label.
         # The wraplength isn't right.
-        lbl_solution = ttk.Label(self.mainframe, textvariable=self.solution,
+        lbl_solution = tk.Label(self.mainframe, textvariable=self.solution,
             justify="left", wraplength=board_canvas.width
         )
+        defaultfont = font.Font(font=lbl_solution["font"])
+        typeface = defaultfont["family"]
+        fontsize = defaultfont["size"]
+        lbl_solution.config(font=(typeface, fontsize+2))
         lbl_solution.grid(column=0, row=1, sticky="W")
         lbl_solution.grid_configure(padx=5, pady=5)
         
