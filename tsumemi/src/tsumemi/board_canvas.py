@@ -7,13 +7,18 @@ from typing import TYPE_CHECKING
 
 from tsumemi.src.shogi.basetypes import KanjiNumber, KomaType, Side, Square
 from tsumemi.src.shogi.basetypes import HAND_TYPES, KANJI_FROM_KTYPE
-from tsumemi.src.tsumemi.img_handlers import BoardImgManager, BoardMeasurements, BoardSkin, KomaImgManager, KomadaiImgManager, PieceSkin
+from tsumemi.src.tsumemi.img_handlers import BoardImgManager, SkinSettings, BoardMeasurements, BoardSkin, KomaImgManager, KomadaiImgManager, PieceSkin
 
 if TYPE_CHECKING:
-    from typing import Dict, Optional, Tuple
+    from typing import Any, Dict, Optional, Tuple
     from tsumemi.src.shogi.game import Game
     from tsumemi.src.shogi.position import Position
     from tsumemi.src.tsumemi.move_input_handler import MoveInputHandler
+
+
+# Default/current canvas size for board
+DEFAULT_CANVAS_WIDTH = 600
+DEFAULT_CANVAS_HEIGHT = 500
 
 
 class BoardCanvas(tk.Canvas):
@@ -21,42 +26,26 @@ class BoardCanvas(tk.Canvas):
     drawing on itself, delegating other tasks like size calculation to
     other objects.
     """
-    # Default/current canvas size for board
-    CANVAS_WIDTH = 600
-    CANVAS_HEIGHT = 500
-    
-    def __init__(self, parent, controller, game, *args, **kwargs):
+    def __init__(self, parent: tk.Widget, game: Game,
+            skin_settings: SkinSettings,
+            width: int = DEFAULT_CANVAS_WIDTH,
+            height: int = DEFAULT_CANVAS_HEIGHT,
+            *args, **kwargs
+        ) -> None:
         """Initialise self with reference to a Game, allowing self to
         display board positions from the Game (purely a view).
         """
-        self.controller = controller
-        self.is_upside_down = False
-        super().__init__(parent, *args, **kwargs)
+        self.width: int = width
+        self.height: int = height
+        self.is_upside_down: bool = False
+        super().__init__(parent, width=width, height=height, *args, **kwargs)
         # Specify source of board data
-        self.game: Game = game
         self.move_input_handler: Optional[MoveInputHandler] = None
         self.position: Position = game.position
-        config = self.controller.config
         # Initialise measurements, used for many other things
-        self.measurements = BoardMeasurements(
-            self.CANVAS_WIDTH, self.CANVAS_HEIGHT
-        )
+        self.measurements = BoardMeasurements(width, height)
         # Load skins
-        try:
-            name = config["skins"]["pieces"]
-            piece_skin = PieceSkin[name]
-        except KeyError:
-            piece_skin = PieceSkin.TEXT
-        try:
-            name = config["skins"]["board"]
-            board_skin = BoardSkin[name]
-        except KeyError:
-            board_skin = BoardSkin.WHITE
-        try:
-            name = config["skins"]["komadai"]
-            komadai_skin = BoardSkin[name]
-        except KeyError:
-            komadai_skin = BoardSkin.WHITE
+        piece_skin, board_skin, komadai_skin = skin_settings.get()
         # Cached images and image settings
         self.koma_img_cache = KomaImgManager(self.measurements, piece_skin)
         self.board_img_cache = BoardImgManager(self.measurements, board_skin)
@@ -73,13 +62,14 @@ class BoardCanvas(tk.Canvas):
         self.highlighted_ktype = KomaType.NONE
         return
     
-    def connect_game_adapter(self, move_input_handler: MoveInputHandler
-        ) -> None:
-        """Register a MoveInputHandler with self, to enable move input and
-        control via GUI.
+    def set_position(self, pos: Position) -> None:
+        """Set the internal position (and of any associated input
+        handler) to the given Position object.
         """
-        self.move_input_handler = move_input_handler
-        move_input_handler.board_canvas = self
+        self.position = pos
+        if self.move_input_handler is not None:
+            self.move_input_handler.position = pos
+        self.draw()
         return
     
     def set_focus(self, sq: Square, ktype: KomaType=KomaType.NONE) -> None:
@@ -468,8 +458,10 @@ class BoardCanvas(tk.Canvas):
         return
     
     
-    def on_resize(self, event):
+    def on_resize(self, event: tk.Event) -> None:
         # Callback for when the canvas itself is resized
+        self.width = event.width
+        self.height = event.height
         self.measurements.recalculate_sizes(event.width, event.height)
         self.koma_img_cache.resize_images()
         self.board_img_cache.resize_images()
