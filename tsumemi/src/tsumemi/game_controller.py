@@ -72,14 +72,18 @@ class GameController(evt.Emitter, evt.IObserver):
         self.NOTIFY_ACTIONS[mih.MoveEvent] = self._add_move
         return
     
+    def refresh_views(self) -> None:
+        for board_canvas in self.views:
+            board_canvas.draw()
+        return
+    
     def _add_move(self, event: mih.MoveEvent) -> None:
         """Make the move, regardless of whether the move is in the
         game or not.
         """
         move = event.move
         self.game.add_move(move)
-        for board_canvas in self.views:
-            board_canvas.draw()
+        self.refresh_views()
         return
     
     def verify_move(self, event: mih.MoveEvent) -> None:
@@ -88,8 +92,7 @@ class GameController(evt.Emitter, evt.IObserver):
         if self.game.is_mainline(move):
             # the move is the mainline, so it is correct
             self.game.make_move(move)
-            for board_canvas in self.views:
-                board_canvas.draw()
+            self.refresh_views()
             if self.game.is_end():
                 self._notify_observers(GameEndEvent())
                 return
@@ -100,14 +103,33 @@ class GameController(evt.Emitter, evt.IObserver):
                     return
                 else:
                     self.game.make_move(response_move)
-                    for board_canvas in self.views:
-                        board_canvas.draw()
+                    self.refresh_views()
                     if self.game.is_end():
                         self._notify_observers(GameEndEvent())
                     return
         else:
             self._notify_observers(WrongMoveEvent())
             return
+    
+    def go_to_start(self):
+        self.game.go_to_start()
+        self.refresh_views()
+        return
+    
+    def go_to_end(self):
+        self.game.go_to_end()
+        self.refresh_views()
+        return
+    
+    def go_next_move(self):
+        self.game.go_next_move()
+        self.refresh_views()
+        return
+    
+    def go_prev_move(self):
+        self.game.go_prev_move()
+        self.refresh_views()
+        return
 
 
 class NavigableGameFrame(ttk.Frame):
@@ -137,13 +159,13 @@ class NavigableGameFrame(ttk.Frame):
         buttons_frame.grid_rowconfigure(1, weight=1)
         buttons_frame.grid_rowconfigure(2, weight=1)
         buttons_frame.grid_configure(padx=5, pady=5)
-        btn_go_to_start = ttk.Button(buttons_frame, text="|<<", command=None)
+        btn_go_to_start = ttk.Button(buttons_frame, text="|<<", command=controller.go_to_start)
         btn_go_to_start.grid(column=1, row=1, sticky="NSEW")
-        btn_go_back = ttk.Button(buttons_frame, text="<", command=None)
+        btn_go_back = ttk.Button(buttons_frame, text="<", command=controller.go_prev_move)
         btn_go_back.grid(column=2, row=1, sticky="NSEW")
-        btn_go_forward = ttk.Button(buttons_frame, text=">", command=None)
+        btn_go_forward = ttk.Button(buttons_frame, text=">", command=controller.go_next_move)
         btn_go_forward.grid(column=3, row=1, sticky="NSEW")
-        btn_go_to_end = ttk.Button(buttons_frame, text=">>|", command=None)
+        btn_go_to_end = ttk.Button(buttons_frame, text=">>|", command=controller.go_to_end)
         btn_go_to_end.grid(column=4, row=1, sticky="NSEW")
         self.buttons = [
             btn_go_to_start, btn_go_back, btn_go_forward, btn_go_to_end,

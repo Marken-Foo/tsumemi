@@ -155,7 +155,7 @@ class RootController(evt.IObserver):
         board_frame.rowconfigure(0, weight=1)
         board_frame.grid_configure(padx=5, pady=5)
         
-        self.nav_frame, board_canvas = self.main_game.make_navigable_view(parent=board_frame)
+        _, board_canvas = self.main_game.make_navigable_view(parent=board_frame)
         board_canvas.grid(column=0, row=0, sticky="NSEW")
         board_canvas.bind("<Configure>", board_canvas.on_resize)
         
