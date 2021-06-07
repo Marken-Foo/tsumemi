@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 
 from abc import ABC, abstractmethod
@@ -13,6 +14,8 @@ if TYPE_CHECKING:
     from typing import Any, Callable, Dict, Tuple, Union
     ImgDict = Dict[Any, ImageTk.PhotoImage]
     PathLike = Union[str, os.PathLike]
+
+logger = logging.getLogger(__name__)
 
 
 BOARD_IMAGES_PATH = os.path.relpath(r"tsumemi/resources/images/boards") 
@@ -165,7 +168,11 @@ class ImgSizingDict:
     def _resize_image(self, img, width: int, height: int) -> ImageTk.PhotoImage:
         """Take PIL Image img, return resized ImageTk.PhotoImage.
         """
-        resized_img = img.resize((int(width), int(height)))
+        try:
+            resized_img = img.resize((int(width), int(height)))
+        except ValueError as e:
+            logger.info("Image resizing in ImgDict failed, passed parameters width %i, height %i" % (int(width), int(height)))
+            return ImageTk.PhotoImage(Image.new("RGB", (1, 1), "#000000"))
         return ImageTk.PhotoImage(resized_img)
     
     def add_image(self, key: Union[str, KomaType], image: Image.Image) -> None:

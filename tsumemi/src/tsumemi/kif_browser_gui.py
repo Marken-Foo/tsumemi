@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import configparser
 import functools
+import logging.config
 import os
 import tkinter as tk
 
@@ -484,6 +485,7 @@ class Bindings:
 
 
 def run():
+    logging.basicConfig(filename="tsumemilog.log", level=logging.WARNING)
     def apply_theme_fix():
         # Fix from pyIDM on GitHub:
         # https://github.com/pyIDM/PyIDM/issues/128#issuecomment-655477524
