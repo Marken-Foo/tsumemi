@@ -60,11 +60,11 @@ class Menubar(tk.Menu):
         )
         # Help
         menu_help.add_command(
-            label="About kif-browser",
+            label="About tsumemi",
             command=functools.partial(
                 messagebox.showinfo,
-                title="About kif-browser",
-                message="Written in Python 3 for the shogi community. KIF files sold separately."
+                title="About tsumemi",
+                message="Written in Python 3 by Marken Foo. For the shogi community. KIF files sold separately."
             )
         )
         # Bind to main window
@@ -118,7 +118,6 @@ class RootController(evt.IObserver):
         self.main_timer = timecon.TimerController()
         self.main_problem_list = plistcon.ProblemListController()
         
-        self.prob_buffer = self.main_problem_list.problem_list
         self.is_solution_shown: bool = False
         self.solution_text: str = ""
         
@@ -136,7 +135,6 @@ class RootController(evt.IObserver):
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
         self.root.title("KIF folder browser")
-        
         # mainframe is the main frame of the root window
         self.mainframe = ttk.Frame(self.root)
         self.mainframe.grid(column=0, row=0, sticky="NSEW")
@@ -251,8 +249,18 @@ class RootController(evt.IObserver):
         self.main_game.set_game(game)
         return
     
+    def display_problem(self) -> None:
+        self.board.draw()
+        self.hide_solution()
+        prob = self.main_problem_list.get_current_problem()
+        prob_filepath = "" if prob is None else str(prob.filepath)
+        self.root.title(
+            "tsumemi - " + prob_filepath
+        )
+        return
+    
     def go_to_next_file(self, event: Optional[tk.Event] = None) -> bool:
-        prob = self.prob_buffer.next()
+        prob = self.main_problem_list.go_next_problem()
         if prob is not None:
             self.read_problem(prob)
             self.display_problem()
@@ -261,7 +269,7 @@ class RootController(evt.IObserver):
         return False
     
     def go_to_prev_file(self, event: Optional[tk.Event] = None) -> bool:
-        prob = self.prob_buffer.prev()
+        prob = self.main_problem_list.go_prev_problem()
         if prob is not None:
             self.read_problem(prob)
             self.display_problem()
@@ -311,23 +319,23 @@ class RootController(evt.IObserver):
     
     def skip(self) -> None:
         self.split_timer()
-        self.prob_buffer.set_status(plist.ProblemStatus.SKIP)
+        self.main_problem_list.set_status(plist.ProblemStatus.SKIP)
         if not self.go_to_next_file():
             self.end_of_folder()
         return
     
     def mark_correct_and_continue(self) -> None:
-        self.prob_buffer.set_status(plist.ProblemStatus.CORRECT)
+        self.main_problem_list.set_status(plist.ProblemStatus.CORRECT)
         self.continue_speedrun()
         return
     
     def mark_wrong_and_continue(self) -> None:
-        self.prob_buffer.set_status(plist.ProblemStatus.WRONG)
+        self.main_problem_list.set_status(plist.ProblemStatus.WRONG)
         self.continue_speedrun()
         return
     
     def mark_correct_and_pause(self, event: evt.Event) -> None:
-        self.prob_buffer.set_status(plist.ProblemStatus.CORRECT)
+        self.main_problem_list.set_status(plist.ProblemStatus.CORRECT)
         self.split_timer()
         self.main_timer.clock.stop()
         self.show_solution()
@@ -335,7 +343,7 @@ class RootController(evt.IObserver):
         return
     
     def mark_wrong_and_pause(self, event: evt.Event) -> None:
-        self.prob_buffer.set_status(plist.ProblemStatus.WRONG)
+        self.main_problem_list.set_status(plist.ProblemStatus.WRONG)
         self.split_timer()
         self.main_timer.clock.stop()
         self.show_solution()
@@ -344,15 +352,6 @@ class RootController(evt.IObserver):
         return
     
     #=== GUI display methods
-    def display_problem(self) -> None:
-        self.board.draw()
-        self.hide_solution()
-        self.root.title(
-            "KIF folder browser - "
-            + str(self.prob_buffer.get_curr_filepath())
-        )
-        return
-    
     def hide_solution(self) -> None:
         self.solution.set("[solution hidden]")
         self.is_solution_shown = False
@@ -389,13 +388,13 @@ class RootController(evt.IObserver):
     def split_timer(self) -> None:
         time = self.main_timer.clock.split()
         if time is not None:
-            self.prob_buffer.set_time(time)
+            self.main_problem_list.set_time(time)
         return
     
     def _on_split(self, event: timer.TimerSplitEvent) -> None:
         time = event.time
         if self.main_timer.clock == event.clock and time is not None:
-            self.prob_buffer.set_time(time)
+            self.main_problem_list.set_time(time)
         return
     
     def set_speedrun_ui(self) -> None:

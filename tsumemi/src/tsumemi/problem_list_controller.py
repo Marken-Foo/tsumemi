@@ -65,8 +65,25 @@ class ProblemListController:
         self.problem_list.add_problems(new_problems, suppress=suppress)
         return
     
+    def get_current_problem(self) -> Optional[plist.Problem]:
+        return self.problem_list.curr_prob
+    
+    def go_next_problem(self) -> Optional[plist.Problem]:
+        return self.problem_list.next()
+    
+    def go_prev_problem(self) -> Optional[plist.Problem]:
+        return self.problem_list.prev()
+    
     def go_to_problem(self, idx: int = 0) -> Optional[plist.Problem]:
         return self.problem_list.go_to_idx(idx)
+    
+    def set_status(self, status: plist.ProblemStatus) -> None:
+        self.problem_list.set_status(status)
+        return
+    
+    def set_time(self, time: float) -> None:
+        self.problem_list.set_time(time)
+        return
 
 
 class ProblemsView(ttk.Treeview, evt.IObserver):
