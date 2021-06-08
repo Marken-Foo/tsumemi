@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import configparser
+import datetime
 import functools
 import logging.config
 import os
@@ -25,59 +26,6 @@ if TYPE_CHECKING:
     from typing import List, Optional, Union
     import tsumemi.src.tsumemi.board_canvas as bc
     PathLike = Union[str, os.PathLike]
-
-
-class Menubar(tk.Menu):
-    """GUI class for the menubar at the top of the main window.
-    """
-    def __init__(self, parent, controller, *args, **kwargs):
-        self.controller = controller
-        super().__init__(parent, *args, **kwargs)
-        
-        # Set cascades
-        menu_file = tk.Menu(self)
-        self.add_cascade(menu=menu_file, label="File")
-        menu_solving = tk.Menu(self)
-        self.add_cascade(menu=menu_solving, label="Solving")
-        menu_settings = tk.Menu(self)
-        self.add_cascade(menu=menu_settings, label="Settings")
-        menu_help = tk.Menu(self)
-        self.add_cascade(menu=menu_help, label="Help")
-        
-        # File
-        menu_file.add_command(
-            label="Open folder...",
-            command=self.controller.open_folder,
-            accelerator="Ctrl+O",
-            underline=0,
-        )
-        menu_file.add_command(
-            label="Open all subfolders...",
-            command=self.controller.open_folder_recursive,
-            accelerator="Ctrl+Shift+O",
-        )
-        # Solving
-        menu_solving.add_command(
-            label="Get statistics",
-            command=self.controller.generate_statistics,
-        )
-        # Settings
-        menu_settings.add_command(
-            label="Settings...",
-            command=lambda: SettingsWindow(controller=self.controller),
-        )
-        # Help
-        menu_help.add_command(
-            label="About tsumemi",
-            command=functools.partial(
-                messagebox.showinfo,
-                title="About tsumemi",
-                message="Written in Python 3 by Marken Foo. For the shogi community. KIF files sold separately."
-            )
-        )
-        # Bind to main window
-        parent["menu"] = self
-        return
 
 
 def _read_config_file(config: configparser.ConfigParser, filepath: PathLike
@@ -374,6 +322,7 @@ class RootController(evt.IObserver):
         # GUI callback
         self.main_timer.split()
         self.main_problem_list.set_status(plist.ProblemStatus.SKIP)
+        self.main_timer.start()
         if not self.go_next_file():
             self.end_of_folder()
         return
@@ -392,43 +341,7 @@ class RootController(evt.IObserver):
     
     def generate_statistics(self) -> None:
         stats = self.main_problem_list.generate_statistics()
-        num_correct = stats.get_num_correct()
-        num_wrong = stats.get_num_wrong()
-        num_skip = stats.get_num_skip()
-        num_seen = num_correct + num_wrong + num_skip
-        total_time = stats.get_total_time()
-        avg_time = (timer.Time(total_time.seconds / num_seen)
-            if num_seen != 0 else timer.Time(0)
-        )
-        message_strings = [
-            f"Folder name: {stats.directory}",
-            f"Total time: {total_time.to_hms_str(places=1)}",
-            f"Problems seen: {num_seen}",
-            f"Problems correct: {num_correct}",
-            f"Problems wrong: {num_wrong}",
-            f"Problems skipped: {num_skip}",
-            f"Average time per problem: {avg_time.to_hms_str(places=1)}",
-        ]
-        slowest_prob = stats.get_slowest_problem()
-        if slowest_prob is not None:
-            _slowest_filename = os.path.basename(slowest_prob.filepath)
-            _slowest_time = slowest_prob.time
-            assert _slowest_time is not None
-            message_strings.append(
-                f"Longest time taken: {_slowest_time.to_hms_str(places=1)} ({_slowest_filename})"
-            )
-        fastest_prob = stats.get_fastest_problem()
-        if fastest_prob is not None:
-            _fastest_filename = os.path.basename(fastest_prob.filepath)
-            _fastest_time = fastest_prob.time
-            assert _fastest_time is not None
-            message_strings.append(
-                f"Shortest time taken: {_fastest_time.to_hms_str(places=1)} ({_fastest_filename})"
-            )
-        messagebox.showinfo(
-            title="Solving statistics",
-            message=("\n".join(message_strings))
-        )
+        StatisticsDialog(stats)
         return
     
     #=== GUI display methods
@@ -543,6 +456,131 @@ class Bindings:
     def unbind_shortcuts(target, shortcuts):
         for keypress in shortcuts.keys():
             target.unbind(keypress)
+        return
+
+
+class Menubar(tk.Menu):
+    """GUI class for the menubar at the top of the main window.
+    """
+    def __init__(self, parent, controller, *args, **kwargs):
+        self.controller = controller
+        super().__init__(parent, *args, **kwargs)
+        
+        # Set cascades
+        menu_file = tk.Menu(self)
+        self.add_cascade(menu=menu_file, label="File")
+        menu_solving = tk.Menu(self)
+        self.add_cascade(menu=menu_solving, label="Solving")
+        menu_settings = tk.Menu(self)
+        self.add_cascade(menu=menu_settings, label="Settings")
+        menu_help = tk.Menu(self)
+        self.add_cascade(menu=menu_help, label="Help")
+        
+        # File
+        menu_file.add_command(
+            label="Open folder...",
+            command=self.controller.open_folder,
+            accelerator="Ctrl+O",
+            underline=0,
+        )
+        menu_file.add_command(
+            label="Open all subfolders...",
+            command=self.controller.open_folder_recursive,
+            accelerator="Ctrl+Shift+O",
+        )
+        # Solving
+        menu_solving.add_command(
+            label="Get statistics",
+            command=self.controller.generate_statistics,
+        )
+        # Settings
+        menu_settings.add_command(
+            label="Settings...",
+            command=lambda: SettingsWindow(controller=self.controller),
+        )
+        # Help
+        menu_help.add_command(
+            label="About tsumemi",
+            command=functools.partial(
+                messagebox.showinfo,
+                title="About tsumemi",
+                message="Written in Python 3 by Marken Foo. For the shogi community. KIF files sold separately."
+            )
+        )
+        # Bind to main window
+        parent["menu"] = self
+        return
+
+
+class StatisticsDialog(tk.Toplevel):
+    def __init__(self, stats: plistcon.ProblemListStats,
+            *args, **kwargs
+        ) -> None:
+        """Dialog box generating and displaying solving statistics.
+        """
+        super().__init__(*args, **kwargs)
+        num_folder = stats.get_num_total()
+        num_correct = stats.get_num_correct()
+        num_wrong = stats.get_num_wrong()
+        num_skip = stats.get_num_skip()
+        num_seen = num_correct + num_wrong + num_skip
+        total_time = stats.get_total_time()
+        avg_time = (timer.Time(total_time.seconds / num_seen)
+            if num_seen != 0 else timer.Time(0)
+        )
+        date_time_now = datetime.datetime.now()
+        message_strings = [
+            f"Folder name: {stats.directory}",
+            f"Report generated: {date_time_now.strftime('%Y-%m-%d %H:%M:%S')}",
+            "",
+            f"Total time: {total_time.to_hms_str(places=1)}",
+            f"Problems in folder: {num_folder}",
+            f"Problems seen: {num_seen}",
+            f"Problems correct: {num_correct}",
+            f"Problems wrong: {num_wrong}",
+            f"Problems skipped: {num_skip}",
+            f"Average time per problem: {avg_time.to_hms_str(places=1)}",
+        ]
+        slowest_prob = stats.get_slowest_problem()
+        if slowest_prob is not None:
+            _slowest_filename = os.path.basename(slowest_prob.filepath)
+            _slowest_time = slowest_prob.time
+            assert _slowest_time is not None
+            message_strings.append(
+                f"Longest time taken: {_slowest_time.to_hms_str(places=1)} ({_slowest_filename})"
+            )
+        fastest_prob = stats.get_fastest_problem()
+        if fastest_prob is not None:
+            _fastest_filename = os.path.basename(fastest_prob.filepath)
+            _fastest_time = fastest_prob.time
+            assert _fastest_time is not None
+            message_strings.append(
+                f"Shortest time taken: {_fastest_time.to_hms_str(places=1)} ({_fastest_filename})"
+            )
+        report_text = "\n".join(message_strings)
+        
+        self.title("Solving statistics")
+        lbl_report = ttk.Label(self, text=report_text)
+        lbl_message = ttk.Label(self, text="Copy your results from below:")
+        txt_report = tk.Text(self, width=30, height=3, wrap="none")
+        txt_report.insert(tk.INSERT, report_text)
+        txt_report.config(state="disabled")
+        vsc_txt_report = ttk.Scrollbar(self, orient="vertical", command=txt_report.yview)
+        txt_report["yscrollcommand"] = vsc_txt_report.set
+        hsc_txt_report = ttk.Scrollbar(self, orient="horizontal", command=txt_report.xview)
+        txt_report["xscrollcommand"] = hsc_txt_report.set
+        btn_ok = ttk.Button(self, text="OK", command=self.destroy)
+        
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(2, weight=1)
+        for child in self.winfo_children():
+            child.grid_configure(padx=5, pady=5)
+        lbl_report.grid(column=0, row=0, columnspan=2)
+        lbl_message.grid(column=0, row=1, columnspan=2)
+        txt_report.grid(column=0, row=2, sticky="NSEW")
+        vsc_txt_report.grid(column=1, row=2, sticky="NS")
+        hsc_txt_report.grid(column=0, row=3, sticky="EW")
+        btn_ok.grid(column=0, row=4)
         return
 
 
