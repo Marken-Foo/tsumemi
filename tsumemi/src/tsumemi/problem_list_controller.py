@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 import os
 
 from tkinter import ttk
@@ -11,7 +12,7 @@ import tsumemi.src.tsumemi.timer as timer
 
 if TYPE_CHECKING:
     import tkinter as tk
-    from typing import Any, Dict, List, Optional, Union
+    from typing import Dict, List, Optional, Union
     PathLike = Union[str, os.PathLike]
 
 
@@ -21,14 +22,40 @@ class ProblemListController:
     """
     def __init__(self) -> None:
         self.problem_list: plist.ProblemList = plist.ProblemList()
+        self.directory: Optional[PathLike] = None
         return
     
-    def make_problem_list_pane(self, parent: tk.Widget, controller: Any,
-            *args, **kwargs
+    def get_current_problem(self) -> Optional[plist.Problem]:
+        return self.problem_list.curr_prob
+    
+    def go_next_problem(self) -> Optional[plist.Problem]:
+        return self.problem_list.go_to_next()
+    
+    def go_prev_problem(self) -> Optional[plist.Problem]:
+        return self.problem_list.go_to_prev()
+    
+    def go_to_problem(self, idx: int = 0) -> Optional[plist.Problem]:
+        return self.problem_list.go_to_idx(idx)
+    
+    def set_status(self, status: plist.ProblemStatus) -> None:
+        self.problem_list.set_status(status)
+        return
+    
+    def set_time(self, time: timer.Time) -> None:
+        self.problem_list.set_time(time)
+        return
+    
+    def clear_statuses(self) -> None:
+        self.problem_list.clear_statuses()
+        return
+    
+    def clear_times(self) -> None:
+        self.problem_list.clear_times()
+        return
+    
+    def make_problem_list_pane(self, parent: tk.Widget, *args, **kwargs
         ) -> ProblemListPane:
-        return ProblemListPane(parent, controller, self.problem_list,
-            *args, **kwargs
-        )
+        return ProblemListPane(parent, self.problem_list, *args, **kwargs)
     
     def set_directory(self, directory: PathLike, recursive: bool = False
         ) -> Optional[plist.Problem]:
@@ -39,7 +66,26 @@ class ProblemListController:
             directory, recursive=recursive, suppress=True
         )
         self.problem_list.sort_by_file()
+        self.directory = directory
         return self.go_to_problem(0)
+    
+    def generate_statistics(self) -> ProblemListStats:
+        return ProblemListStats(self.problem_list,
+            self.directory if self.directory else ""
+        )
+    
+    def export_as_csv(self, filepath: PathLike) -> None:
+        with open(filepath, mode="w", newline="") as csvfile:
+            csvwriter = csv.writer(csvfile, delimiter=",")
+            csvwriter.writerow(["filename", "status", "time (seconds)"])
+            for prob in self.problem_list:
+                prob_filename = os.path.basename(
+                    os.path.normpath(prob.filepath)
+                )
+                prob_status = str(prob.status)
+                prob_time = 0 if prob.time is None else prob.time.seconds
+                csvwriter.writerow([prob_filename, prob_status, prob_time])
+        return
     
     def _add_problems_in_directory(self, directory: PathLike,
             recursive: bool = False, suppress: bool = False
@@ -64,37 +110,15 @@ class ProblemListController:
                 ]
         self.problem_list.add_problems(new_problems, suppress=suppress)
         return
-    
-    def get_current_problem(self) -> Optional[plist.Problem]:
-        return self.problem_list.curr_prob
-    
-    def go_next_problem(self) -> Optional[plist.Problem]:
-        return self.problem_list.next()
-    
-    def go_prev_problem(self) -> Optional[plist.Problem]:
-        return self.problem_list.prev()
-    
-    def go_to_problem(self, idx: int = 0) -> Optional[plist.Problem]:
-        return self.problem_list.go_to_idx(idx)
-    
-    def set_status(self, status: plist.ProblemStatus) -> None:
-        self.problem_list.set_status(status)
-        return
-    
-    def set_time(self, time: float) -> None:
-        self.problem_list.set_time(time)
-        return
 
 
 class ProblemsView(ttk.Treeview, evt.IObserver):
     """GUI class to display list of problems.
     Observes underlying problem list and updates its view as needed.
     """
-    def __init__(self, parent: tk.Widget, controller: Any,
-            problem_list: plist.ProblemList,
+    def __init__(self, parent: tk.Widget, problem_list: plist.ProblemList,
             *args, **kwargs
         ) -> None:
-        self.controller: Any = controller
         super().__init__(parent, *args, **kwargs)
         self.problem_list: plist.ProblemList = problem_list
         self.problem_list.add_observer(self)
@@ -124,11 +148,12 @@ class ProblemsView(ttk.Treeview, evt.IObserver):
         self.tag_configure("WRONG", background="LightPink1")
         
         # Bind double click to go to problem
-        self.bind("<Double-1>",
-            lambda e: self.controller.go_to_file(
-                idx=self.get_idx_on_click(e)
-            )
-        )
+        def _click_to_prob(event: tk.Event) -> None:
+            idx = self.get_idx_on_click(event)
+            if idx is not None:
+                self.problem_list.go_to_idx(idx)
+            return
+        self.bind("<Double-1>", _click_to_prob)
         return
     
     def display_time(self, event: plist.ProbTimeEvent) -> None:
@@ -136,8 +161,7 @@ class ProblemsView(ttk.Treeview, evt.IObserver):
         time = event.time
         # Set time column for item at given index
         id = self.get_children()[idx]
-        time_str = timer.sec_to_str(time)
-        self.set(id, column="time", value=time_str)
+        self.set(id, column="time", value=str(time))
         return
     
     def display_status(self, event: plist.ProbStatusEvent) -> None:
@@ -150,12 +174,12 @@ class ProblemsView(ttk.Treeview, evt.IObserver):
     
     def refresh_view(self, event: plist.ProbListEvent) -> None:
         # Refresh the entire view as the model changed, e.g. on opening folder
-        problems = event.prob_list
+        problem_list = event.sender
         self.delete(*self.get_children())
-        for problem in problems:
+        for problem in problem_list:
             filename = os.path.basename(problem.filepath)
             time_str = ("-" if problem.time is None
-                else timer.sec_to_str(problem.time)
+                else problem.time.to_hms_str(places=1)
             )
             status_str = self.status_strings[problem.status]
             self.insert(
@@ -178,48 +202,73 @@ class ProblemListPane(ttk.Frame):
     """GUI frame containing view of problem list and associated
     controls.
     """
-    def __init__(self, parent: tk.Widget, controller: Any,
-            problem_list: plist.ProblemList,
+    def __init__(self, parent: tk.Widget, problem_list: plist.ProblemList,
             *args, **kwargs
-        ) -> None :
-        self.controller: Any = controller
+        ) -> None:
         super().__init__(parent, *args, **kwargs)
         self.problem_list: plist.ProblemList = problem_list
         
         # Display problem list as Treeview
         self.tvw: ProblemsView = ProblemsView(
-            parent=self, controller=controller, problem_list=problem_list
+            parent=self, problem_list=problem_list
         )
-        self.tvw.grid(column=0, row=0, sticky="NSEW")
         
         # Make scrollbar
         self.scrollbar_tvw: ttk.Scrollbar = ttk.Scrollbar(
             self, orient="vertical",
             command=self.tvw.yview
         )
-        self.scrollbar_tvw.grid(column=1, row=0, sticky="NS")
         self.tvw["yscrollcommand"] = self.scrollbar_tvw.set
         
         self.btn_randomise: ttk.Button = ttk.Button(
             self, text="Randomise problems",
             command=self.problem_list.randomise
         )
+        
+        self.tvw.grid(column=0, row=0, sticky="NSEW")
+        self.scrollbar_tvw.grid(column=1, row=0, sticky="NS")
         self.btn_randomise.grid(column=0, row=1)
-        
-        self.btn_speedrun: ttk.Button = ttk.Button(
-            self, text="Start speedrun",
-            command=controller.start_speedrun
-        )
-        self.btn_speedrun.grid(column=0, row=2)
-        self.btn_speedrun.grid_remove()
-        
-        self.btn_abort_speedrun: ttk.Button = ttk.Button(
-            self, text="Abort speedrun",
-            command=controller.abort_speedrun
-        )
-        self.btn_abort_speedrun.grid(column=0, row=2)
-        self.btn_abort_speedrun.grid_remove()
-        
-        self.btn_speedrun.grid()
         return
 
+
+class ProblemListStats:
+    """A helper object that can be queried for the solving statistics
+    of the problems inside the problem list it refers to.
+    """
+    def __init__(self, problem_list = plist.ProblemList,
+            directory: PathLike = ""
+        ) -> None:
+        self.problem_list: plist.ProblemList = problem_list
+        self.directory: str = str(os.path.basename(os.path.normpath(directory)))
+        return
+    
+    def get_num_total(self) -> int:
+        return len(self.problem_list)
+    
+    def get_num_correct(self) -> int:
+        return len(
+            self.problem_list.filter_by_status(plist.ProblemStatus.CORRECT)
+        )
+    
+    def get_num_wrong(self) -> int:
+        return len(
+            self.problem_list.filter_by_status(plist.ProblemStatus.WRONG)
+        )
+    
+    def get_num_skip(self) -> int:
+        return len(
+            self.problem_list.filter_by_status(plist.ProblemStatus.SKIP)
+        )
+    
+    def get_total_time(self) -> timer.Time:
+        seen_problems = self.problem_list.filter_by_status(
+            plist.ProblemStatus.CORRECT, plist.ProblemStatus.WRONG,
+            plist.ProblemStatus.SKIP
+        )
+        return seen_problems.get_total_time()
+    
+    def get_fastest_problem(self) -> Optional[plist.Problem]:
+        return self.problem_list.get_fastest_problem()
+    
+    def get_slowest_problem(self) -> Optional[plist.Problem]:
+        return self.problem_list.get_slowest_problem()

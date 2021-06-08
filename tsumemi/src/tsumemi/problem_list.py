@@ -7,6 +7,7 @@ from enum import Enum
 from typing import TYPE_CHECKING
 
 import tsumemi.src.tsumemi.event as evt
+import tsumemi.src.tsumemi.timer as timer
 
 if TYPE_CHECKING:
     import os
@@ -16,11 +17,21 @@ if TYPE_CHECKING:
 
 class ProblemStatus(Enum):
     NONE = 0; CORRECT = 1; WRONG = 2; SKIP = 3
+    
+    def __str__(self):
+        return self.name
+
+
+class ProbSelectedEvent(evt.Event):
+    def __init__(self, sender: ProblemList, prob: Problem) -> None:
+        self.sender = sender
+        self.problem = prob
+        return
 
 
 class ProbListEvent(evt.Event):
-    def __init__(self, prob_list: List[Problem]) -> None:
-        self.prob_list = prob_list
+    def __init__(self, sender: ProblemList) -> None:
+        self.sender = sender
         return
 
 
@@ -32,7 +43,7 @@ class ProbStatusEvent(evt.Event):
 
 
 class ProbTimeEvent(evt.Event):
-    def __init__(self, prob_idx: int, time: float) -> None:
+    def __init__(self, prob_idx: int, time: timer.Time) -> None:
         self.idx = prob_idx
         self.time = time
         return
@@ -43,12 +54,9 @@ class Problem:
     """
     def __init__(self, filepath: PathLike) -> None:
         self.filepath: PathLike = filepath
-        self.time: Optional[float] = None
+        self.time: Optional[timer.Time] = None
         self.status: ProblemStatus = ProblemStatus.NONE
         return
-    
-    def get_filepath(self) -> PathLike:
-        return self.filepath
     
     def __eq__(self, obj: Any) -> bool:
         # Used in tests, will be useful in future features
@@ -69,19 +77,39 @@ class ProblemList(evt.Emitter):
     def _file_key(prob) -> List[Union[int, str]]:
         return ProblemList.natural_sort_key(prob.filepath)
     
-    def __init__(self) -> None:
-        self.problems: List[Problem] = []
+    def __init__(self, problems: Optional[List[Problem]] = None) -> None:
+        self.problems: List[Problem] = [] if problems is None else problems
         self.curr_prob: Optional[Problem] = None
         self.curr_prob_idx: Optional[int] = None
         self.observers: List[evt.IObserver] = []
         return
+    
+    def __iter__(self):
+        return self.problems.__iter__()
+    
+    def __len__(self):
+        return len(self.problems)
     
     def clear(self, suppress=False) -> None:
         self.problems = []
         self.curr_prob = None
         self.curr_prob_idx = None
         if not suppress:
-            self._notify_observers(ProbListEvent(self.problems))
+            self._notify_observers(ProbListEvent(self))
+        return
+    
+    def clear_statuses(self, suppress=False) -> None:
+        for prob in self.problems:
+            prob.status = ProblemStatus.NONE
+        if not suppress:
+            self._notify_observers(ProbListEvent(self))
+        return
+    
+    def clear_times(self, suppress=False) -> None:
+        for prob in self.problems:
+            prob.time = None
+        if not suppress:
+            self._notify_observers(ProbListEvent(self))
         return
     
     def is_empty(self) -> bool:
@@ -92,7 +120,7 @@ class ProblemList(evt.Emitter):
         ) -> None:
         self.problems.append(new_problem)
         if not suppress:
-            self._notify_observers(ProbListEvent(self.problems))
+            self._notify_observers(ProbListEvent(self))
         return
     
     def add_problems(self, new_problems: Iterable[Problem],
@@ -100,15 +128,45 @@ class ProblemList(evt.Emitter):
         ) -> None:
         self.problems.extend(new_problems)
         if not suppress:
-            self._notify_observers(ProbListEvent(self.problems))
+            self._notify_observers(ProbListEvent(self))
         return
     
+    #=== Getters/queries
     def get_curr_filepath(self) -> Optional[PathLike]:
         if self.curr_prob is None:
             return None
         else:
-            return self.curr_prob.get_filepath()
+            return self.curr_prob.filepath
     
+    def filter_by_status(self, *args: ProblemStatus) -> ProblemList:
+        return ProblemList([
+            prob for prob in self.problems if (prob.status in args)
+        ])
+    
+    def get_total_time(self) -> timer.Time:
+        return sum([
+            prob.time for prob in self.problems if (prob.time is not None)
+        ], start=timer.Time(0))
+    
+    def get_slowest_problem(self) -> Optional[Problem]:
+        slowest_prob = None
+        slowest_time = timer.Time(-1)
+        for prob in self.problems:
+            if (prob.time is not None) and (prob.time > slowest_time):
+                slowest_time = prob.time
+                slowest_prob = prob
+        return slowest_prob
+    
+    def get_fastest_problem(self) -> Optional[Problem]:
+        fastest_prob = None
+        fastest_time = timer.Time(float("inf"))
+        for prob in self.problems:
+            if (prob.time is not None) and (prob.time < fastest_time):
+                fastest_time = prob.time
+                fastest_prob = prob
+        return fastest_prob
+    
+    #=== Setting methods
     def set_status(self, status: ProblemStatus) -> None:
         if self.curr_prob is not None:
             assert self.curr_prob_idx is not None # for mypy
@@ -116,47 +174,42 @@ class ProblemList(evt.Emitter):
             self._notify_observers(ProbStatusEvent(self.curr_prob_idx, status))
         return
     
-    def set_time(self, time: float) -> None:
+    def set_time(self, time: timer.Time) -> None:
         if self.curr_prob is not None:
             assert self.curr_prob_idx is not None # for mypy
             self.curr_prob.time = time
             self._notify_observers(ProbTimeEvent(self.curr_prob_idx, time))
         return
     
-    def next(self) -> Optional[Problem]:
-        return (None if self.curr_prob_idx is None
-            else self.go_to_idx(self.curr_prob_idx + 1))
-    
-    def prev(self) -> Optional[Problem]:
-        return (None if self.curr_prob_idx is None
-            else self.go_to_idx(self.curr_prob_idx - 1))
-    
+    #=== Navigation methods
     def go_to_idx(self, idx: int) -> Optional[Problem]:
-        """Change current problem to the given index and return it.
+        """Go to the problem at the given index and return it.
         """
         if idx >= len(self.problems) or idx < 0:
             return None
-        self.curr_prob = self.problems[idx]
+        prob = self.problems[idx]
+        self.curr_prob = prob
         self.curr_prob_idx = idx
+        self._notify_observers(ProbSelectedEvent(sender=self, prob=prob))
         return self.curr_prob
     
-    def _set_active_problem(self, prob) -> bool:
-        if prob in self.problems:
-            idx = self.problems.index(prob)
-            self.curr_prob_idx = idx
-            self.curr_prob = self.problems[self.curr_prob_idx]
-            return True
-        else:
-            return False
+    def go_to_next(self) -> Optional[Problem]:
+        return (None if self.curr_prob_idx is None
+            else self.go_to_idx(self.curr_prob_idx + 1))
     
+    def go_to_prev(self) -> Optional[Problem]:
+        return (None if self.curr_prob_idx is None
+            else self.go_to_idx(self.curr_prob_idx - 1))
+    
+    #=== Sorting methods
     def sort(self, key, suppress=False) -> None:
         """Sort problem list in place, keeping focus on the same
         problem before and after the sort."""
-        prob = self.curr_prob
+        old_prob = self.curr_prob
         self.problems.sort(key=key)
-        self._set_active_problem(prob)
+        self._set_active_problem(old_prob)
         if not suppress:
-            self._notify_observers(ProbListEvent(self.problems))
+            self._notify_observers(ProbListEvent(self))
         return
     
     def sort_by_file(self) -> None:
@@ -178,5 +231,14 @@ class ProblemList(evt.Emitter):
         self.problems = list(probs)
         self.curr_prob_idx = idxs.index(self.curr_prob_idx)
         curr_prob = self.problems[self.curr_prob_idx]
-        self._notify_observers(ProbListEvent(self.problems))
+        self._notify_observers(ProbListEvent(self))
         return
+    
+    def _set_active_problem(self, prob) -> bool:
+        if prob in self.problems:
+            idx = self.problems.index(prob)
+            self.curr_prob_idx = idx
+            self.curr_prob = self.problems[self.curr_prob_idx]
+            return True
+        else:
+            return False

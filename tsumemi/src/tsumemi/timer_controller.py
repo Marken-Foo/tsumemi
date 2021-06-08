@@ -32,7 +32,7 @@ class TimerController:
     def reset(self) -> None:
         return self.clock.reset()
     
-    def split(self) -> Optional[float]:
+    def split(self) -> Optional[timer.Time]:
         return self.clock.split()
 
 
@@ -50,8 +50,9 @@ class TimerDisplay(ttk.Label, evt.IObserver):
         }
         # Assume timer is in reset state, initialise to match
         self.is_running: bool = False
-        self.time_str: tk.StringVar = tk.StringVar(value=timer.sec_to_str(0.0))
-        
+        self.time_str: tk.StringVar = tk.StringVar(
+            value=timer.Time(0).to_hms_str(places=1)
+        )
         self["textvariable"] = self.time_str
         self.configure(
             background="black",
@@ -70,11 +71,7 @@ class TimerDisplay(ttk.Label, evt.IObserver):
         return
     
     def refresh(self) -> None:
-        self.time_str.set(
-            timer.sec_to_str(
-                self.clock.read()
-            )
-        )
+        self.time_str.set(str(self.clock.read()))
         if self.is_running:
             self.after(40, self.refresh)
         return
@@ -94,22 +91,29 @@ class TimerPane(ttk.Frame):
         self.timer_display.grid(
             column=0, row=0, columnspan=3
         )
-        ttk.Button(
-            self, text="Start/stop timer",
+        self.btn_toggle = ttk.Button(self,
+            text="Start/stop timer",
             command=clock.toggle
-        ).grid(
-            column=0, row=1
         )
-        ttk.Button(
-            self, text="Reset timer",
+        self.btn_reset = ttk.Button(self,
+            text="Reset timer",
             command=clock.reset
-        ).grid(
-            column=1, row=1
         )
-        ttk.Button(
-            self, text="Split",
+        self.btn_split = ttk.Button(self,
+            text="Split",
             command=clock.split
-        ).grid(
-            column=2, row=1
         )
+        self.btn_toggle.grid(column=0, row=1)
+        self.btn_reset.grid(column=1, row=1)
+        self.btn_split.grid(column=2, row=1)
+        return
+    
+    def allow_only_pause(self) -> None:
+        self.btn_reset.config(state="disabled")
+        self.btn_split.config(state="disabled")
+        return
+    
+    def allow_all(self) -> None:
+        self.btn_reset.config(state="normal")
+        self.btn_split.config(state="normal")
         return

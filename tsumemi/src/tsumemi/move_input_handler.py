@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
@@ -14,6 +16,8 @@ if TYPE_CHECKING:
     from tsumemi.src.shogi.game import Game
     from tsumemi.src.shogi.position import Position
     from tsumemi.src.tsumemi.board_canvas import BoardCanvas
+
+logger = logging.getLogger(__name__)
 
 
 class MoveEvent(evt.Event):
@@ -53,9 +57,13 @@ class MoveInputHandler(evt.Emitter):
         """Receive a Square and other relevant inputs from GUI. Let
         the state machine handle it.
         """
-        self.active_state.receive_input(event=event, caller=self, sq=sq,
-            hand_ktype=hand_ktype, hand_side=hand_side
-        )
+        try:
+            self.active_state.receive_input(event=event, caller=self, sq=sq,
+                hand_ktype=hand_ktype, hand_side=hand_side
+            )
+        except RuntimeError as e:
+            self._set_state("ready")
+            logger.warning(e, exc_info=True)
         return
     
     def execute_promotion_choice(self, is_promotion: Optional[bool],
@@ -327,6 +335,11 @@ class WaitForPromotionState(MoveInputHandlerState):
             sq: Square, hand_ktype: KomaType = KomaType.NONE,
             hand_side: Side = Side.SENTE
         ) -> None:
+        if sq == Square.HAND:
+            # acts as cancelling the move
+            caller.board_canvas.clear_promotion_prompts()
+            caller._set_state("ready")
+            return
         raise RuntimeError("Unexpected input to MoveInputHandler while waiting "
             "for promotion decision"
         )

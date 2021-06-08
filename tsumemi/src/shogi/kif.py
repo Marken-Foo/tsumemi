@@ -235,8 +235,8 @@ class GameBuilderPVis(ParserVisitor):
                 (not game.curr_node.is_null())
                 and game.curr_node.movenum != var_movenum
             ):
-                game.prev()
-            game.prev() # Once more to reach the prior move
+                game.go_prev_move()
+            game.go_prev_move() # Once more to reach the prior move
             if game.curr_node.is_null():
                 raise Exception("HALP desired movenum not found")
             return
@@ -290,7 +290,7 @@ class KifReader(Reader):
                 pass
             # MUST fallthrough to here to complete one while iteration
             line = handle.readline()
-        self.game.start()
+        self.game.go_to_start()
         return self.game
 
 

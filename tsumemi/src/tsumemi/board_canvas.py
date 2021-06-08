@@ -171,7 +171,11 @@ class BoardCanvas(tk.Canvas):
             self.move_input_handler.execute_promotion_choice(
                 is_promotion, sq=sq, ktype=ktype
             )
-            self.delete("promotion_prompt")
+            self.clear_promotion_prompts()
+        return
+    
+    def clear_promotion_prompts(self) -> None:
+        self.delete("promotion_prompt")
         return
     
     def draw_board(self):
