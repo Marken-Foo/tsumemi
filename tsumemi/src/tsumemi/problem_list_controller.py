@@ -205,21 +205,4 @@ class ProblemListPane(ttk.Frame):
             command=self.problem_list.randomise
         )
         self.btn_randomise.grid(column=0, row=1)
-        
-        self.btn_speedrun: ttk.Button = ttk.Button(
-            self, text="Start speedrun",
-            command=controller.start_speedrun
-        )
-        self.btn_speedrun.grid(column=0, row=2)
-        self.btn_speedrun.grid_remove()
-        
-        self.btn_abort_speedrun: ttk.Button = ttk.Button(
-            self, text="Abort speedrun",
-            command=controller.abort_speedrun
-        )
-        self.btn_abort_speedrun.grid(column=0, row=2)
-        self.btn_abort_speedrun.grid_remove()
-        
-        self.btn_speedrun.grid()
         return
-

@@ -114,9 +114,6 @@ def _setup_main_window(root: tk.Tk) -> ttk.Frame:
     # mainframe is the main frame of the root window
     mainframe = ttk.Frame(root)
     mainframe.grid(column=0, row=0, sticky="NSEW")
-    mainframe.grid_columnconfigure(0, weight=1)
-    mainframe.grid_columnconfigure(1, weight=1)
-    mainframe.grid_rowconfigure(0, weight=1)
     return mainframe
 
 
@@ -146,63 +143,53 @@ class RootController(evt.IObserver):
         }
         # Everything after this point should be GUI
         self.root: tk.Tk = root
-        self.mainframe: ttk.Frame = _setup_main_window(root)
+        mainframe: ttk.Frame = _setup_main_window(root)
+        self.mainframe = mainframe
         self.menubar: Menubar = Menubar(parent=self.root, controller=self)
         
-        # Main board canvas
-        board_frame = ttk.Frame(self.mainframe)
-        board_frame.grid(column=0, row=0, sticky="NSEW")
-        board_frame.grid_columnconfigure(0, weight=1)
-        board_frame.grid_rowconfigure(0, weight=1)
-        board_frame.grid_configure(padx=5, pady=5)
-        
+        board_frame = ttk.Frame(mainframe)
         _, board_canvas = self.main_game.make_navigable_view(parent=board_frame)
-        board_canvas.grid(column=0, row=0, sticky="NSEW")
         board_canvas.bind("<Configure>", board_canvas.on_resize)
         
+        main_timer_view = self.main_timer.make_timer_pane(
+            parent=mainframe
+        )
+        # Main problem list
+        problem_list_pane = self.main_problem_list.make_problem_list_pane(
+            parent=mainframe, controller=self
+        )
         # Solution text label.
         # The wraplength isn't right.
-        lbl_solution = tk.Label(self.mainframe, textvariable=self.solution,
+        lbl_solution = tk.Label(mainframe, textvariable=self.solution,
             justify="left", wraplength=board_canvas.width
         )
         defaultfont = font.Font(font=lbl_solution["font"])
         typeface = defaultfont["family"]
         fontsize = defaultfont["size"]
         lbl_solution.config(font=(typeface, fontsize+2))
-        lbl_solution.grid(column=0, row=1, sticky="W")
-        lbl_solution.grid_configure(padx=5, pady=5)
         
         # Problem navigation controls
         self._navcons = {
             "free" : FreeModeNavControls(
-                parent=self.mainframe, controller=self
+                parent=mainframe, controller=self
             ),
             "speedrun" : SpeedrunNavControls(
-                parent=self.mainframe, controller=self
+                parent=mainframe, controller=self
             )
         }
         for navcon in self._navcons.values():
             navcon.grid(column=0, row=2)
             navcon.grid_remove()
         self.nav_controls = self._navcons["free"]
-        self.nav_controls.grid()
         
-        # Main timer
-        main_timer_view = self.main_timer.make_timer_pane(
-            parent=self.mainframe
+        # Speedrun buttons
+        speedrun_frame = ttk.Frame(mainframe)
+        btn_speedrun = ttk.Button(speedrun_frame, text="Start speedrun",
+            command=self.start_speedrun
         )
-        main_timer_view.grid(column=1, row=1)
-        main_timer_view.grid_columnconfigure(0, weight=0)
-        main_timer_view.grid_rowconfigure(0, weight=0)
-        
-        # Main problem list
-        problem_list_pane = self.main_problem_list.make_problem_list_pane(
-            parent=self.mainframe, controller=self
+        btn_abort_speedrun = ttk.Button(speedrun_frame, text="Abort speedrun",
+            command=self.abort_speedrun
         )
-        problem_list_pane.grid(column=1, row=0, sticky="NSEW")
-        problem_list_pane.grid_columnconfigure(0, weight=1)
-        problem_list_pane.grid_rowconfigure(0, weight=1)
-        problem_list_pane.grid_configure(padx=5, pady=5)
         
         # assign all views to self for later reference if needed.
         self.board_frame = board_frame
@@ -212,11 +199,39 @@ class RootController(evt.IObserver):
         self.lbl_solution = lbl_solution
         self.main_timer_view = main_timer_view
         self.problem_list_pane = problem_list_pane
+        self.btn_speedrun = btn_speedrun
+        self.btn_abort_speedrun = btn_abort_speedrun
+        btn_abort_speedrun.config(state="disabled")
         
         # Keyboard shortcuts
         self.bindings = Bindings(self)
         self.bindings.bind_shortcuts(self.root, self.bindings.MASTER_SHORTCUTS)
         self.bindings.bind_shortcuts(self.root, self.bindings.FREE_SHORTCUTS)
+        
+        # grid everything
+        mainframe.grid_columnconfigure(0, weight=1)
+        mainframe.grid_columnconfigure(1, weight=1)
+        mainframe.grid_rowconfigure(0, weight=1)
+        
+        board_frame.grid_columnconfigure(0, weight=1)
+        board_frame.grid_rowconfigure(0, weight=1)
+        main_timer_view.grid_columnconfigure(0, weight=0)
+        main_timer_view.grid_rowconfigure(0, weight=0)
+        problem_list_pane.grid_columnconfigure(0, weight=1)
+        problem_list_pane.grid_rowconfigure(0, weight=1)
+        
+        board_frame.grid(column=0, row=0, sticky="NSEW")
+        board_frame.grid_configure(padx=5, pady=5)
+        board_canvas.grid(column=0, row=0, sticky="NSEW")
+        lbl_solution.grid(column=0, row=1, sticky="W")
+        lbl_solution.grid_configure(padx=5, pady=5)
+        self.nav_controls.grid()
+        main_timer_view.grid(column=1, row=1)
+        problem_list_pane.grid(column=1, row=0, sticky="NSEW")
+        problem_list_pane.grid_configure(padx=5, pady=5)
+        speedrun_frame.grid(column=1, row=2)
+        btn_speedrun.grid(column=0, row=0)
+        btn_abort_speedrun.grid(column=1, row=0)
         return
     
     def open_folder(self, event: Optional[tk.Event] = None,
@@ -300,15 +315,21 @@ class RootController(evt.IObserver):
         self.go_to_file(idx=0)
         self.main_game.set_speedrun_mode()
         self._set_speedrun_ui()
+        self.main_timer_view.allow_only_pause()
         self.main_timer.reset()
         self.main_timer.start()
+        self.btn_speedrun.config(state="disabled")
+        self.btn_abort_speedrun.config(state="normal")
         return
     
     def abort_speedrun(self) -> None:
         # GUI callback
         self.main_timer.stop()
+        self.main_timer_view.allow_all()
         self.main_game.set_free_mode()
         self._remove_speedrun_ui()
+        self.btn_speedrun.config(state="normal")
+        self.btn_abort_speedrun.config(state="disabled")
         return
     
     def _set_speedrun_ui(self) -> None:
@@ -317,8 +338,6 @@ class RootController(evt.IObserver):
         self.nav_controls = self._navcons["speedrun"]
         self.nav_controls.show_sol_skip()
         self.nav_controls.grid()
-        self.problem_list_pane.btn_speedrun.grid_remove()
-        self.problem_list_pane.btn_abort_speedrun.grid()
         # Set application state
         self.bindings.unbind_shortcuts(self.root, self.bindings.FREE_SHORTCUTS)
         return
@@ -329,8 +348,6 @@ class RootController(evt.IObserver):
         self.nav_controls.grid_remove()
         self.nav_controls = self._navcons["free"]
         self.nav_controls.grid()
-        self.problem_list_pane.btn_speedrun.grid()
-        self.problem_list_pane.btn_abort_speedrun.grid_remove()
         # Set application state
         self.bindings.bind_shortcuts(self.root, self.bindings.FREE_SHORTCUTS)
         return
