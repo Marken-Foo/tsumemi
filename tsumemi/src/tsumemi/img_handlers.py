@@ -171,7 +171,7 @@ class ImgSizingDict:
         try:
             resized_img = img.resize((int(width), int(height)))
         except ValueError as e:
-            logger.info("Image resizing in ImgDict failed, passed parameters width %i, height %i" % (int(width), int(height)))
+            logger.info(f"Image resizing in ImgDict failed, passed parameters width {int(width)}, height {int(height)}")
             return ImageTk.PhotoImage(Image.new("RGB", (1, 1), "#000000"))
         return ImageTk.PhotoImage(resized_img)
     
