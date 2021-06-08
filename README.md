@@ -1,6 +1,6 @@
 # Tsumemi 詰め見 - KIF browser #
 
-Navigate through your tsumeshogi problems with ease. Speedrun a set of tsumeshogi problems and record your statistics.
+Navigate through your tsumeshogi problems with ease. Speedrun a set of tsumeshogi problems and record and save your statistics.
 
 ![](browser.png)
 
@@ -61,6 +61,10 @@ For each problem, you can move pieces to solve it. Illegal moves will be ignored
 Alternatively, *Show solution* lets you check your answer and choose whether you got it right or wrong (the timer will be paused while doing so). If you cannot solve the problem, you can *Skip* to the next problem without seeing the solution.
 
 Your time splits and correct/wrong/skip/unattempted status for each problem are displayed in the panel on the right.
+
+### Speedrun statistics ###
+
+From the Speedrun menu, you can get your solving statistics on the current problem set, export them as a CSV file, or clear your current statistics.
 
 ### Customise appearance ###
 
