@@ -32,7 +32,7 @@ class TimerController:
     def reset(self) -> None:
         return self.clock.reset()
     
-    def split(self) -> Optional[float]:
+    def split(self) -> Optional[timer.Time]:
         return self.clock.split()
 
 
@@ -50,8 +50,9 @@ class TimerDisplay(ttk.Label, evt.IObserver):
         }
         # Assume timer is in reset state, initialise to match
         self.is_running: bool = False
-        self.time_str: tk.StringVar = tk.StringVar(value=timer.sec_to_str(0.0))
-        
+        self.time_str: tk.StringVar = tk.StringVar(
+            value=timer.Time(0).to_hms_str(places=1)
+        )
         self["textvariable"] = self.time_str
         self.configure(
             background="black",
@@ -70,11 +71,7 @@ class TimerDisplay(ttk.Label, evt.IObserver):
         return
     
     def refresh(self) -> None:
-        self.time_str.set(
-            timer.sec_to_str(
-                self.clock.read()
-            )
-        )
+        self.time_str.set(str(self.clock.read()))
         if self.is_running:
             self.after(40, self.refresh)
         return

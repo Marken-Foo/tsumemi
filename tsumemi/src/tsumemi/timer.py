@@ -12,13 +12,6 @@ if TYPE_CHECKING:
     from typing import List, Iterator, Optional, Tuple
 
 
-def sec_to_hms(seconds: float) -> Tuple[int, int, float]:
-    """Take a time in seconds and return a tuple of
-    (hours, minutes, seconds).
-    """
-    return (int(seconds // 3600), int((seconds % 3600) // 60), seconds % 60)
-
-
 def _two_digits(num: float) -> str:
     """Take a float, make its integer part at least two chars long
     (clock display), and return it as a string.
@@ -26,10 +19,60 @@ def _two_digits(num: float) -> str:
     return "0" + str(num) if num < 10 else str(num)
 
 
-def sec_to_str(seconds: float, places: int = 1) -> str:
-    hms = list(sec_to_hms(seconds))
-    hms[2] = round(hms[2], places)
-    return ":".join([_two_digits(i) for i in hms])
+class Time:
+    def __init__(self, time: float) -> None:
+        self.seconds: float = time
+        return
+    
+    def __eq__(self, other):
+        if isinstance(other, Time):
+            return self.seconds == other.seconds
+        else:
+            raise TypeError(f"Types Time and {type(other)} cannot be compared")
+    
+    def __ne__(self, other):
+        return not self.__eq__(other)
+    
+    def __gt__(self, other):
+        if isinstance(other, Time):
+            return self.seconds > other.seconds
+        else:
+            raise TypeError(f"Types Time and {type(other)} cannot be compared")
+    
+    def __lt__(self, other):
+        if isinstance(other, Time):
+            return self.seconds < other.seconds
+        else:
+            raise TypeError(f"Types Time and {type(other)} cannot be compared")
+    
+    def __ge__(self, other):
+        return self.__gt__(other) or self.__eq__(other)
+    
+    def __le__(self, other):
+        return self.__lt__(other) or self.__eq__(other)
+    
+    def __add__(self, other):
+        if isinstance(other, Time):
+            return Time(self.seconds + other.seconds)
+        else:
+            raise TypeError(f"Types Time and {type(other)} cannot be added")
+    
+    def __radd__(self, other):
+        return self.__add__(other)
+    
+    def __str__(self):
+        return self.to_hms_str()
+    
+    def to_hms(self) -> Tuple[int, int, float]:
+        hours = int(self.seconds // 3600)
+        minutes = int((self.seconds % 3600) // 60)
+        seconds = self.seconds % 60
+        return (hours, minutes, seconds)
+    
+    def to_hms_str(self, places: int=1) -> str:
+        hms = list(self.to_hms())
+        hms[2] = round(hms[2], places)
+        return ":".join([_two_digits(i) for i in hms])
 
 
 class TimerStartEvent(evt.Event):
@@ -45,9 +88,9 @@ class TimerStopEvent(evt.Event):
 
 
 class TimerSplitEvent(evt.Event):
-    def __init__(self, clock: Timer, lap_time: float) -> None:
+    def __init__(self, clock: Timer, lap_time: Time) -> None:
         self.clock: Timer = clock
-        self.time: float = lap_time
+        self.time: Time = lap_time
         return
 
 
@@ -87,8 +130,9 @@ class SplitTimer:
             # ill-defined operation
             return None
         if self.is_running:
-            lap_time = (self.curr_lap_time + time.perf_counter()
-                        - self.start_time)
+            lap_time = (self.curr_lap_time
+                + time.perf_counter() - self.start_time
+            )
             self.lap_times.append(lap_time)
             self.start_time = time.perf_counter()
             self.curr_lap_time = 0
@@ -141,19 +185,21 @@ class Timer(evt.Emitter):
         self.observers: List[evt.IObserver] = []
         return
     
-    def read(self) -> float:
-        return self.clock.read()
+    def read(self) -> Time:
+        return Time(self.clock.read())
     
     def reset(self) -> None:
         self.clock.reset()
         self._notify_observers(TimerStopEvent(self))
         return
     
-    def split(self) -> Optional[float]:
-        time = self.clock.split()
-        if time is not None:
+    def split(self) -> Optional[Time]:
+        reading: Optional[float] = self.clock.split()
+        if reading is not None:
+            time = Time(reading)
             self._notify_observers(TimerSplitEvent(self, time))
-        return time
+            return time
+        return None
     
     def start(self) -> None:
         self.clock.start()

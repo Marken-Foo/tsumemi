@@ -7,6 +7,7 @@ from enum import Enum
 from typing import TYPE_CHECKING
 
 import tsumemi.src.tsumemi.event as evt
+import tsumemi.src.tsumemi.timer as timer
 
 if TYPE_CHECKING:
     import os
@@ -39,7 +40,7 @@ class ProbStatusEvent(evt.Event):
 
 
 class ProbTimeEvent(evt.Event):
-    def __init__(self, prob_idx: int, time: float) -> None:
+    def __init__(self, prob_idx: int, time: timer.Time) -> None:
         self.idx = prob_idx
         self.time = time
         return
@@ -50,7 +51,7 @@ class Problem:
     """
     def __init__(self, filepath: PathLike) -> None:
         self.filepath: PathLike = filepath
-        self.time: Optional[float] = None
+        self.time: Optional[timer.Time] = None
         self.status: ProblemStatus = ProblemStatus.NONE
         return
     
@@ -122,14 +123,14 @@ class ProblemList(evt.Emitter):
             prob for prob in self.problems if (prob.status in args)
         ])
     
-    def get_total_time(self) -> float:
+    def get_total_time(self) -> timer.Time:
         return sum([
             prob.time for prob in self.problems if (prob.time is not None)
-        ])
+        ], start=timer.Time(0))
     
     def get_slowest_problem(self) -> Optional[Problem]:
         slowest_prob = None
-        slowest_time = -1
+        slowest_time = timer.Time(-1)
         for prob in self.problems:
             if (prob.time is not None) and (prob.time > slowest_time):
                 slowest_time = prob.time
@@ -138,7 +139,7 @@ class ProblemList(evt.Emitter):
     
     def get_fastest_problem(self) -> Optional[Problem]:
         fastest_prob = None
-        fastest_time = float("inf")
+        fastest_time = timer.Time(float("inf"))
         for prob in self.problems:
             if (prob.time is not None) and (prob.time < fastest_time):
                 fastest_time = prob.time
@@ -153,7 +154,7 @@ class ProblemList(evt.Emitter):
             self._notify_observers(ProbStatusEvent(self.curr_prob_idx, status))
         return
     
-    def set_time(self, time: float) -> None:
+    def set_time(self, time: timer.Time) -> None:
         if self.curr_prob is not None:
             assert self.curr_prob_idx is not None # for mypy
             self.curr_prob.time = time

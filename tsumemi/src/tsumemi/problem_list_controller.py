@@ -40,7 +40,7 @@ class ProblemListController:
         self.problem_list.set_status(status)
         return
     
-    def set_time(self, time: float) -> None:
+    def set_time(self, time: timer.Time) -> None:
         self.problem_list.set_time(time)
         return
     
@@ -61,7 +61,9 @@ class ProblemListController:
         return self.go_to_problem(0)
     
     def generate_statistics(self) -> ProblemListStats:
-        return ProblemListStats(self.problem_list, str(self.directory))
+        return ProblemListStats(self.problem_list,
+            self.directory if self.directory else ""
+        )
     
     def _add_problems_in_directory(self, directory: PathLike,
             recursive: bool = False, suppress: bool = False
@@ -137,8 +139,7 @@ class ProblemsView(ttk.Treeview, evt.IObserver):
         time = event.time
         # Set time column for item at given index
         id = self.get_children()[idx]
-        time_str = timer.sec_to_str(time)
-        self.set(id, column="time", value=time_str)
+        self.set(id, column="time", value=str(time))
         return
     
     def display_status(self, event: plist.ProbStatusEvent) -> None:
@@ -156,7 +157,7 @@ class ProblemsView(ttk.Treeview, evt.IObserver):
         for problem in problems:
             filename = os.path.basename(problem.filepath)
             time_str = ("-" if problem.time is None
-                else timer.sec_to_str(problem.time)
+                else problem.time.to_hms_str(places=1)
             )
             status_str = self.status_strings[problem.status]
             self.insert(
@@ -212,10 +213,11 @@ class ProblemListStats:
     """A helper object that can be queried for the solving statistics
     of the problems inside the problem list it refers to.
     """
-    def __init__(self, problem_list = plist.ProblemList, directory: str = ""
+    def __init__(self, problem_list = plist.ProblemList,
+            directory: PathLike = ""
         ) -> None:
-        self.problem_list = problem_list
-        self.directory = directory
+        self.problem_list: plist.ProblemList = problem_list
+        self.directory: str = str(os.path.basename(os.path.normpath(directory)))
         return
     
     def get_num_total(self) -> int:
@@ -236,7 +238,7 @@ class ProblemListStats:
             self.problem_list.filter_by_status(plist.ProblemStatus.SKIP)
         )
     
-    def get_total_time(self) -> float:
+    def get_total_time(self) -> timer.Time:
         seen_problems = self.problem_list.filter_by_status(
             plist.ProblemStatus.CORRECT, plist.ProblemStatus.WRONG,
             plist.ProblemStatus.SKIP

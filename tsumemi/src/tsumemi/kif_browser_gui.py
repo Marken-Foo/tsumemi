@@ -397,26 +397,33 @@ class RootController(evt.IObserver):
         num_skip = stats.get_num_skip()
         num_seen = num_correct + num_wrong + num_skip
         total_time = stats.get_total_time()
+        avg_time = (timer.Time(total_time.seconds / num_seen)
+            if num_seen != 0 else timer.Time(0)
+        )
         message_strings = [
             f"Folder name: {stats.directory}",
-            f"Total time: {total_time:.1f}",
+            f"Total time: {total_time.to_hms_str(places=1)}",
             f"Problems seen: {num_seen}",
             f"Problems correct: {num_correct}",
             f"Problems wrong: {num_wrong}",
             f"Problems skipped: {num_skip}",
-            f"Average time per problem: {total_time/num_seen:.1f}",
+            f"Average time per problem: {avg_time.to_hms_str(places=1)}",
         ]
         slowest_prob = stats.get_slowest_problem()
         if slowest_prob is not None:
-            slowest_filename = os.path.basename(slowest_prob.filepath)
+            _slowest_filename = os.path.basename(slowest_prob.filepath)
+            _slowest_time = slowest_prob.time
+            assert _slowest_time is not None
             message_strings.append(
-                f"Longest time taken: {slowest_prob.time:.1f} ({slowest_filename})"
+                f"Longest time taken: {_slowest_time.to_hms_str(places=1)} ({_slowest_filename})"
             )
         fastest_prob = stats.get_fastest_problem()
         if fastest_prob is not None:
-            fastest_filename = os.path.basename(fastest_prob.filepath)
+            _fastest_filename = os.path.basename(fastest_prob.filepath)
+            _fastest_time = fastest_prob.time
+            assert _fastest_time is not None
             message_strings.append(
-                f"Shortest time taken: {fastest_prob.time:.1f} ({fastest_filename})"
+                f"Shortest time taken: {_fastest_time.to_hms_str(places=1)} ({_fastest_filename})"
             )
         messagebox.showinfo(
             title="Solving statistics",
@@ -475,7 +482,7 @@ class RootController(evt.IObserver):
     def _on_split(self, event: timer.TimerSplitEvent) -> None:
         # Observer callback
         time = event.time
-        if self.main_timer.clock == event.clock and time is not None:
+        if self.main_timer.clock == event.clock:
             self.main_problem_list.set_time(time)
         return
     
