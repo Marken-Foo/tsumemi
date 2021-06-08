@@ -218,7 +218,9 @@ class RootController(evt.IObserver):
         """
         self._read_problem(prob)
         self._display_problem()
-        self.board.move_input_handler.enable()
+        move_input_handler = self.board.move_input_handler
+        if move_input_handler is not None:
+            move_input_handler.enable()
         return
     
     def _read_problem(self, prob: plist.Problem) -> None:

@@ -54,6 +54,15 @@ class NavControls(ttk.Frame):
         return ttk.Button(self, text=text,
             command=self.controller.continue_speedrun
         )
+    
+    def show_correct_wrong(self):
+        pass
+    
+    def show_sol_skip(self):
+        pass
+    
+    def show_continue(self):
+        pass
 
 
 class FreeModeNavControls(NavControls):
