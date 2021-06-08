@@ -103,6 +103,9 @@ class Game:
             has_next = self.go_next_move()
         return
     
+    def get_current_sfen(self) -> str:
+        return self.position.to_sfen()
+    
     def to_notation(self) -> List[str]:
         # Return human-readable notation format for mainline
         self.go_to_start()

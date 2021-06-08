@@ -58,6 +58,9 @@ class GameController(evt.Emitter, evt.IObserver):
         self.views.append(board_canvas)
         return nav_game_frame, board_canvas
     
+    def get_current_sfen(self) -> str:
+        return self.game.get_current_sfen()
+    
     def set_game(self, game: Game) -> None:
         self.game = game
         for board_canvas in self.views:

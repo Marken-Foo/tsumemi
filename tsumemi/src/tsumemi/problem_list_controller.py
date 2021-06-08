@@ -45,6 +45,14 @@ class ProblemListController:
         self.problem_list.set_time(time)
         return
     
+    def clear_statuses(self) -> None:
+        self.problem_list.clear_statuses()
+        return
+    
+    def clear_times(self) -> None:
+        self.problem_list.clear_times()
+        return
+    
     def make_problem_list_pane(self, parent: tk.Widget, *args, **kwargs
         ) -> ProblemListPane:
         return ProblemListPane(parent, self.problem_list, *args, **kwargs)

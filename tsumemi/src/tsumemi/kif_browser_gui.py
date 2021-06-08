@@ -206,6 +206,13 @@ class RootController(evt.IObserver):
     def open_folder_recursive(self, event: Optional[tk.Event] = None) -> None:
         return self.open_folder(event, recursive=True)
     
+    def copy_sfen_to_clipboard(self) -> None:
+        sfen = self.main_game.get_current_sfen()
+        self.root.clipboard_clear()
+        self.root.clipboard_append(sfen)
+        self.root.update()
+        return
+    
     def show_problem(self, prob: plist.Problem) -> None:
         """Display the given problem in the GUI and enable move input.
         """
@@ -254,6 +261,19 @@ class RootController(evt.IObserver):
         # GUI callback
         prob = self.main_problem_list.go_to_problem(idx)
         return prob is not None
+    
+    def clear_statuses(self) -> None:
+        self.main_problem_list.clear_statuses()
+        return
+    
+    def clear_times(self) -> None:
+        self.main_problem_list.clear_times()
+        return
+    
+    def clear_results(self) -> None:
+        self.main_problem_list.clear_statuses()
+        self.main_problem_list.clear_times()
+        return
     
     #=== Speedrun controller commands
     def start_speedrun(self) -> None:
@@ -501,12 +521,8 @@ class Menubar(tk.Menu):
         )
         menu_file.add_separator()
         menu_file.add_command(
-            label="Copy problem SFEN",
-            command=None,
-        )
-        menu_file.add_command(
-            label="Copy problem KIF",
-            command=None
+            label="Copy SFEN of current position",
+            command=self.controller.copy_sfen_to_clipboard,
         )
         # Solving
         menu_solving.add_command(
@@ -517,9 +533,18 @@ class Menubar(tk.Menu):
             label="Export results as CSV...",
             command=self.controller.export_prob_list_csv,
         )
+        menu_solving.add_separator()
         menu_solving.add_command(
-            label="Clear statistics",
-            command=None,
+            label="Clear solving statuses",
+            command=self.controller.clear_statuses,
+        )
+        menu_solving.add_command(
+            label="Clear solving times",
+            command=self.controller.clear_times,
+        )
+        menu_solving.add_command(
+            label="Clear results",
+            command=self.controller.clear_results,
         )
         # Settings
         menu_settings.add_command(
