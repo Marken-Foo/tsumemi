@@ -136,8 +136,10 @@ class RootController(evt.IObserver):
         
         self.main_game.add_observer(self)
         self.main_timer.clock.add_observer(self)
+        self.main_problem_list.problem_list.add_observer(self)
         self.NOTIFY_ACTIONS = {
             timer.TimerSplitEvent: self._on_split,
+            plist.ProbSelectedEvent: self._on_prob_selected,
             gamecon.GameEndEvent: self._mark_correct_and_pause,
             gamecon.WrongMoveEvent: self._mark_wrong_and_pause,
         }
@@ -156,7 +158,7 @@ class RootController(evt.IObserver):
         )
         # Main problem list
         problem_list_pane = self.main_problem_list.make_problem_list_pane(
-            parent=mainframe, controller=self
+            parent=mainframe
         )
         # Solution text label.
         # The wraplength isn't right.
@@ -445,6 +447,12 @@ class RootController(evt.IObserver):
         time = event.time
         if self.main_timer.clock == event.clock and time is not None:
             self.main_problem_list.set_time(time)
+        return
+    
+    def _on_prob_selected(self, event: plist.ProbSelectedEvent) -> None:
+        # Observer callback
+        if event.sender == self.main_problem_list.problem_list:
+            self.show_problem(event.problem)
         return
     
     def _mark_correct_and_pause(self, event: evt.Event) -> None:

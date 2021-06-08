@@ -18,6 +18,13 @@ class ProblemStatus(Enum):
     NONE = 0; CORRECT = 1; WRONG = 2; SKIP = 3
 
 
+class ProbSelectedEvent(evt.Event):
+    def __init__(self, sender: ProblemList, prob: Problem) -> None:
+        self.sender = sender
+        self.problem = prob
+        return
+
+
 class ProbListEvent(evt.Event):
     def __init__(self, prob_list: List[Problem]) -> None:
         self.prob_list = prob_list
@@ -109,6 +116,7 @@ class ProblemList(evt.Emitter):
         else:
             return self.curr_prob.get_filepath()
     
+    #=== Setting methods
     def set_status(self, status: ProblemStatus) -> None:
         if self.curr_prob is not None:
             assert self.curr_prob_idx is not None # for mypy
@@ -123,38 +131,33 @@ class ProblemList(evt.Emitter):
             self._notify_observers(ProbTimeEvent(self.curr_prob_idx, time))
         return
     
-    def next(self) -> Optional[Problem]:
-        return (None if self.curr_prob_idx is None
-            else self.go_to_idx(self.curr_prob_idx + 1))
-    
-    def prev(self) -> Optional[Problem]:
-        return (None if self.curr_prob_idx is None
-            else self.go_to_idx(self.curr_prob_idx - 1))
-    
+    #=== Navigation methods
     def go_to_idx(self, idx: int) -> Optional[Problem]:
-        """Change current problem to the given index and return it.
+        """Go to the problem at the given index and return it.
         """
         if idx >= len(self.problems) or idx < 0:
             return None
-        self.curr_prob = self.problems[idx]
+        prob = self.problems[idx]
+        self.curr_prob = prob
         self.curr_prob_idx = idx
+        self._notify_observers(ProbSelectedEvent(sender=self, prob=prob))
         return self.curr_prob
     
-    def _set_active_problem(self, prob) -> bool:
-        if prob in self.problems:
-            idx = self.problems.index(prob)
-            self.curr_prob_idx = idx
-            self.curr_prob = self.problems[self.curr_prob_idx]
-            return True
-        else:
-            return False
+    def go_to_next(self) -> Optional[Problem]:
+        return (None if self.curr_prob_idx is None
+            else self.go_to_idx(self.curr_prob_idx + 1))
     
+    def go_to_prev(self) -> Optional[Problem]:
+        return (None if self.curr_prob_idx is None
+            else self.go_to_idx(self.curr_prob_idx - 1))
+    
+    #=== Sorting methods
     def sort(self, key, suppress=False) -> None:
         """Sort problem list in place, keeping focus on the same
         problem before and after the sort."""
-        prob = self.curr_prob
+        old_prob = self.curr_prob
         self.problems.sort(key=key)
-        self._set_active_problem(prob)
+        self._set_active_problem(old_prob)
         if not suppress:
             self._notify_observers(ProbListEvent(self.problems))
         return
@@ -180,3 +183,12 @@ class ProblemList(evt.Emitter):
         curr_prob = self.problems[self.curr_prob_idx]
         self._notify_observers(ProbListEvent(self.problems))
         return
+    
+    def _set_active_problem(self, prob) -> bool:
+        if prob in self.problems:
+            idx = self.problems.index(prob)
+            self.curr_prob_idx = idx
+            self.curr_prob = self.problems[self.curr_prob_idx]
+            return True
+        else:
+            return False

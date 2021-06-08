@@ -23,12 +23,9 @@ class ProblemListController:
         self.problem_list: plist.ProblemList = plist.ProblemList()
         return
     
-    def make_problem_list_pane(self, parent: tk.Widget, controller: Any,
-            *args, **kwargs
+    def make_problem_list_pane(self, parent: tk.Widget, *args, **kwargs
         ) -> ProblemListPane:
-        return ProblemListPane(parent, controller, self.problem_list,
-            *args, **kwargs
-        )
+        return ProblemListPane(parent, self.problem_list, *args, **kwargs)
     
     def set_directory(self, directory: PathLike, recursive: bool = False
         ) -> Optional[plist.Problem]:
@@ -69,10 +66,10 @@ class ProblemListController:
         return self.problem_list.curr_prob
     
     def go_next_problem(self) -> Optional[plist.Problem]:
-        return self.problem_list.next()
+        return self.problem_list.go_to_next()
     
     def go_prev_problem(self) -> Optional[plist.Problem]:
-        return self.problem_list.prev()
+        return self.problem_list.go_to_prev()
     
     def go_to_problem(self, idx: int = 0) -> Optional[plist.Problem]:
         return self.problem_list.go_to_idx(idx)
@@ -90,11 +87,9 @@ class ProblemsView(ttk.Treeview, evt.IObserver):
     """GUI class to display list of problems.
     Observes underlying problem list and updates its view as needed.
     """
-    def __init__(self, parent: tk.Widget, controller: Any,
-            problem_list: plist.ProblemList,
+    def __init__(self, parent: tk.Widget, problem_list: plist.ProblemList,
             *args, **kwargs
         ) -> None:
-        self.controller: Any = controller
         super().__init__(parent, *args, **kwargs)
         self.problem_list: plist.ProblemList = problem_list
         self.problem_list.add_observer(self)
@@ -125,7 +120,7 @@ class ProblemsView(ttk.Treeview, evt.IObserver):
         
         # Bind double click to go to problem
         self.bind("<Double-1>",
-            lambda e: self.controller.go_to_file(
+            lambda e: self.problem_list.go_to_idx(
                 idx=self.get_idx_on_click(e)
             )
         )
@@ -178,17 +173,15 @@ class ProblemListPane(ttk.Frame):
     """GUI frame containing view of problem list and associated
     controls.
     """
-    def __init__(self, parent: tk.Widget, controller: Any,
-            problem_list: plist.ProblemList,
+    def __init__(self, parent: tk.Widget, problem_list: plist.ProblemList,
             *args, **kwargs
-        ) -> None :
-        self.controller: Any = controller
+        ) -> None:
         super().__init__(parent, *args, **kwargs)
         self.problem_list: plist.ProblemList = problem_list
         
         # Display problem list as Treeview
         self.tvw: ProblemsView = ProblemsView(
-            parent=self, controller=controller, problem_list=problem_list
+            parent=self, problem_list=problem_list
         )
         self.tvw.grid(column=0, row=0, sticky="NSEW")
         
