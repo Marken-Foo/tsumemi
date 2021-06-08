@@ -447,14 +447,14 @@ class Bindings:
             "<Control-o>": self.controller.open_folder,
             "<Control-O>": self.controller.open_folder,
             "<Control-Shift-O>": self.controller.open_folder_recursive,
-            "<Control-Shift-o>": self.controller.open_folder_recursive
+            "<Control-Shift-o>": self.controller.open_folder_recursive,
         }
         
         self.FREE_SHORTCUTS = {
             "<Key-h>": self.controller.toggle_solution,
             "<Key-H>": self.controller.toggle_solution,
             "<Left>": self.controller.go_prev_file,
-            "<Right>": self.controller.go_next_file
+            "<Right>": self.controller.go_next_file,
         }
         
         self.SPEEDRUN_SHORTCUTS = {}
@@ -486,8 +486,6 @@ class Menubar(tk.Menu):
         self.add_cascade(menu=menu_solving, label="Solving")
         menu_settings = tk.Menu(self)
         self.add_cascade(menu=menu_settings, label="Settings")
-        menu_help = tk.Menu(self)
-        self.add_cascade(menu=menu_help, label="Help")
         
         # File
         menu_file.add_command(
@@ -501,6 +499,15 @@ class Menubar(tk.Menu):
             command=self.controller.open_folder_recursive,
             accelerator="Ctrl+Shift+O",
         )
+        menu_file.add_separator()
+        menu_file.add_command(
+            label="Copy problem SFEN",
+            command=None,
+        )
+        menu_file.add_command(
+            label="Copy problem KIF",
+            command=None
+        )
         # Solving
         menu_solving.add_command(
             label="Get statistics",
@@ -510,13 +517,16 @@ class Menubar(tk.Menu):
             label="Export results as CSV...",
             command=self.controller.export_prob_list_csv,
         )
+        menu_solving.add_command(
+            label="Clear statistics",
+            command=None,
+        )
         # Settings
         menu_settings.add_command(
             label="Settings...",
             command=lambda: SettingsWindow(controller=self.controller),
         )
-        # Help
-        menu_help.add_command(
+        menu_settings.add_command(
             label="About tsumemi",
             command=functools.partial(
                 messagebox.showinfo,

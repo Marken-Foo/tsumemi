@@ -30,8 +30,8 @@ class ProbSelectedEvent(evt.Event):
 
 
 class ProbListEvent(evt.Event):
-    def __init__(self, prob_list: List[Problem]) -> None:
-        self.prob_list = prob_list
+    def __init__(self, sender: ProblemList) -> None:
+        self.sender = sender
         return
 
 
@@ -95,7 +95,21 @@ class ProblemList(evt.Emitter):
         self.curr_prob = None
         self.curr_prob_idx = None
         if not suppress:
-            self._notify_observers(ProbListEvent(self.problems))
+            self._notify_observers(ProbListEvent(self))
+        return
+    
+    def clear_statuses(self, suppress=False) -> None:
+        for prob in self.problems:
+            prob.status = ProblemStatus.NONE
+        if not suppress:
+            self._notify_observers(ProbListEvent(self))
+        return
+    
+    def clear_times(self, suppress=False) -> None:
+        for prob in self.problems:
+            prob.time = None
+        if not suppress:
+            self._notify_observers(ProbListEvent(self))
         return
     
     def is_empty(self) -> bool:
@@ -106,7 +120,7 @@ class ProblemList(evt.Emitter):
         ) -> None:
         self.problems.append(new_problem)
         if not suppress:
-            self._notify_observers(ProbListEvent(self.problems))
+            self._notify_observers(ProbListEvent(self))
         return
     
     def add_problems(self, new_problems: Iterable[Problem],
@@ -114,7 +128,7 @@ class ProblemList(evt.Emitter):
         ) -> None:
         self.problems.extend(new_problems)
         if not suppress:
-            self._notify_observers(ProbListEvent(self.problems))
+            self._notify_observers(ProbListEvent(self))
         return
     
     #=== Getters/queries
@@ -195,7 +209,7 @@ class ProblemList(evt.Emitter):
         self.problems.sort(key=key)
         self._set_active_problem(old_prob)
         if not suppress:
-            self._notify_observers(ProbListEvent(self.problems))
+            self._notify_observers(ProbListEvent(self))
         return
     
     def sort_by_file(self) -> None:
@@ -217,7 +231,7 @@ class ProblemList(evt.Emitter):
         self.problems = list(probs)
         self.curr_prob_idx = idxs.index(self.curr_prob_idx)
         curr_prob = self.problems[self.curr_prob_idx]
-        self._notify_observers(ProbListEvent(self.problems))
+        self._notify_observers(ProbListEvent(self))
         return
     
     def _set_active_problem(self, prob) -> bool:

@@ -166,9 +166,9 @@ class ProblemsView(ttk.Treeview, evt.IObserver):
     
     def refresh_view(self, event: plist.ProbListEvent) -> None:
         # Refresh the entire view as the model changed, e.g. on opening folder
-        problems = event.prob_list
+        problem_list = event.sender
         self.delete(*self.get_children())
-        for problem in problems:
+        for problem in problem_list:
             filename = os.path.basename(problem.filepath)
             time_str = ("-" if problem.time is None
                 else problem.time.to_hms_str(places=1)
