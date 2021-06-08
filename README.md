@@ -24,7 +24,7 @@ Dependencies: Python 3.7 (tested with 3.8.1) or later, TKinter 8.6 or later, Pil
 
 Download the repo into the working directory of your choice, e.g. `git svn clone https://github.com/Marken-Foo/tsumemi/trunk` (Git SVN) or `git clone https://github.com/Marken-Foo/tsumemi.git` (Git).
 
-To run, either run tsumemi.py (make sure it's in the same directory as the top-level tsumemi folder), or run the tsumemi top-level package from the command line with `python3 -m tsumemi`.
+To run, either run `tsumemi_launcher.py` (make sure it's in the same directory as the top-level tsumemi folder), or run the tsumemi top-level package from the command line with `python3 -m tsumemi`.
 
 ### From source (for the less technically-inclined) ###
 
@@ -36,7 +36,7 @@ You'll also need Pillow, which lets Python files deal with images. Once you've i
 
 Download everything in this GitHub repository. You can go to the [main page of this repository](https://github.com/Marken-Foo/tsumemi), click the green "Code" at the top right of the file list, and you can download everything as a zip file.
 
-Finally, to run the program, double click on `tsumemi.py`.
+Finally, to run the program, double click on `tsumemi_launcher.py`.
 
 ## How to use ##
 
