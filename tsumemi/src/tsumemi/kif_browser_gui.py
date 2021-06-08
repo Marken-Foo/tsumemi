@@ -344,6 +344,19 @@ class RootController(evt.IObserver):
         StatisticsDialog(stats)
         return
     
+    def export_prob_list_csv(self) -> None:
+        date_time_now = datetime.datetime.now()
+        datetimestr = date_time_now.strftime("%Y%m%d-%H%M")
+        directory: str = filedialog.asksaveasfilename(
+            defaultextension=".csv",
+            filetypes=(("Comma-separated values", ".csv"),),
+            initialfile=f"tsume-speedrun-{datetimestr}",
+        )
+        if directory == "":
+            return
+        self.main_problem_list.export_as_csv(directory)
+        return
+    
     #=== GUI display methods
     def hide_solution(self) -> None:
         # local method
@@ -492,6 +505,10 @@ class Menubar(tk.Menu):
         menu_solving.add_command(
             label="Get statistics",
             command=self.controller.generate_statistics,
+        )
+        menu_solving.add_command(
+            label="Export results as CSV...",
+            command=self.controller.export_prob_list_csv,
         )
         # Settings
         menu_settings.add_command(

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 import os
 
 from tkinter import ttk
@@ -64,6 +65,19 @@ class ProblemListController:
         return ProblemListStats(self.problem_list,
             self.directory if self.directory else ""
         )
+    
+    def export_as_csv(self, filepath: PathLike) -> None:
+        with open(filepath, mode="w", newline="") as csvfile:
+            csvwriter = csv.writer(csvfile, delimiter=",")
+            csvwriter.writerow(["filename", "status", "time (seconds)"])
+            for prob in self.problem_list:
+                prob_filename = os.path.basename(
+                    os.path.normpath(prob.filepath)
+                )
+                prob_status = str(prob.status)
+                prob_time = 0 if prob.time is None else prob.time.seconds
+                csvwriter.writerow([prob_filename, prob_status, prob_time])
+        return
     
     def _add_problems_in_directory(self, directory: PathLike,
             recursive: bool = False, suppress: bool = False

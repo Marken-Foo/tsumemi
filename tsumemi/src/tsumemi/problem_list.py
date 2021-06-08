@@ -17,6 +17,9 @@ if TYPE_CHECKING:
 
 class ProblemStatus(Enum):
     NONE = 0; CORRECT = 1; WRONG = 2; SKIP = 3
+    
+    def __str__(self):
+        return self.name
 
 
 class ProbSelectedEvent(evt.Event):
@@ -80,6 +83,9 @@ class ProblemList(evt.Emitter):
         self.curr_prob_idx: Optional[int] = None
         self.observers: List[evt.IObserver] = []
         return
+    
+    def __iter__(self):
+        return self.problems.__iter__()
     
     def __len__(self):
         return len(self.problems)
