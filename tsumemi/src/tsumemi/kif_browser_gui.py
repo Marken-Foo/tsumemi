@@ -246,8 +246,6 @@ class RootController(evt.IObserver):
             return
         directory = os.path.normpath(directory)
         prob = self.main_problem_list.set_directory(directory, recursive=recursive)
-        if prob is not None:
-            self.show_problem(prob)
         return
     
     def open_folder_recursive(self, event: Optional[tk.Event] = None) -> None:
@@ -290,26 +288,17 @@ class RootController(evt.IObserver):
     
     def go_next_file(self, event: Optional[tk.Event] = None) -> bool:
         prob = self.main_problem_list.go_next_problem()
-        if prob is not None:
-            self.show_problem(prob)
-            return True
-        return False
+        return prob is not None
     
     def go_prev_file(self, event: Optional[tk.Event] = None) -> bool:
         prob = self.main_problem_list.go_prev_problem()
-        if prob is not None:
-            self.show_problem(prob)
-            return True
-        return False
+        return prob is not None
     
     def go_to_file(self, event: Optional[tk.Event] = None, idx: int = 0
         ) -> bool:
         # GUI callback
         prob = self.main_problem_list.go_to_problem(idx)
-        if prob is not None:
-            self.show_problem(prob)
-            return True
-        return False
+        return prob is not None
     
     #=== Speedrun controller commands
     def start_speedrun(self) -> None:

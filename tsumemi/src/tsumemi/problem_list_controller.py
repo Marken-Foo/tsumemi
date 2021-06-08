@@ -11,7 +11,7 @@ import tsumemi.src.tsumemi.timer as timer
 
 if TYPE_CHECKING:
     import tkinter as tk
-    from typing import Any, Dict, List, Optional, Union
+    from typing import Dict, List, Optional, Union
     PathLike = Union[str, os.PathLike]
 
 
@@ -119,11 +119,12 @@ class ProblemsView(ttk.Treeview, evt.IObserver):
         self.tag_configure("WRONG", background="LightPink1")
         
         # Bind double click to go to problem
-        self.bind("<Double-1>",
-            lambda e: self.problem_list.go_to_idx(
-                idx=self.get_idx_on_click(e)
-            )
-        )
+        def _click_to_prob(event: tk.Event) -> None:
+            idx = self.get_idx_on_click(event)
+            if idx is not None:
+                self.problem_list.go_to_idx(idx)
+            return
+        self.bind("<Double-1>", _click_to_prob)
         return
     
     def display_time(self, event: plist.ProbTimeEvent) -> None:
@@ -183,19 +184,20 @@ class ProblemListPane(ttk.Frame):
         self.tvw: ProblemsView = ProblemsView(
             parent=self, problem_list=problem_list
         )
-        self.tvw.grid(column=0, row=0, sticky="NSEW")
         
         # Make scrollbar
         self.scrollbar_tvw: ttk.Scrollbar = ttk.Scrollbar(
             self, orient="vertical",
             command=self.tvw.yview
         )
-        self.scrollbar_tvw.grid(column=1, row=0, sticky="NS")
         self.tvw["yscrollcommand"] = self.scrollbar_tvw.set
         
         self.btn_randomise: ttk.Button = ttk.Button(
             self, text="Randomise problems",
             command=self.problem_list.randomise
         )
+        
+        self.tvw.grid(column=0, row=0, sticky="NSEW")
+        self.scrollbar_tvw.grid(column=1, row=0, sticky="NS")
         self.btn_randomise.grid(column=0, row=1)
         return
