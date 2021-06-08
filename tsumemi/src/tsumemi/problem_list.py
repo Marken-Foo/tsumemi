@@ -54,9 +54,6 @@ class Problem:
         self.status: ProblemStatus = ProblemStatus.NONE
         return
     
-    def get_filepath(self) -> PathLike:
-        return self.filepath
-    
     def __eq__(self, obj: Any) -> bool:
         # Used in tests, will be useful in future features
         return isinstance(obj, Problem) and self.filepath == obj.filepath
@@ -76,12 +73,15 @@ class ProblemList(evt.Emitter):
     def _file_key(prob) -> List[Union[int, str]]:
         return ProblemList.natural_sort_key(prob.filepath)
     
-    def __init__(self) -> None:
-        self.problems: List[Problem] = []
+    def __init__(self, problems: Optional[List[Problem]] = None) -> None:
+        self.problems: List[Problem] = [] if problems is None else problems
         self.curr_prob: Optional[Problem] = None
         self.curr_prob_idx: Optional[int] = None
         self.observers: List[evt.IObserver] = []
         return
+    
+    def __len__(self):
+        return len(self.problems)
     
     def clear(self, suppress=False) -> None:
         self.problems = []
@@ -110,11 +110,40 @@ class ProblemList(evt.Emitter):
             self._notify_observers(ProbListEvent(self.problems))
         return
     
+    #=== Getters/queries
     def get_curr_filepath(self) -> Optional[PathLike]:
         if self.curr_prob is None:
             return None
         else:
-            return self.curr_prob.get_filepath()
+            return self.curr_prob.filepath
+    
+    def filter_by_status(self, *args: ProblemStatus) -> ProblemList:
+        return ProblemList([
+            prob for prob in self.problems if (prob.status in args)
+        ])
+    
+    def get_total_time(self) -> float:
+        return sum([
+            prob.time for prob in self.problems if (prob.time is not None)
+        ])
+    
+    def get_slowest_problem(self) -> Optional[Problem]:
+        slowest_prob = None
+        slowest_time = -1
+        for prob in self.problems:
+            if (prob.time is not None) and (prob.time > slowest_time):
+                slowest_time = prob.time
+                slowest_prob = prob
+        return slowest_prob
+    
+    def get_fastest_problem(self) -> Optional[Problem]:
+        fastest_prob = None
+        fastest_time = float("inf")
+        for prob in self.problems:
+            if (prob.time is not None) and (prob.time < fastest_time):
+                fastest_time = prob.time
+                fastest_prob = prob
+        return fastest_prob
     
     #=== Setting methods
     def set_status(self, status: ProblemStatus) -> None:

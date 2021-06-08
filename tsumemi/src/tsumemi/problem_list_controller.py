@@ -21,6 +21,27 @@ class ProblemListController:
     """
     def __init__(self) -> None:
         self.problem_list: plist.ProblemList = plist.ProblemList()
+        self.directory: Optional[PathLike] = None
+        return
+    
+    def get_current_problem(self) -> Optional[plist.Problem]:
+        return self.problem_list.curr_prob
+    
+    def go_next_problem(self) -> Optional[plist.Problem]:
+        return self.problem_list.go_to_next()
+    
+    def go_prev_problem(self) -> Optional[plist.Problem]:
+        return self.problem_list.go_to_prev()
+    
+    def go_to_problem(self, idx: int = 0) -> Optional[plist.Problem]:
+        return self.problem_list.go_to_idx(idx)
+    
+    def set_status(self, status: plist.ProblemStatus) -> None:
+        self.problem_list.set_status(status)
+        return
+    
+    def set_time(self, time: float) -> None:
+        self.problem_list.set_time(time)
         return
     
     def make_problem_list_pane(self, parent: tk.Widget, *args, **kwargs
@@ -36,7 +57,11 @@ class ProblemListController:
             directory, recursive=recursive, suppress=True
         )
         self.problem_list.sort_by_file()
+        self.directory = directory
         return self.go_to_problem(0)
+    
+    def generate_statistics(self) -> ProblemListStats:
+        return ProblemListStats(self.problem_list, str(self.directory))
     
     def _add_problems_in_directory(self, directory: PathLike,
             recursive: bool = False, suppress: bool = False
@@ -60,26 +85,6 @@ class ProblemListController:
                     or entry.name.endswith(".kifu")
                 ]
         self.problem_list.add_problems(new_problems, suppress=suppress)
-        return
-    
-    def get_current_problem(self) -> Optional[plist.Problem]:
-        return self.problem_list.curr_prob
-    
-    def go_next_problem(self) -> Optional[plist.Problem]:
-        return self.problem_list.go_to_next()
-    
-    def go_prev_problem(self) -> Optional[plist.Problem]:
-        return self.problem_list.go_to_prev()
-    
-    def go_to_problem(self, idx: int = 0) -> Optional[plist.Problem]:
-        return self.problem_list.go_to_idx(idx)
-    
-    def set_status(self, status: plist.ProblemStatus) -> None:
-        self.problem_list.set_status(status)
-        return
-    
-    def set_time(self, time: float) -> None:
-        self.problem_list.set_time(time)
         return
 
 
@@ -201,3 +206,45 @@ class ProblemListPane(ttk.Frame):
         self.scrollbar_tvw.grid(column=1, row=0, sticky="NS")
         self.btn_randomise.grid(column=0, row=1)
         return
+
+
+class ProblemListStats:
+    """A helper object that can be queried for the solving statistics
+    of the problems inside the problem list it refers to.
+    """
+    def __init__(self, problem_list = plist.ProblemList, directory: str = ""
+        ) -> None:
+        self.problem_list = problem_list
+        self.directory = directory
+        return
+    
+    def get_num_total(self) -> int:
+        return len(self.problem_list)
+    
+    def get_num_correct(self) -> int:
+        return len(
+            self.problem_list.filter_by_status(plist.ProblemStatus.CORRECT)
+        )
+    
+    def get_num_wrong(self) -> int:
+        return len(
+            self.problem_list.filter_by_status(plist.ProblemStatus.WRONG)
+        )
+    
+    def get_num_skip(self) -> int:
+        return len(
+            self.problem_list.filter_by_status(plist.ProblemStatus.SKIP)
+        )
+    
+    def get_total_time(self) -> float:
+        seen_problems = self.problem_list.filter_by_status(
+            plist.ProblemStatus.CORRECT, plist.ProblemStatus.WRONG,
+            plist.ProblemStatus.SKIP
+        )
+        return seen_problems.get_total_time()
+    
+    def get_fastest_problem(self) -> Optional[plist.Problem]:
+        return self.problem_list.get_fastest_problem()
+    
+    def get_slowest_problem(self) -> Optional[plist.Problem]:
+        return self.problem_list.get_slowest_problem()

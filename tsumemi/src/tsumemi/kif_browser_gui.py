@@ -37,6 +37,8 @@ class Menubar(tk.Menu):
         # Set cascades
         menu_file = tk.Menu(self)
         self.add_cascade(menu=menu_file, label="File")
+        menu_solving = tk.Menu(self)
+        self.add_cascade(menu=menu_solving, label="Solving")
         menu_settings = tk.Menu(self)
         self.add_cascade(menu=menu_settings, label="Settings")
         menu_help = tk.Menu(self)
@@ -47,17 +49,22 @@ class Menubar(tk.Menu):
             label="Open folder...",
             command=self.controller.open_folder,
             accelerator="Ctrl+O",
-            underline=0
+            underline=0,
         )
         menu_file.add_command(
             label="Open all subfolders...",
             command=self.controller.open_folder_recursive,
             accelerator="Ctrl+Shift+O",
         )
+        # Solving
+        menu_solving.add_command(
+            label="Get statistics",
+            command=self.controller.generate_statistics,
+        )
         # Settings
         menu_settings.add_command(
             label="Settings...",
-            command=lambda: SettingsWindow(controller=self.controller)
+            command=lambda: SettingsWindow(controller=self.controller),
         )
         # Help
         menu_help.add_command(
@@ -383,6 +390,40 @@ class RootController(evt.IObserver):
         self.continue_speedrun()
         return
     
+    def generate_statistics(self) -> None:
+        stats = self.main_problem_list.generate_statistics()
+        num_correct = stats.get_num_correct()
+        num_wrong = stats.get_num_wrong()
+        num_skip = stats.get_num_skip()
+        num_seen = num_correct + num_wrong + num_skip
+        total_time = stats.get_total_time()
+        message_strings = [
+            f"Folder name: {stats.directory}",
+            f"Total time: {total_time:.1f}",
+            f"Problems seen: {num_seen}",
+            f"Problems correct: {num_correct}",
+            f"Problems wrong: {num_wrong}",
+            f"Problems skipped: {num_skip}",
+            f"Average time per problem: {total_time/num_seen:.1f}",
+        ]
+        slowest_prob = stats.get_slowest_problem()
+        if slowest_prob is not None:
+            slowest_filename = os.path.basename(slowest_prob.filepath)
+            message_strings.append(
+                f"Longest time taken: {slowest_prob.time:.1f} ({slowest_filename})"
+            )
+        fastest_prob = stats.get_fastest_problem()
+        if fastest_prob is not None:
+            fastest_filename = os.path.basename(fastest_prob.filepath)
+            message_strings.append(
+                f"Shortest time taken: {fastest_prob.time:.1f} ({fastest_filename})"
+            )
+        messagebox.showinfo(
+            title="Solving statistics",
+            message=("\n".join(message_strings))
+        )
+        return
+    
     #=== GUI display methods
     def hide_solution(self) -> None:
         # local method
@@ -430,7 +471,7 @@ class RootController(evt.IObserver):
         self.nav_controls.show_correct_wrong()
         return
     
-    # Observer callbacks
+    #=== Observer callbacks
     def _on_split(self, event: timer.TimerSplitEvent) -> None:
         # Observer callback
         time = event.time
