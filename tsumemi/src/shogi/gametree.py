@@ -52,10 +52,7 @@ class MoveNode:
         """Return True iff the given move is a continuation from this
         MoveNode.
         """
-        for node in self.variations:
-            if move == node.move:
-                return True
-        return False
+        return any(node.move == move for node in self.variations)
     
     def get_variation_node(self, move: Move) -> MoveNode:
         """Return the child node corresponding to the given move.

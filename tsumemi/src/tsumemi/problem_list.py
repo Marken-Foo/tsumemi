@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import operator
 import random
 import re
 
@@ -144,27 +145,24 @@ class ProblemList(evt.Emitter):
         ])
     
     def get_total_time(self) -> timer.Time:
-        return sum([
-            prob.time for prob in self.problems if (prob.time is not None)
-        ], start=timer.Time(0))
+        return sum(
+            (prob.time for prob in self.problems if (prob.time is not None)),
+            start=timer.Time(0)
+        )
     
     def get_slowest_problem(self) -> Optional[Problem]:
-        slowest_prob = None
-        slowest_time = timer.Time(-1)
-        for prob in self.problems:
-            if (prob.time is not None) and (prob.time > slowest_time):
-                slowest_time = prob.time
-                slowest_prob = prob
-        return slowest_prob
+        return max(
+            (prob for prob in self.problems if (prob.time is not None)),
+            key=operator.attrgetter("time"),
+            default=None,
+        )
     
     def get_fastest_problem(self) -> Optional[Problem]:
-        fastest_prob = None
-        fastest_time = timer.Time(float("inf"))
-        for prob in self.problems:
-            if (prob.time is not None) and (prob.time < fastest_time):
-                fastest_time = prob.time
-                fastest_prob = prob
-        return fastest_prob
+        return min(
+            (prob for prob in self.problems if (prob.time is not None)),
+            key=operator.attrgetter("time"),
+            default=None,
+        )
     
     #=== Setting methods
     def set_status(self, status: ProblemStatus) -> None:
@@ -225,7 +223,7 @@ class ProblemList(evt.Emitter):
         """Randomly shuffle problem list in place, keeping focus on
         the same problem before and after the shuffle.
         """
-        z = list(zip(range(len(self.problems)), self.problems))
+        z = list(enumerate(self.problems))
         random.shuffle(z)
         idxs, probs = zip(*z)
         self.problems = list(probs)
