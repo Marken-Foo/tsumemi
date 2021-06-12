@@ -85,10 +85,6 @@ class RootController(evt.IObserver):
         self.main_timer = timecon.TimerController()
         self.main_problem_list = plistcon.ProblemListController()
         
-        self.is_solution_shown: bool = False
-        self.solution_text: str = ""
-        self.solution = tk.StringVar(value="Open a folder of problems to display.")
-        
         self.main_game.add_observer(self)
         self.main_timer.clock.add_observer(self)
         self.main_problem_list.problem_list.add_observer(self)
@@ -109,29 +105,24 @@ class RootController(evt.IObserver):
         board_canvas.bind("<Configure>", board_canvas.on_resize)
         
         main_timer_view = self.main_timer.make_timer_pane(
-            parent=mainframe
+            parent=mainframe,
         )
         # Main problem list
         problem_list_pane = self.main_problem_list.make_problem_list_pane(
-            parent=mainframe
+            parent=mainframe,
         )
         # Solution text label.
         # The wraplength isn't right.
-        lbl_solution = tk.Label(mainframe, textvariable=self.solution,
-            justify="left", wraplength=board_canvas.width
+        lbl_solution = SolutionLabel(mainframe, justify="left", height=3,
+            wraplength=board_canvas.width,
         )
-        defaultfont = font.Font(font=lbl_solution["font"])
-        typeface = defaultfont["family"]
-        fontsize = defaultfont["size"]
-        lbl_solution.config(font=(typeface, fontsize+2))
-        
         # Problem navigation controls
         self._navcons = {
             "free" : FreeModeNavControls(
-                parent=mainframe, controller=self
+                parent=mainframe, controller=self,
             ),
             "speedrun" : SpeedrunNavControls(
-                parent=mainframe, controller=self
+                parent=mainframe, controller=self,
             )
         }
         for navcon in self._navcons.values():
@@ -217,10 +208,13 @@ class RootController(evt.IObserver):
         """Display the given problem in the GUI and enable move input.
         """
         self._read_problem(prob)
-        self._display_problem()
+        window_title = "tsumemi - " + str(prob.filepath)
+        self.board.draw()
         move_input_handler = self.board.move_input_handler
         if move_input_handler is not None:
             move_input_handler.enable()
+        self.lbl_solution.hide_solution()
+        self.root.title(window_title)
         return
     
     def _read_problem(self, prob: plist.Problem) -> None:
@@ -233,21 +227,9 @@ class RootController(evt.IObserver):
         if game is None:
             return # file unreadable, error out
         move_string_list = game.to_notation_ja_kif() # at end of game
-        self.solution_text = "　".join(move_string_list)
+        self.lbl_solution.set_solution_text("　".join(move_string_list))
         game.go_to_start()
         self.main_game.set_game(game)
-        return
-    
-    def _display_problem(self) -> None:
-        """Displays the current game data in the main GUI.
-        """
-        self.board.draw()
-        self.hide_solution()
-        prob = self.main_problem_list.get_current_problem()
-        prob_filepath = "" if prob is None else str(prob.filepath)
-        self.root.title(
-            "tsumemi - " + prob_filepath
-        )
         return
     
     def go_next_file(self, event: Optional[tk.Event] = None) -> bool:
@@ -275,6 +257,24 @@ class RootController(evt.IObserver):
     def clear_results(self) -> None:
         self.main_problem_list.clear_statuses()
         self.main_problem_list.clear_times()
+        return
+    
+    def generate_statistics(self) -> None:
+        stats = self.main_problem_list.generate_statistics()
+        StatisticsDialog(stats)
+        return
+    
+    def export_prob_list_csv(self) -> None:
+        date_time_now = datetime.datetime.now()
+        datetimestr = date_time_now.strftime("%Y%m%d-%H%M")
+        directory: str = filedialog.asksaveasfilename(
+            defaultextension=".csv",
+            filetypes=(("Comma-separated values", ".csv"),),
+            initialfile=f"tsume-speedrun-{datetimestr}",
+        )
+        if directory == "":
+            return
+        self.main_problem_list.export_as_csv(directory)
         return
     
     #=== Speedrun controller commands
@@ -349,6 +349,14 @@ class RootController(evt.IObserver):
             self.end_of_folder()
         return
     
+    def view_solution(self) -> None:
+        # GUI callback
+        self.main_timer.split()
+        self.main_timer.stop()
+        self.lbl_solution.show_solution()
+        self.nav_controls.show_correct_wrong()
+        return
+    
     def mark_correct_and_continue(self) -> None:
         # GUI callback
         self.main_problem_list.set_status(plist.ProblemStatus.CORRECT)
@@ -361,43 +369,10 @@ class RootController(evt.IObserver):
         self.continue_speedrun()
         return
     
-    def generate_statistics(self) -> None:
-        stats = self.main_problem_list.generate_statistics()
-        StatisticsDialog(stats)
-        return
-    
-    def export_prob_list_csv(self) -> None:
-        date_time_now = datetime.datetime.now()
-        datetimestr = date_time_now.strftime("%Y%m%d-%H%M")
-        directory: str = filedialog.asksaveasfilename(
-            defaultextension=".csv",
-            filetypes=(("Comma-separated values", ".csv"),),
-            initialfile=f"tsume-speedrun-{datetimestr}",
-        )
-        if directory == "":
-            return
-        self.main_problem_list.export_as_csv(directory)
-        return
-    
     #=== GUI display methods
-    def hide_solution(self) -> None:
-        # local method
-        self.solution.set("[solution hidden]")
-        self.is_solution_shown = False
-        return
-    
-    def show_solution(self) -> None:
-        # local method
-        self.solution.set(self.solution_text)
-        self.is_solution_shown = True
-        return
-    
     def toggle_solution(self, event: Optional[tk.Event] = None) -> None:
         # GUI callback
-        if self.is_solution_shown:
-            self.hide_solution()
-        else:
-            self.show_solution()
+        self.lbl_solution.toggle_solution()
         return
     
     def flip_board(self, want_upside_down: bool) -> None:
@@ -416,14 +391,6 @@ class RootController(evt.IObserver):
             board_canvas.apply_board_skin(board_skin)
             board_canvas.apply_komadai_skin(komadai_skin)
             board_canvas.draw()
-        return
-    
-    def view_solution(self) -> None:
-        # GUI callback
-        self.main_timer.split()
-        self.main_timer.stop()
-        self.show_solution()
-        self.nav_controls.show_correct_wrong()
         return
     
     #=== Observer callbacks
@@ -445,7 +412,7 @@ class RootController(evt.IObserver):
         self.main_problem_list.set_status(plist.ProblemStatus.CORRECT)
         self.main_timer.split()
         self.main_timer.stop()
-        self.show_solution()
+        self.lbl_solution.show_solution()
         self.nav_controls.show_continue()
         return
     
@@ -454,9 +421,47 @@ class RootController(evt.IObserver):
         self.main_problem_list.set_status(plist.ProblemStatus.WRONG)
         self.main_timer.split()
         self.main_timer.stop()
-        self.show_solution()
+        self.lbl_solution.show_solution()
         self.nav_controls.show_continue()
         self.board.draw()
+        return
+
+
+class SolutionLabel(tk.Label):
+    """Label to display, show, and hide problem solutions.
+    """
+    def __init__(self, parent: tk.Widget, *args, **kwargs) -> None:
+        super().__init__(parent, *args, **kwargs)
+        self.is_solution_shown: bool = True
+        self.solution_text: str = "Open a folder of problems to display."
+        self.textvar: tk.StringVar = tk.StringVar(value=self.solution_text)
+        self["textvariable"] = self.textvar
+        
+        defaultfont = font.Font(font=self["font"])
+        typeface = defaultfont["family"]
+        fontsize = defaultfont["size"]
+        self.config(font=(typeface, fontsize+2))
+        return
+    
+    def set_solution_text(self, text: str) -> None:
+        self.solution_text = text
+        return
+    
+    def hide_solution(self) -> None:
+        self.textvar.set("[solution hidden]")
+        self.is_solution_shown = False
+        return
+    
+    def show_solution(self) -> None:
+        self.textvar.set(self.solution_text)
+        self.is_solution_shown = True
+        return
+    
+    def toggle_solution(self, event: Optional[tk.Event] = None) -> None:
+        if self.is_solution_shown:
+            self.hide_solution()
+        else:
+            self.show_solution()
         return
 
 
