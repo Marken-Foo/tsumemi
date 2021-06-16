@@ -78,9 +78,13 @@ If you encounter any bugs, let me know. Do include steps of what you were doing 
 
 ## Licence ##
 
-This project is licensed under the GPLv3.
+This project originally written by [Marken Foo](https://github.com/Marken-Foo/) and is **licensed under the GPLv3**.
 
-Boards and pieces by [Ka-hu](https://github.com/Ka-hu/shogi-pieces/) (piece .png files created from .svg files), licensed under CC-BY-4.0.
+The following boards and pieces by [Ka-hu](https://github.com/Ka-hu/shogi-pieces/), **licensed under CC-BY-4.0**.
 
 - Boards: tile_wood1 through to tile_wood6, tile_stone, tile_military and tile_military2
 - Pieces: kanji_light, kanji_brown, kanji_red and international
+
+The following piece sets by [CouchTomato87](https://github.com/CouchTomato87), **licensed under CC-BY-4.0**.
+
+- Pieces: tomato_colored, tomato_monochrome

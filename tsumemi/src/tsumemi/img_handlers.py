@@ -56,6 +56,8 @@ class PieceSkin(Enum):
     BROWN = ("1-kanji brown pieces", os.path.join(PIECE_IMAGES_PATH, r"kanji_brown"))
     REDWOOD = ("1-kanji red wood pieces", os.path.join(PIECE_IMAGES_PATH, r"kanji_red_wood"))
     INTL = ("Internationalised symbols", os.path.join(PIECE_IMAGES_PATH, r"international"))
+    TOMATO_COLOURED = ("CouchTomato internationalised symbols", os.path.join(PIECE_IMAGES_PATH, r"tomato_colored"))
+    TOMATO_MONOCHROME = ("CouchTomato internationalised symbols (single colour)", os.path.join(PIECE_IMAGES_PATH, r"tomato_monochrome"))
     
     def __init__(self, desc: str, path: PathLike) -> None:
         self.desc: str = desc
