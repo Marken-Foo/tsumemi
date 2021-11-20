@@ -25,22 +25,22 @@ class NavControls(ttk.Frame):
     
     def _add_btn_view_solution(self, text="Show solution"):
         return ttk.Button(self, text=text,
-            command=self.controller.view_solution
+            command=self.controller._speedrun_states["question"].show_answer
         )
     
     def _add_btn_skip(self, text="Skip"):
         return ttk.Button(self, text=text,
-            command=self.controller.skip
+            command=self.controller._speedrun_states["question"].skip
         )
     
     def _add_btn_correct(self, text="Correct"):
         return ttk.Button(self, text=text,
-            command=self.controller.mark_correct_and_continue
+            command=self.controller._speedrun_states["answer"].mark_correct_and_continue
         )
     
     def _add_btn_wrong(self, text="Wrong"):
         return ttk.Button(self, text=text,
-            command=self.controller.mark_wrong_and_continue
+            command=self.controller._speedrun_states["answer"].mark_wrong_and_continue
         )
     
     def _add_chk_upside_down(self, text="Upside-down mode"):
@@ -52,7 +52,7 @@ class NavControls(ttk.Frame):
     
     def _add_btn_continue_speedrun(self, text="Next"):
         return ttk.Button(self, text=text,
-            command=self.controller.continue_speedrun
+            command=self.controller._speedrun_states["answer"].next_question
         )
     
     def show_correct_wrong(self):
