@@ -45,7 +45,7 @@ class NavControls(ttk.Frame):
     
     def _add_btn_continue_speedrun(self, text="Next"):
         return ttk.Button(self, text=text,
-            command=self.controller.speedrun_controller._speedrun_states["answer"].next_question
+            command=self.controller.speedrun_controller._speedrun_states["solution"].next_question
         )
     
     def _add_chk_upside_down(self, text="Upside-down mode"):

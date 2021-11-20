@@ -286,7 +286,7 @@ class RootController(evt.IObserver):
         self.speedrun_controller.abort_speedrun()
         return
     
-    def _set_speedrun_ui(self) -> None:
+    def set_speedrun_ui(self) -> None:
         # Make UI changes
         self.nav_controls.grid_remove()
         self.nav_controls = self._navcons["speedrun"]
@@ -296,7 +296,7 @@ class RootController(evt.IObserver):
         self.bindings.unbind_shortcuts(self.root, self.bindings.FREE_SHORTCUTS)
         return
     
-    def _remove_speedrun_ui(self) -> None:
+    def remove_speedrun_ui(self) -> None:
         # Abort speedrun, go back to free browsing
         # Make UI changes
         self.nav_controls.grid_remove()
@@ -304,16 +304,6 @@ class RootController(evt.IObserver):
         self.nav_controls.grid()
         # Set application state
         self.bindings.bind_shortcuts(self.root, self.bindings.FREE_SHORTCUTS)
-        return
-    
-    def end_of_folder(self) -> None:
-        # local method
-        self.main_timer.stop()
-        messagebox.showinfo(
-            title="End of folder",
-            message="You have reached the end of the speedrun."
-        )
-        self.abort_speedrun()
         return
     
     #=== GUI display methods
@@ -359,11 +349,11 @@ class SpeedrunController:
     def __init__(self, root_controller: RootController) -> None:
         self.target = root_controller
         self._speedrun_states: Dict[str, SpeedrunState] = {
-            "answer": SpeedrunAnswerState(controller=self, target=root_controller),
-            "off": SpeedrunOffState(controller=self, target=root_controller),
-            "pause": SpeedrunPauseState(controller=self, target=root_controller),
-            "question": SpeedrunQuestionState(controller=self, target=root_controller),
-            "solution": SpeedrunSolutionState(controller=self, target=root_controller),
+            "answer": SpeedrunAnswerState(controller=self),
+            "off": SpeedrunOffState(controller=self),
+            "pause": SpeedrunPauseState(controller=self),
+            "question": SpeedrunQuestionState(controller=self),
+            "solution": SpeedrunSolutionState(controller=self),
         }
         self.current_speedrun_state = self._speedrun_states["off"]
         return
@@ -379,30 +369,89 @@ class SpeedrunController:
     def start_speedrun(self) -> None:
         self.target.go_to_file(idx=0)
         self.target.main_game.set_speedrun_mode()
-        self.target._set_speedrun_ui()
+        self.target.set_speedrun_ui()
         self.target.main_timer_view.allow_only_pause()
         self.target.main_timer.reset()
-        self.target.main_timer.start()
+        self.start_timer()
         self.target.btn_speedrun.config(state="disabled")
         self.target.btn_abort_speedrun.config(state="normal")
         self.go_to_state("question")
         return
     
     def abort_speedrun(self) -> None:
-        self.target.main_timer.stop()
+        self.stop_timer()
         self.target.main_timer_view.allow_all()
         self.target.main_game.set_free_mode()
-        self.target._remove_speedrun_ui()
+        self.target.remove_speedrun_ui()
         self.target.btn_speedrun.config(state="normal")
         self.target.btn_abort_speedrun.config(state="disabled")
         self.go_to_state("off")
         return
+    
+    def go_next_question(self) -> bool:
+        has_next: bool = self.target.go_next_file()
+        if not has_next:
+            # end of folder reached
+            self.stop_timer()
+            messagebox.showinfo(
+                title="End of folder",
+                message="You have reached the end of the speedrun."
+            )
+            self.abort_speedrun()
+        return has_next
+    
+    def show_solution(self) -> None:
+        self.target.lbl_solution.show_solution()
+        return
+    
+    def start_timer(self) -> None:
+        self.target.main_timer.start()
+        return
+    
+    def stop_timer(self) -> None:
+        self.target.main_timer.stop()
+        return
+    
+    def split_timer(self) -> None:
+        self.target.main_timer.split()
+        return
+    
+    def mark_correct(self) -> None:
+        self.target.main_problem_list.set_status(plist.ProblemStatus.CORRECT)
+        return
+    
+    def mark_wrong(self) -> None:
+        self.target.main_problem_list.set_status(plist.ProblemStatus.WRONG)
+        return
+    
+    def mark_skip(self) -> None:
+        self.target.main_problem_list.set_status(plist.ProblemStatus.SKIP)
+        return
+    
+    def show_continue(self) -> None:
+        self.target.nav_controls.show_continue()
+        return
+    
+    def show_correct_wrong(self) -> None:
+        self.target.nav_controls.show_correct_wrong()
+        return
+    
+    def show_sol_skip(self) -> None:
+        self.target.nav_controls.show_sol_skip()
+        return
+    
+    def disable_solving(self) -> None:
+        self.target.board.move_input_handler.disable()
+        return
+    
+    def enable_solving(self) -> None:
+        self.target.board.move_input_handler.enable()
+        return
 
 
 class SpeedrunState(evt.IObserver):
-    def __init__(self, controller: SpeedrunController, target: RootController) -> None:
+    def __init__(self, controller: SpeedrunController) -> None:
         self.controller = controller
-        self.target = target
         return
     
     def on_entry(self) -> None:
@@ -414,8 +463,8 @@ class SpeedrunState(evt.IObserver):
 
 class SpeedrunQuestionState(SpeedrunState, evt.IObserver):
     # Display question for solving in a speedrun
-    def __init__(self, controller: SpeedrunController, target: RootController) -> None:
-        SpeedrunState.__init__(self, controller, target)
+    def __init__(self, controller: SpeedrunController) -> None:
+        SpeedrunState.__init__(self, controller)
         self.NOTIFY_ACTIONS = {
             gamecon.GameEndEvent: self._mark_correct,
             gamecon.WrongMoveEvent: self._mark_wrong,
@@ -423,27 +472,25 @@ class SpeedrunQuestionState(SpeedrunState, evt.IObserver):
         return
     
     def on_entry(self) -> None:
-        self.target.nav_controls.show_sol_skip()
-        self.target.main_timer.start()
+        self.controller.show_sol_skip()
+        self.controller.start_timer()
         return
     
     def skip(self) -> None:
         # goes to next question directly; stays in same state
-        self.target.main_timer.split()
-        self.target.main_problem_list.set_status(plist.ProblemStatus.SKIP)
-        if not self.target.go_next_file():
-            self.target.end_of_folder()
-        else:
+        self.controller.split_timer()
+        self.controller.mark_skip()
+        if self.controller.go_next_question():
             self.controller.go_to_state("question")
         return
     
     def _mark_correct(self, event: evt.Event) -> None:
-        self.target.main_problem_list.set_status(plist.ProblemStatus.CORRECT)
+        self.controller.mark_correct()
         self.controller.go_to_state("solution")
         return
     
     def _mark_wrong(self, event: evt.Event) -> None:
-        self.target.main_problem_list.set_status(plist.ProblemStatus.WRONG)
+        self.controller.mark_wrong()
         self.controller.go_to_state("solution")
         return
     
@@ -460,12 +507,12 @@ class SpeedrunPauseState(SpeedrunState):
     # Display question but pause timer and disable solving
     # Should it disable showing solution?
     def on_entry(self) -> None:
-        self.target.main_timer.stop()
-        self.target.board.move_input_handler.disable()
+        self.controller.stop_timer()
+        self.controller.disable_solving()
         return
     
     def on_exit(self) -> None:
-        self.target.board.move_input_handler.enable()
+        self.controller.enable_solving()
         return
     
     def unpause(self) -> None:
@@ -476,69 +523,43 @@ class SpeedrunPauseState(SpeedrunState):
 class SpeedrunAnswerState(SpeedrunState):
     # Display solution and ask if user was correct or wrong
     def on_entry(self) -> None:
-        self.target.main_timer.split()
-        self.target.main_timer.stop()
-        self.target.lbl_solution.show_solution()
-        self.target.nav_controls.show_correct_wrong()
+        self.controller.split_timer()
+        self.controller.stop_timer()
+        self.controller.show_solution()
+        self.controller.show_correct_wrong()
         return
     
     def mark_correct_and_continue(self) -> None:
-        self.target.main_problem_list.set_status(plist.ProblemStatus.CORRECT)
-        self.next_question()
+        self.controller.mark_correct()
+        if self.controller.go_next_question():
+            self.controller.go_to_state("question")
         return
     
     def mark_wrong_and_continue(self) -> None:
-        self.target.main_problem_list.set_status(plist.ProblemStatus.WRONG)
-        self.next_question()
-        return
-    
-    def next_question(self) -> None:
-        if not self.target.go_next_file():
-            self.target.end_of_folder()
-            return
-        self.controller.go_to_state("question")
+        self.controller.mark_wrong()
+        if self.controller.go_next_question():
+            self.controller.go_to_state("question")
         return
 
 
 class SpeedrunSolutionState(SpeedrunState):
     # Show user the solution and wait for them to go next
     def on_entry(self) -> None:
-        self.target.main_timer.split()
-        self.target.main_timer.stop()
-        self.target.lbl_solution.show_solution()
-        self.target.nav_controls.show_continue()
+        self.controller.split_timer()
+        self.controller.stop_timer()
+        self.controller.show_solution()
+        self.controller.show_continue()
         return
     
     def next_question(self) -> None:
-        if not self.target.go_next_file():
-            self.target.end_of_folder()
-            return
-        self.controller.go_to_state("question")
+        if self.controller.go_next_question():
+            self.controller.go_to_state("question")
         return
 
 
 class SpeedrunOffState(SpeedrunState):
     # Default state
-    def on_entry(self) -> None:
-        # Upon aborting or ending speedrun
-        self.target.main_timer.stop()
-        self.target.main_timer_view.allow_all()
-        self.target.main_game.set_free_mode()
-        self.target._remove_speedrun_ui()
-        self.target.btn_speedrun.config(state="normal")
-        self.target.btn_abort_speedrun.config(state="disabled")
-        return
-    
-    def start_speedrun(self) -> None:
-        self.target.go_to_file(idx=0)
-        self.target.main_game.set_speedrun_mode()
-        self.target._set_speedrun_ui()
-        self.target.main_timer_view.allow_only_pause()
-        self.target.main_timer.reset()
-        self.target.btn_speedrun.config(state="disabled")
-        self.target.btn_abort_speedrun.config(state="normal")
-        self.controller.go_to_state("question")
-        return
+    pass
 
 
 class SolutionLabel(tk.Label):
