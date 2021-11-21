@@ -68,7 +68,7 @@ class SpeedrunController:
         return has_next
     
     def show_solution(self) -> None:
-        self.target.mainframe.lbl_solution.show_solution()
+        self.target.mainframe.show_solution()
         return
     
     def start_timer(self) -> None:
@@ -108,15 +108,11 @@ class SpeedrunController:
         return
     
     def disable_solving(self) -> None:
-        move_input_handler = self.target.board.move_input_handler
-        if move_input_handler is not None:
-            move_input_handler.disable()
+        self.target.mainframe.disable_move_input()
         return
     
     def enable_solving(self) -> None:
-        move_input_handler = self.target.board.move_input_handler
-        if move_input_handler is not None:
-            move_input_handler.enable()
+        self.target.mainframe.enable_move_input()
         return
 
 

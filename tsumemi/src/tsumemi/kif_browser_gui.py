@@ -25,7 +25,6 @@ from tsumemi.src.tsumemi.settings_window import SettingsWindow, CONFIG_PATH
 
 if TYPE_CHECKING:
     from typing import List, Optional, Union
-    import tsumemi.src.tsumemi.board_canvas as bc
     PathLike = Union[str, os.PathLike]
 
 
@@ -84,7 +83,8 @@ class RootController(evt.IObserver):
             timer.TimerSplitEvent: self._on_split,
             plist.ProbSelectedEvent: self._on_prob_selected,
         }
-        # Everything after this point should be GUI
+        
+        # GUI
         self.root: tk.Tk = root
         root.option_add("*tearOff", False)
         root.grid_columnconfigure(0, weight=1)
@@ -93,9 +93,8 @@ class RootController(evt.IObserver):
         
         self.menubar: Menubar = Menubar(parent=self.root, controller=self)
         
-        mainframe = MainWindowView(root, self)
-        self.mainframe = mainframe
-        board_canvas = self.mainframe.add_board_frame(
+        self.mainframe: MainWindowView = MainWindowView(root, self)
+        self.mainframe.add_board_frame(
             self.main_game.make_navigable_view
         )
         self.mainframe.add_timer_view(
@@ -104,16 +103,11 @@ class RootController(evt.IObserver):
         self.mainframe.add_problem_list_pane(
             self.main_problem_list.make_problem_list_pane
         )
-        self.lbl_solution = self.mainframe.add_solution_pane(
+        self.mainframe.add_solution_pane(
             SolutionLabel,
-            height=3, justify="left", wraplength=board_canvas.width
+            height=3, justify="left", wraplength=600
         )
         self.mainframe.grid_items_normal()
-        
-        # assign all views to self for later reference if needed.
-        self.board = board_canvas
-        self.board_views: List[bc.BoardCanvas] = []
-        self.board_views.append(board_canvas)
         
         # Keyboard shortcuts
         self.bindings = Bindings(self)
@@ -148,11 +142,9 @@ class RootController(evt.IObserver):
         """
         self._read_problem(prob)
         window_title = "tsumemi - " + str(prob.filepath)
-        self.board.draw()
-        move_input_handler = self.board.move_input_handler
-        if move_input_handler is not None:
-            move_input_handler.enable()
-        self.lbl_solution.hide_solution()
+        self.mainframe.refresh_main_board()
+        self.mainframe.enable_move_input()
+        self.mainframe.hide_solution()
         self.root.title(window_title)
         return
     
@@ -166,7 +158,7 @@ class RootController(evt.IObserver):
         if game is None:
             return # file unreadable, error out
         move_string_list = game.to_notation_ja_kif() # at end of game
-        self.lbl_solution.set_solution_text("　".join(move_string_list))
+        self.mainframe.set_solution("　".join(move_string_list))
         game.go_to_start()
         self.main_game.set_game(game)
         return
@@ -248,12 +240,7 @@ class RootController(evt.IObserver):
     #=== GUI display methods
     def toggle_solution(self, event: Optional[tk.Event] = None) -> None:
         # GUI callback
-        self.lbl_solution.toggle_solution()
-        return
-    
-    def flip_board(self, want_upside_down: bool) -> None:
-        # GUI callback
-        self.board.flip_board(want_upside_down)
+        self.mainframe.toggle_solution()
         return
     
     def apply_skin_settings(self, settings: imghand.SkinSettings
@@ -261,12 +248,7 @@ class RootController(evt.IObserver):
         # GUI callback
         self.skin_settings = settings
         self.main_game.skin_settings = settings
-        piece_skin, board_skin, komadai_skin = settings.get()
-        for board_canvas in self.board_views:
-            board_canvas.apply_piece_skin(piece_skin)
-            board_canvas.apply_board_skin(board_skin)
-            board_canvas.apply_komadai_skin(komadai_skin)
-            board_canvas.draw()
+        self.mainframe.apply_skins(settings)
         return
     
     #=== Observer callbacks
@@ -315,9 +297,55 @@ class MainWindowView(ttk.Frame):
         )
         return
     
-    def add_board_frame(self, constructor, *args, **kwargs) -> bc.BoardCanvas:
-        self.board_frame, self.board_canvas = constructor(parent=self, *args, **kwargs)
-        return self.board_canvas
+    def apply_skins(self, settings: imghand.SkinSettings) -> None:
+        piece_skin, board_skin, komadai_skin = settings.get()
+        self.board_canvas.apply_piece_skin(piece_skin)
+        self.board_canvas.apply_board_skin(board_skin)
+        self.board_canvas.apply_komadai_skin(komadai_skin)
+        self.refresh_main_board()
+        return
+    
+    def refresh_main_board(self) -> None:
+        self.board_canvas.draw()
+        return
+    
+    def flip_main_board(self, want_upside_down: bool) -> None:
+        self.board_canvas.flip_board(want_upside_down)
+        return
+    
+    def disable_move_input(self) -> None:
+        move_input_handler = self.board_canvas.move_input_handler
+        if move_input_handler is not None:
+            move_input_handler.disable()
+        return
+    
+    def enable_move_input(self) -> None:
+        move_input_handler = self.board_canvas.move_input_handler
+        if move_input_handler is not None:
+            move_input_handler.enable()
+        return
+    
+    def hide_solution(self) -> None:
+        self.lbl_solution.hide_solution()
+        return
+    
+    def show_solution(self) -> None:
+        self.lbl_solution.show_solution()
+        return
+    
+    def toggle_solution(self, event: Optional[tk.Event] = None) -> None:
+        self.lbl_solution.toggle_solution()
+        return
+    
+    def set_solution(self, solution_text: str) -> None:
+        self.lbl_solution.set_solution_text(solution_text)
+        return
+    
+    def add_board_frame(self, constructor, *args, **kwargs) -> None:
+        self.board_frame, self.board_canvas = constructor(
+            parent=self, *args, **kwargs
+        )
+        return
     
     def add_timer_view(self, constructor, *args, **kwargs) -> None:
         self.main_timer_view = constructor(parent=self, *args, **kwargs)
@@ -327,9 +355,9 @@ class MainWindowView(ttk.Frame):
         self.problem_list_pane = constructor(parent=self, *args, **kwargs)
         return
     
-    def add_solution_pane(self, constructor, *args, **kwargs) -> SolutionLabel:
+    def add_solution_pane(self, constructor, *args, **kwargs) -> None:
         self.lbl_solution = constructor(parent=self, *args, **kwargs)
-        return self.lbl_solution
+        return
     
     def grid_items_normal(self) -> None:
         self.board_frame.grid_columnconfigure(0, weight=1)
@@ -405,8 +433,8 @@ class Bindings:
         }
         
         self.FREE_SHORTCUTS = {
-            "<Key-h>": self.controller.toggle_solution,
-            "<Key-H>": self.controller.toggle_solution,
+            "<Key-h>": self.controller.mainframe.toggle_solution,
+            "<Key-H>": self.controller.mainframe.toggle_solution,
             "<Left>": self.controller.go_prev_file,
             "<Right>": self.controller.go_next_file,
         }

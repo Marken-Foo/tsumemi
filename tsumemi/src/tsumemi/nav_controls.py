@@ -51,7 +51,7 @@ class NavControls(ttk.Frame):
     def _add_chk_upside_down(self, text="Upside-down mode"):
         want_upside_down = tk.BooleanVar(value=False)
         return ttk.Checkbutton(self, text=text,
-            command=lambda: self.controller.flip_board(want_upside_down.get()),
+            command=lambda: self.controller.mainframe.flip_main_board(want_upside_down.get()),
             variable=want_upside_down, onvalue=True, offvalue=False
         )
     

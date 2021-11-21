@@ -8,11 +8,11 @@ from typing import TYPE_CHECKING
 
 import tsumemi.src.tsumemi.event as evt
 import tsumemi.src.tsumemi.problem_list as plist
-import tsumemi.src.tsumemi.timer as timer
 
 if TYPE_CHECKING:
     import tkinter as tk
     from typing import Dict, List, Optional, Union
+    import tsumemi.src.tsumemi.timer as timer
     PathLike = Union[str, os.PathLike]
 
 
