@@ -89,7 +89,7 @@ class TimerPane(ttk.Frame):
         )
         
         self.timer_display.grid(
-            column=0, row=0, columnspan=3
+            row=0, column=0, columnspan=3
         )
         self.btn_toggle = ttk.Button(self,
             text="Start/stop timer",
@@ -103,9 +103,9 @@ class TimerPane(ttk.Frame):
             text="Split",
             command=clock.split
         )
-        self.btn_toggle.grid(column=0, row=1)
-        self.btn_reset.grid(column=1, row=1)
-        self.btn_split.grid(column=2, row=1)
+        self.btn_toggle.grid(row=1, column=0)
+        self.btn_reset.grid(row=1, column=1)
+        self.btn_split.grid(row=1, column=2)
         return
     
     def allow_only_pause(self) -> None:

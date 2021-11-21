@@ -225,9 +225,9 @@ class ProblemListPane(ttk.Frame):
             command=self.problem_list.randomise
         )
         
-        self.tvw.grid(column=0, row=0, sticky="NSEW")
-        self.scrollbar_tvw.grid(column=1, row=0, sticky="NS")
-        self.btn_randomise.grid(column=0, row=1)
+        self.tvw.grid(row=0, column=0, sticky="NSEW")
+        self.scrollbar_tvw.grid(row=0, column=1, sticky="NS")
+        self.btn_randomise.grid(row=1, column=0)
         return
 
 

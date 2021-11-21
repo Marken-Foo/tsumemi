@@ -7,7 +7,7 @@ import logging.config
 import os
 import tkinter as tk
 
-from tkinter import filedialog, font, messagebox, ttk
+from tkinter import filedialog, messagebox, ttk
 from typing import TYPE_CHECKING
 
 import tsumemi.src.shogi.kif as kif
@@ -94,18 +94,6 @@ class RootController(evt.IObserver):
         self.menubar: Menubar = Menubar(parent=self.root, controller=self)
         
         self.mainframe: MainWindowView = MainWindowView(root, self)
-        self.mainframe.add_board_frame(
-            self.main_game.make_navigable_view
-        )
-        self.mainframe.add_timer_view(
-            self.main_timer.make_timer_pane
-        )
-        self.mainframe.add_problem_list_pane(
-            self.main_problem_list.make_problem_list_pane
-        )
-        self.mainframe.add_solution_pane(
-            SolutionLabel
-        )
         self.mainframe.grid_items_normal()
         
         # Keyboard shortcuts
@@ -262,44 +250,6 @@ class RootController(evt.IObserver):
         # Observer callback
         if event.sender == self.main_problem_list.problem_list:
             self.show_problem(event.problem)
-        return
-
-
-class SolutionLabel(tk.Label):
-    """Label to display, show, and hide problem solutions.
-    """
-    def __init__(self, parent: tk.Widget, *args, **kwargs) -> None:
-        super().__init__(parent, *args, **kwargs)
-        self.is_solution_shown: bool = True
-        self.solution_text: str = "Open a folder of problems to display."
-        self.textvar: tk.StringVar = tk.StringVar(value=self.solution_text)
-        self["textvariable"] = self.textvar
-        
-        defaultfont = font.Font(font=self["font"])
-        typeface = defaultfont["family"]
-        fontsize = defaultfont["size"]
-        self.config(font=(typeface, fontsize+2))
-        return
-    
-    def set_solution_text(self, text: str) -> None:
-        self.solution_text = text
-        return
-    
-    def hide_solution(self) -> None:
-        self.textvar.set("[solution hidden]")
-        self.is_solution_shown = False
-        return
-    
-    def show_solution(self) -> None:
-        self.textvar.set(self.solution_text)
-        self.is_solution_shown = True
-        return
-    
-    def toggle_solution(self, event: Optional[tk.Event] = None) -> None:
-        if self.is_solution_shown:
-            self.hide_solution()
-        else:
-            self.show_solution()
         return
 
 
@@ -472,12 +422,12 @@ class StatisticsDialog(tk.Toplevel):
         self.grid_rowconfigure(2, weight=1)
         for child in self.winfo_children():
             child.grid_configure(padx=5, pady=5)
-        lbl_report.grid(column=0, row=0, columnspan=2)
-        lbl_message.grid(column=0, row=1, columnspan=2)
-        txt_report.grid(column=0, row=2, sticky="NSEW")
-        vsc_txt_report.grid(column=1, row=2, sticky="NS")
-        hsc_txt_report.grid(column=0, row=3, sticky="EW")
-        btn_ok.grid(column=0, row=4)
+        lbl_report.grid(row=0, column=0, columnspan=2)
+        lbl_message.grid(row=1, column=0, columnspan=2)
+        txt_report.grid(row=2, column=0, sticky="NSEW")
+        vsc_txt_report.grid(row=2, column=1, sticky="NS")
+        hsc_txt_report.grid(row=3, column=0, sticky="EW")
+        btn_ok.grid(row=4, column=0)
         return
 
 
