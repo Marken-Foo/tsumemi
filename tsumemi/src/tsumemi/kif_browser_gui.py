@@ -62,17 +62,6 @@ def _read_config_file(config: configparser.ConfigParser, filepath: PathLike
     return imghand.SkinSettings(piece_skin, board_skin, komadai_skin)
 
 
-def _setup_main_window(root: tk.Tk) -> ttk.Frame:
-    root.option_add("*tearOff", False)
-    root.grid_columnconfigure(0, weight=1)
-    root.grid_rowconfigure(0, weight=1)
-    root.title("tsumemi")
-    # mainframe is the main frame of the root window
-    mainframe = ttk.Frame(root)
-    mainframe.grid(column=0, row=0, sticky="NSEW")
-    return mainframe
-
-
 class RootController(evt.IObserver):
     """Root controller for the application. Manages top-level logic
     and GUI elements.
@@ -97,90 +86,39 @@ class RootController(evt.IObserver):
         }
         # Everything after this point should be GUI
         self.root: tk.Tk = root
-        mainframe: ttk.Frame = _setup_main_window(root)
-        self.mainframe = mainframe
+        root.option_add("*tearOff", False)
+        root.grid_columnconfigure(0, weight=1)
+        root.grid_rowconfigure(0, weight=1)
+        root.title("tsumemi")
+        
         self.menubar: Menubar = Menubar(parent=self.root, controller=self)
         
-        board_frame = ttk.Frame(mainframe)
-        _, board_canvas = self.main_game.make_navigable_view(parent=board_frame)
-        board_canvas.bind("<Configure>", board_canvas.on_resize)
-        
-        main_timer_view = self.main_timer.make_timer_pane(
-            parent=mainframe,
+        mainframe = MainWindowView(root, self)
+        self.mainframe = mainframe
+        board_canvas = self.mainframe.add_board_frame(
+            self.main_game.make_navigable_view
         )
-        # Main problem list
-        problem_list_pane = self.main_problem_list.make_problem_list_pane(
-            parent=mainframe,
+        self.mainframe.add_timer_view(
+            self.main_timer.make_timer_pane
         )
-        # Solution text label.
-        # The wraplength isn't right.
-        lbl_solution = SolutionLabel(mainframe, justify="left", height=3,
-            wraplength=board_canvas.width,
+        self.mainframe.add_problem_list_pane(
+            self.main_problem_list.make_problem_list_pane
         )
-        # Problem navigation controls
-        self._navcons = {
-            "free" : FreeModeNavControls(
-                parent=mainframe, controller=self,
-            ),
-            "speedrun" : SpeedrunNavControls(
-                parent=mainframe, controller=self,
-            )
-        }
-        for navcon in self._navcons.values():
-            navcon.grid(column=0, row=2)
-            navcon.grid_remove()
-        self.nav_controls = self._navcons["free"]
-        
-        # Speedrun buttons
-        speedrun_frame = ttk.Frame(mainframe)
-        btn_speedrun = ttk.Button(speedrun_frame, text="Start speedrun",
-            command=self.start_speedrun
+        self.lbl_solution = self.mainframe.add_solution_pane(
+            SolutionLabel,
+            height=3, justify="left", wraplength=board_canvas.width
         )
-        btn_abort_speedrun = ttk.Button(speedrun_frame, text="Abort speedrun",
-            command=self.abort_speedrun
-        )
+        self.mainframe.grid_items_normal()
         
         # assign all views to self for later reference if needed.
-        self.board_frame = board_frame
         self.board = board_canvas
         self.board_views: List[bc.BoardCanvas] = []
         self.board_views.append(board_canvas)
-        self.lbl_solution = lbl_solution
-        self.main_timer_view = main_timer_view
-        self.problem_list_pane = problem_list_pane
-        self.btn_speedrun = btn_speedrun
-        self.btn_abort_speedrun = btn_abort_speedrun
-        btn_abort_speedrun.config(state="disabled")
         
         # Keyboard shortcuts
         self.bindings = Bindings(self)
         self.bindings.bind_shortcuts(self.root, self.bindings.MASTER_SHORTCUTS)
         self.bindings.bind_shortcuts(self.root, self.bindings.FREE_SHORTCUTS)
-        
-        # grid everything
-        mainframe.grid_columnconfigure(0, weight=1)
-        mainframe.grid_columnconfigure(1, weight=1)
-        mainframe.grid_rowconfigure(0, weight=1)
-        
-        board_frame.grid_columnconfigure(0, weight=1)
-        board_frame.grid_rowconfigure(0, weight=1)
-        main_timer_view.grid_columnconfigure(0, weight=0)
-        main_timer_view.grid_rowconfigure(0, weight=0)
-        problem_list_pane.grid_columnconfigure(0, weight=1)
-        problem_list_pane.grid_rowconfigure(0, weight=1)
-        
-        board_frame.grid(column=0, row=0, sticky="NSEW")
-        board_frame.grid_configure(padx=5, pady=5)
-        board_canvas.grid(column=0, row=0, sticky="NSEW")
-        lbl_solution.grid(column=0, row=1, sticky="W")
-        lbl_solution.grid_configure(padx=5, pady=5)
-        self.nav_controls.grid()
-        main_timer_view.grid(column=1, row=1)
-        problem_list_pane.grid(column=1, row=0, sticky="NSEW")
-        problem_list_pane.grid_configure(padx=5, pady=5)
-        speedrun_frame.grid(column=1, row=2)
-        btn_speedrun.grid(column=0, row=0)
-        btn_abort_speedrun.grid(column=1, row=0)
         return
     
     def open_folder(self, event: Optional[tk.Event] = None,
@@ -289,10 +227,10 @@ class RootController(evt.IObserver):
     
     def set_speedrun_ui(self) -> None:
         # Make UI changes
-        self.nav_controls.grid_remove()
-        self.nav_controls = self._navcons["speedrun"]
-        self.nav_controls.show_sol_skip()
-        self.nav_controls.grid()
+        self.mainframe.nav_controls.grid_remove()
+        self.mainframe.nav_controls = self.mainframe._navcons["speedrun"]
+        self.mainframe.nav_controls.show_sol_skip()
+        self.mainframe.nav_controls.grid()
         # Set application state
         self.bindings.unbind_shortcuts(self.root, self.bindings.FREE_SHORTCUTS)
         return
@@ -300,9 +238,9 @@ class RootController(evt.IObserver):
     def remove_speedrun_ui(self) -> None:
         # Abort speedrun, go back to free browsing
         # Make UI changes
-        self.nav_controls.grid_remove()
-        self.nav_controls = self._navcons["free"]
-        self.nav_controls.grid()
+        self.mainframe.nav_controls.grid_remove()
+        self.mainframe.nav_controls = self.mainframe._navcons["free"]
+        self.mainframe.nav_controls.grid()
         # Set application state
         self.bindings.bind_shortcuts(self.root, self.bindings.FREE_SHORTCUTS)
         return
@@ -343,6 +281,76 @@ class RootController(evt.IObserver):
         # Observer callback
         if event.sender == self.main_problem_list.problem_list:
             self.show_problem(event.problem)
+        return
+
+
+class MainWindowView(ttk.Frame):
+    def __init__(self, root: tk.Tk, root_controller: RootController) -> None:
+        super().__init__(root)
+        self.controller = root_controller
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_columnconfigure(1, weight=1)
+        self.grid_rowconfigure(0, weight=1)
+        self.grid(column=0, row=0, sticky="NSEW")
+        
+        self._navcons = {
+            "free" : FreeModeNavControls(
+                parent=self, controller=root_controller,
+            ),
+            "speedrun" : SpeedrunNavControls(
+                parent=self, controller=root_controller,
+            )
+        }
+        for navcon in self._navcons.values():
+            navcon.grid(column=0, row=2)
+            navcon.grid_remove()
+        self.nav_controls = self._navcons["free"]
+        
+        self.speedrun_frame = ttk.Frame(self)
+        self.btn_speedrun = ttk.Button(self.speedrun_frame, text="Start speedrun",
+            command=self.controller.start_speedrun
+        )
+        self.btn_abort_speedrun = ttk.Button(self.speedrun_frame, text="Abort speedrun",
+            command=self.controller.abort_speedrun
+        )
+        return
+    
+    def add_board_frame(self, constructor, *args, **kwargs) -> bc.BoardCanvas:
+        self.board_frame, self.board_canvas = constructor(parent=self, *args, **kwargs)
+        return self.board_canvas
+    
+    def add_timer_view(self, constructor, *args, **kwargs) -> None:
+        self.main_timer_view = constructor(parent=self, *args, **kwargs)
+        return
+    
+    def add_problem_list_pane(self, constructor, *args, **kwargs) -> None:
+        self.problem_list_pane = constructor(parent=self, *args, **kwargs)
+        return
+    
+    def add_solution_pane(self, constructor, *args, **kwargs) -> SolutionLabel:
+        self.lbl_solution = constructor(parent=self, *args, **kwargs)
+        return self.lbl_solution
+    
+    def grid_items_normal(self) -> None:
+        self.board_frame.grid_columnconfigure(0, weight=1)
+        self.board_frame.grid_rowconfigure(0, weight=1)
+        self.main_timer_view.grid_columnconfigure(0, weight=0)
+        self.main_timer_view.grid_rowconfigure(0, weight=0)
+        self.problem_list_pane.grid_columnconfigure(0, weight=1)
+        self.problem_list_pane.grid_rowconfigure(0, weight=1)
+        
+        self.board_frame.grid(column=0, row=0, sticky="NSEW")
+        self.board_frame.grid_configure(padx=5, pady=5)
+        self.lbl_solution.grid(column=0, row=1, sticky="W")
+        self.lbl_solution.grid_configure(padx=5, pady=5)
+        self.nav_controls.grid()
+        self.main_timer_view.grid(column=1, row=1)
+        self.problem_list_pane.grid(column=1, row=0, sticky="NSEW")
+        self.problem_list_pane.grid_configure(padx=5, pady=5)
+        self.speedrun_frame.grid(column=1, row=2)
+        self.btn_speedrun.grid(column=0, row=0)
+        self.btn_abort_speedrun.grid(column=1, row=0)
+        self.btn_abort_speedrun.config(state="disabled")
         return
 
 

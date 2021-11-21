@@ -37,21 +37,21 @@ class SpeedrunController:
         self.target.go_to_file(idx=0)
         self.target.main_game.set_speedrun_mode()
         self.target.set_speedrun_ui()
-        self.target.main_timer_view.allow_only_pause()
+        self.target.mainframe.main_timer_view.allow_only_pause()
         self.target.main_timer.reset()
         self.start_timer()
-        self.target.btn_speedrun.config(state="disabled")
-        self.target.btn_abort_speedrun.config(state="normal")
+        self.target.mainframe.btn_speedrun.config(state="disabled")
+        self.target.mainframe.btn_abort_speedrun.config(state="normal")
         self.go_to_state("question")
         return
     
     def abort_speedrun(self) -> None:
         self.stop_timer()
-        self.target.main_timer_view.allow_all()
+        self.target.mainframe.main_timer_view.allow_all()
         self.target.main_game.set_free_mode()
         self.target.remove_speedrun_ui()
-        self.target.btn_speedrun.config(state="normal")
-        self.target.btn_abort_speedrun.config(state="disabled")
+        self.target.mainframe.btn_speedrun.config(state="normal")
+        self.target.mainframe.btn_abort_speedrun.config(state="disabled")
         self.go_to_state("off")
         return
     
@@ -68,7 +68,7 @@ class SpeedrunController:
         return has_next
     
     def show_solution(self) -> None:
-        self.target.lbl_solution.show_solution()
+        self.target.mainframe.lbl_solution.show_solution()
         return
     
     def start_timer(self) -> None:
@@ -96,15 +96,15 @@ class SpeedrunController:
         return
     
     def show_continue(self) -> None:
-        self.target.nav_controls.show_continue()
+        self.target.mainframe.nav_controls.show_continue()
         return
     
     def show_correct_wrong(self) -> None:
-        self.target.nav_controls.show_correct_wrong()
+        self.target.mainframe.nav_controls.show_correct_wrong()
         return
     
     def show_sol_skip(self) -> None:
-        self.target.nav_controls.show_sol_skip()
+        self.target.mainframe.nav_controls.show_sol_skip()
         return
     
     def disable_solving(self) -> None:

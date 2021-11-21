@@ -144,11 +144,10 @@ class NavigableGameFrame(ttk.Frame):
         ) -> None:
         self.controller: GameController = controller
         super().__init__(parent, *args, **kwargs)
-        self.grid(column=0, row=0, sticky="NSEW")
-        self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(0, weight=1)
         # make board canvas
         self.board_canvas = controller.make_board_canvas(self)
+        self.board_canvas.grid(column=0, row=0, sticky="NSEW")
+        self.board_canvas.bind("<Configure>", self.board_canvas.on_resize)
         # make |<<, <, >, >>| buttons
         buttons_frame = ttk.Frame(self)
         buttons_frame.grid(column=0, row=1, sticky="NSEW")
