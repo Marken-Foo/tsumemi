@@ -48,18 +48,15 @@ class MainWindowView(ttk.Frame):
             wraplength=600,
         )
         
-        self._navcons = {
-            "free" : FreeModeNavControls(
-                parent=self, controller=root_controller,
-            ),
-            "speedrun" : SpeedrunNavControls(
-                parent=self, controller=root_controller,
-            )
-        }
-        for navcon in self._navcons.values():
-            navcon.grid(row=2, column=0)
-            navcon.grid_remove()
-        self.nav_controls: NavControls = self._navcons["free"]
+        self.nav_control_pane = ttk.Frame(self)
+        self.nav_controls = ttk.Frame(self.nav_control_pane)
+        want_upside_down = tk.BooleanVar(value=False)
+        self.chk_upside_down = ttk.Checkbutton(
+            self.nav_control_pane,
+            text="Upside-down mode",
+            command=lambda: self.controller.mainframe.flip_main_board(want_upside_down.get()),
+            variable=want_upside_down, onvalue=True, offvalue=False
+        )
         
         self.speedrun_frame = ttk.Frame(self)
         self.btn_speedrun: ttk.Button = ttk.Button(self.speedrun_frame, text="Start speedrun",
@@ -114,6 +111,50 @@ class MainWindowView(ttk.Frame):
         self.lbl_solution.set_solution_text(solution_text)
         return
     
+    def make_nav_pane_normal(self, parent):
+        nav = ttk.Frame(parent)
+        btn_prev = ttk.Button(nav,
+            text="< Prev",
+            command=self.controller.go_prev_file
+        )
+        btn_toggle_solution = ttk.Button(nav,
+            text="Show/hide solution",
+            command=self.controller.toggle_solution
+        )
+        btn_next = ttk.Button(nav,
+            text="Next >",
+            command=self.controller.go_next_file
+        )
+        btn_prev.grid(
+            row=0, column=0, sticky="E",
+            padx=5, pady=5
+        )
+        btn_toggle_solution.grid(
+            row=0, column=1, sticky="S",
+            padx=5, pady=5
+        )
+        btn_next.grid(
+            row=0, column=2, sticky="W",
+            padx=5, pady=5
+        )
+        return nav
+    
+    def _grid_nav_control_pane(self, pane) -> None:
+        pane.grid(
+            row=0, column=0
+        )
+        self.chk_upside_down.grid(
+            row=1, column=0
+        )
+        return
+    
+    def update_nav_control_pane(self, nav_pane_constructor) -> None:
+        new_nav_controls = nav_pane_constructor(self.nav_control_pane)
+        self._grid_nav_control_pane(new_nav_controls)
+        self.nav_controls.grid_forget()
+        self.nav_controls = new_nav_controls
+        return
+    
     def grid_items_normal(self) -> None:
         self.board_frame.grid_columnconfigure(0, weight=1)
         self.board_frame.grid_rowconfigure(0, weight=1)
@@ -137,141 +178,17 @@ class MainWindowView(ttk.Frame):
         self.main_timer_view.grid(
             row=1, column=1,
         )
-        self.nav_controls.grid(
+        self.nav_control_pane.grid(
             row=2, column=0
         )
+        self.update_nav_control_pane(self.make_nav_pane_normal)
+        self._grid_nav_control_pane(self.nav_controls)
         self.speedrun_frame.grid(
             row=2, column=1,
         )
         self.btn_speedrun.grid(row=0, column=0)
         self.btn_abort_speedrun.grid(row=0, column=1)
         self.btn_abort_speedrun.config(state="disabled")
-        return
-
-
-class NavControls(ttk.Frame):
-    def __init__(self, parent, controller, *args, **kwargs):
-        self.controller = controller
-        super().__init__(parent, *args, **kwargs)
-     
-    def _add_btn_prev(self, text="< Prev"):
-        return ttk.Button(self, text=text,
-            command=self.controller.go_prev_file
-        )
-    
-    def _add_btn_next(self, text="Next >"):
-        return ttk.Button(self, text=text,
-            command=self.controller.go_next_file
-        )
-    
-    def _add_btn_toggle_solution(self, text="Show/hide solution"):
-        return ttk.Button(self, text=text,
-            command=self.controller.toggle_solution
-        )
-    
-    def _add_btn_view_solution(self, text="Show solution"):
-        return ttk.Button(self, text=text,
-            command=self.controller.speedrun_controller._speedrun_states["question"].show_answer
-        )
-    
-    def _add_btn_skip(self, text="Skip"):
-        return ttk.Button(self, text=text,
-            command=self.controller.speedrun_controller._speedrun_states["question"].skip
-        )
-    
-    def _add_btn_correct(self, text="Correct"):
-        return ttk.Button(self, text=text,
-            command=self.controller.speedrun_controller._speedrun_states["answer"].mark_correct_and_continue
-        )
-    
-    def _add_btn_wrong(self, text="Wrong"):
-        return ttk.Button(self, text=text,
-            command=self.controller.speedrun_controller._speedrun_states["answer"].mark_wrong_and_continue
-        )
-    
-    def _add_btn_continue_speedrun(self, text="Next"):
-        return ttk.Button(self, text=text,
-            command=self.controller.speedrun_controller._speedrun_states["solution"].next_question
-        )
-    
-    def _add_chk_upside_down(self, text="Upside-down mode"):
-        want_upside_down = tk.BooleanVar(value=False)
-        return ttk.Checkbutton(self, text=text,
-            command=lambda: self.controller.mainframe.flip_main_board(want_upside_down.get()),
-            variable=want_upside_down, onvalue=True, offvalue=False
-        )
-    
-    def show_correct_wrong(self):
-        pass
-    
-    def show_sol_skip(self):
-        pass
-    
-    def show_continue(self):
-        pass
-
-
-class FreeModeNavControls(NavControls):
-    def __init__(self, parent, controller, *args, **kwargs):
-        super().__init__(parent, controller, *args, **kwargs)
-        # Make buttons to navigate, show/hide solution, upside-down mode
-        btn_prev = self._add_btn_prev()
-        btn_prev.grid(row=0, column=0, sticky="E")
-        btn_toggle_solution = self._add_btn_toggle_solution()
-        btn_toggle_solution.grid(row=0, column=1, sticky="S")
-        btn_next = self._add_btn_next()
-        btn_next.grid(row=0, column=2, sticky="W")
-        chk_upside_down = self._add_chk_upside_down()
-        chk_upside_down.grid(row=1, column=0, columnspan=3)
-        for child in self.winfo_children():
-            child.grid_configure(padx=5, pady=5)
-        return
-
-
-class SpeedrunNavControls(NavControls):
-    def __init__(self, parent, controller, *args, **kwargs):
-        super().__init__(parent, controller, *args, **kwargs)
-        # Initialise all nav options
-        self.btn_view_solution = self._add_btn_view_solution()
-        self.btn_view_solution.grid(row=0, column=0, sticky="E")
-        self.btn_skip = self._add_btn_skip()
-        self.btn_skip.grid(row=0, column=1, sticky="W")
-        self.btn_correct = self._add_btn_correct()
-        self.btn_correct.grid(row=0, column=0, sticky="E")
-        self.btn_wrong = self._add_btn_wrong()
-        self.btn_wrong.grid(row=0, column=1, sticky="W")
-        self.btn_continue_speedrun = self._add_btn_continue_speedrun()
-        self.btn_continue_speedrun.grid(row=0, column=0)
-        self.chk_upside_down = self._add_chk_upside_down()
-        self.chk_upside_down.grid(row=1, column=0, columnspan=3)
-        for child in self.winfo_children():
-            child.grid_configure(padx=5, pady=5)
-            
-        self.show_sol_skip() # Hide only after calling grid_configure
-        return
-     
-    def show_correct_wrong(self):
-        self.btn_view_solution.grid_remove()
-        self.btn_skip.grid_remove()
-        self.btn_correct.grid()
-        self.btn_wrong.grid()
-        self.btn_continue_speedrun.grid_remove()
-        return
-    
-    def show_sol_skip(self):
-        self.btn_view_solution.grid()
-        self.btn_skip.grid()
-        self.btn_correct.grid_remove()
-        self.btn_wrong.grid_remove()
-        self.btn_continue_speedrun.grid_remove()
-        return
-    
-    def show_continue(self):
-        self.btn_view_solution.grid_remove()
-        self.btn_skip.grid_remove()
-        self.btn_correct.grid_remove()
-        self.btn_wrong.grid_remove()
-        self.btn_continue_speedrun.grid()
         return
 
 

@@ -204,23 +204,18 @@ class RootController(evt.IObserver):
         self.speedrun_controller.abort_speedrun()
         return
     
+    def update_nav_control_pane(self, nav_pane_constructor) -> None:
+        self.mainframe.update_nav_control_pane(nav_pane_constructor)
+        return
+    
     def set_speedrun_ui(self) -> None:
-        # Make UI changes
-        self.mainframe.nav_controls.grid_remove()
-        self.mainframe.nav_controls = self.mainframe._navcons["speedrun"]
-        self.mainframe.nav_controls.show_sol_skip()
-        self.mainframe.nav_controls.grid()
-        # Set application state
+        # TODO: rename method
         self.bindings.unbind_shortcuts(self.root, self.bindings.FREE_SHORTCUTS)
         return
     
     def remove_speedrun_ui(self) -> None:
-        # Abort speedrun, go back to free browsing
-        # Make UI changes
-        self.mainframe.nav_controls.grid_remove()
-        self.mainframe.nav_controls = self.mainframe._navcons["free"]
-        self.mainframe.nav_controls.grid()
-        # Set application state
+        # TODO: rename method
+        self.update_nav_control_pane(self.mainframe.make_nav_pane_normal)
         self.bindings.bind_shortcuts(self.root, self.bindings.FREE_SHORTCUTS)
         return
     
