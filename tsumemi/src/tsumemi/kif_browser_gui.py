@@ -20,7 +20,7 @@ import tsumemi.src.tsumemi.speedrun_controller as speedcon
 import tsumemi.src.tsumemi.timer as timer
 import tsumemi.src.tsumemi.timer_controller as timecon
 
-from tsumemi.src.tsumemi.nav_controls import MainWindowView
+from tsumemi.src.tsumemi.main_window_view import MainWindowView
 from tsumemi.src.tsumemi.settings_window import SettingsWindow, CONFIG_PATH
 
 if TYPE_CHECKING:
