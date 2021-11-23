@@ -24,7 +24,7 @@ from tsumemi.src.tsumemi.main_window_view import MainWindowView
 from tsumemi.src.tsumemi.settings_window import SettingsWindow, CONFIG_PATH
 
 if TYPE_CHECKING:
-    from typing import List, Optional, Union
+    from typing import Callable, List, Optional, Union
     PathLike = Union[str, os.PathLike]
 
 
@@ -211,7 +211,9 @@ class RootController(evt.IObserver):
         self.bindings.bind_shortcuts(self.root, self.bindings.FREE_SHORTCUTS)
         return
     
-    def update_nav_control_pane(self, nav_pane_constructor) -> None:
+    def update_nav_control_pane(self,
+            nav_pane_constructor: Callable[[tk.Widget], ttk.Frame]
+        ) -> None:
         self.mainframe.update_nav_control_pane(nav_pane_constructor)
         return
     
