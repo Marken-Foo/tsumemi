@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 from tkinter import messagebox, ttk
 from typing import TYPE_CHECKING
 
@@ -8,8 +10,11 @@ import tsumemi.src.tsumemi.game_controller as gamecon
 import tsumemi.src.tsumemi.problem_list as plist
 
 if TYPE_CHECKING:
+    import tk
     from typing import Dict
     from tsumemi.src.tsumemi.kif_browser_gui import RootController
+
+logger = logging.getLogger(__name__)
 
 
 class SpeedrunController:
@@ -49,12 +54,9 @@ class SpeedrunController:
     def start_speedrun(self) -> None:
         self.target.go_to_file(idx=0)
         self.target.main_game.set_speedrun_mode()
-        self.target.set_speedrun_ui()
         self.target.mainframe.main_timer_view.allow_only_pause()
         self.target.main_timer.reset()
         self.start_timer()
-        self.target.mainframe.btn_speedrun.config(state="disabled")
-        self.target.mainframe.btn_abort_speedrun.config(state="normal")
         self.go_to_state("question")
         return
     
@@ -62,9 +64,6 @@ class SpeedrunController:
         self.stop_timer()
         self.target.mainframe.main_timer_view.allow_all()
         self.target.main_game.set_free_mode()
-        self.target.remove_speedrun_ui()
-        self.target.mainframe.btn_speedrun.config(state="normal")
-        self.target.mainframe.btn_abort_speedrun.config(state="disabled")
         self.go_to_state("off")
         return
     
@@ -116,11 +115,15 @@ class SpeedrunController:
         self.target.mainframe.enable_move_input()
         return
     
-    def make_nav_pane_question(self, parent):
+    def make_nav_pane_question(self, parent: tk.Widget) -> ttk.Frame:
         nav = ttk.Frame(parent) #NavControlPane
+        question_state = self._speedrun_states["question"]
+        if not isinstance(question_state, SpeedrunQuestionState):
+            logger.warning("speedrun question state missing")
+            return nav
         btn_show_solution = ttk.Button(nav,
             text="Show solution",
-            command=self._speedrun_states["question"].show_answer
+            command=question_state.show_answer
         )
         btn_show_solution.grid(
             row=0, column=0, sticky="E",
@@ -128,7 +131,7 @@ class SpeedrunController:
         )
         btn_skip = ttk.Button(nav,
             text="Skip",
-            command=self._speedrun_states["question"].skip
+            command=question_state.skip
         )
         btn_skip.grid(
             row=0, column=1, sticky="W",
@@ -136,11 +139,15 @@ class SpeedrunController:
         )
         return nav
     
-    def make_nav_pane_answer(self, parent):
+    def make_nav_pane_answer(self, parent: tk.Widget) -> ttk.Frame:
         nav = ttk.Frame(parent) #NavControlPane
+        answer_state = self._speedrun_states["answer"]
+        if not isinstance(answer_state, SpeedrunAnswerState):
+            logger.warning("speedrun answer state missing")
+            return nav
         btn_correct = ttk.Button(nav,
             text="Correct",
-            command=self._speedrun_states["answer"].mark_correct_and_continue
+            command=answer_state.mark_correct_and_continue
         )
         btn_correct.grid(
             row=0, column=0, sticky="E",
@@ -148,7 +155,7 @@ class SpeedrunController:
         )
         btn_wrong = ttk.Button(nav,
             text="Wrong",
-            command=self._speedrun_states["answer"].mark_wrong_and_continue
+            command=answer_state.mark_wrong_and_continue
         )
         btn_wrong.grid(
             row=0, column=1, sticky="W",
@@ -156,11 +163,15 @@ class SpeedrunController:
         )
         return nav
     
-    def make_nav_pane_solution(self, parent):
+    def make_nav_pane_solution(self, parent: tk.Widget) -> ttk.Frame:
         nav = ttk.Frame(parent) #NavControlPane
+        solution_state = self._speedrun_states["solution"]
+        if not isinstance(solution_state, SpeedrunSolutionState):
+            logger.warning("speedrun solution state missing")
+            return nav
         btn_continue = ttk.Button(nav,
             text="Next",
-            command=self._speedrun_states["solution"].next_question
+            command=solution_state.next_question
         )
         btn_continue.grid(
             row=0, column=0,

@@ -6,7 +6,7 @@ from tkinter import font, ttk
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Optional
+    from typing import Callable, Optional
     import tsumemi.src.tsumemi.board_canvas as bc
     import tsumemi.src.tsumemi.game_controller as gamecon
     import tsumemi.src.tsumemi.img_handlers as imghand
@@ -59,10 +59,14 @@ class MainWindowView(ttk.Frame):
         )
         
         self.speedrun_frame = ttk.Frame(self)
-        self.btn_speedrun: ttk.Button = ttk.Button(self.speedrun_frame, text="Start speedrun",
+        self.btn_speedrun: ttk.Button = ttk.Button(
+            self.speedrun_frame,
+            text="Start speedrun",
             command=self.controller.start_speedrun
         )
-        self.btn_abort_speedrun: ttk.Button = ttk.Button(self.speedrun_frame, text="Abort speedrun",
+        self.btn_abort_speedrun: ttk.Button = ttk.Button(
+            self.speedrun_frame,
+            text="Abort speedrun",
             command=self.controller.abort_speedrun
         )
         return
@@ -111,27 +115,27 @@ class MainWindowView(ttk.Frame):
         self.lbl_solution.set_solution_text(solution_text)
         return
     
-    def make_nav_pane_normal(self, parent):
+    def make_nav_pane_normal(self, parent: tk.Widget) -> ttk.Frame:
         nav = ttk.Frame(parent)
         btn_prev = ttk.Button(nav,
             text="< Prev",
             command=self.controller.go_prev_file
         )
-        btn_toggle_solution = ttk.Button(nav,
-            text="Show/hide solution",
-            command=self.controller.toggle_solution
-        )
-        btn_next = ttk.Button(nav,
-            text="Next >",
-            command=self.controller.go_next_file
-        )
         btn_prev.grid(
             row=0, column=0, sticky="E",
             padx=5, pady=5
         )
+        btn_toggle_solution = ttk.Button(nav,
+            text="Show/hide solution",
+            command=self.toggle_solution
+        )
         btn_toggle_solution.grid(
             row=0, column=1, sticky="S",
             padx=5, pady=5
+        )
+        btn_next = ttk.Button(nav,
+            text="Next >",
+            command=self.controller.go_next_file
         )
         btn_next.grid(
             row=0, column=2, sticky="W",
@@ -139,7 +143,7 @@ class MainWindowView(ttk.Frame):
         )
         return nav
     
-    def _grid_nav_control_pane(self, pane) -> None:
+    def _grid_nav_control_pane(self, pane: ttk.Frame) -> None:
         pane.grid(
             row=0, column=0
         )
@@ -148,7 +152,9 @@ class MainWindowView(ttk.Frame):
         )
         return
     
-    def update_nav_control_pane(self, nav_pane_constructor) -> None:
+    def update_nav_control_pane(self,
+            nav_pane_constructor: Callable[[tk.Widget], ttk.Frame]
+        ) -> None:
         new_nav_controls = nav_pane_constructor(self.nav_control_pane)
         self._grid_nav_control_pane(new_nav_controls)
         self.nav_controls.grid_forget()
