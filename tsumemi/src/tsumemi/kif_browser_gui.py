@@ -7,7 +7,7 @@ import logging.config
 import os
 import tkinter as tk
 
-from tkinter import filedialog, font, messagebox, ttk
+from tkinter import filedialog, messagebox, ttk
 from typing import TYPE_CHECKING
 
 import tsumemi.src.shogi.kif as kif
@@ -20,12 +20,11 @@ import tsumemi.src.tsumemi.speedrun_controller as speedcon
 import tsumemi.src.tsumemi.timer as timer
 import tsumemi.src.tsumemi.timer_controller as timecon
 
-from tsumemi.src.tsumemi.nav_controls import FreeModeNavControls, SpeedrunNavControls
+from tsumemi.src.tsumemi.nav_controls import MainWindowView
 from tsumemi.src.tsumemi.settings_window import SettingsWindow, CONFIG_PATH
 
 if TYPE_CHECKING:
     from typing import List, Optional, Union
-    import tsumemi.src.tsumemi.board_canvas as bc
     PathLike = Union[str, os.PathLike]
 
 
@@ -62,17 +61,6 @@ def _read_config_file(config: configparser.ConfigParser, filepath: PathLike
     return imghand.SkinSettings(piece_skin, board_skin, komadai_skin)
 
 
-def _setup_main_window(root: tk.Tk) -> ttk.Frame:
-    root.option_add("*tearOff", False)
-    root.grid_columnconfigure(0, weight=1)
-    root.grid_rowconfigure(0, weight=1)
-    root.title("tsumemi")
-    # mainframe is the main frame of the root window
-    mainframe = ttk.Frame(root)
-    mainframe.grid(column=0, row=0, sticky="NSEW")
-    return mainframe
-
-
 class RootController(evt.IObserver):
     """Root controller for the application. Manages top-level logic
     and GUI elements.
@@ -95,92 +83,23 @@ class RootController(evt.IObserver):
             timer.TimerSplitEvent: self._on_split,
             plist.ProbSelectedEvent: self._on_prob_selected,
         }
-        # Everything after this point should be GUI
+        
+        # GUI
         self.root: tk.Tk = root
-        mainframe: ttk.Frame = _setup_main_window(root)
-        self.mainframe = mainframe
+        root.option_add("*tearOff", False)
+        root.grid_columnconfigure(0, weight=1)
+        root.grid_rowconfigure(0, weight=1)
+        root.title("tsumemi")
+        
         self.menubar: Menubar = Menubar(parent=self.root, controller=self)
         
-        board_frame = ttk.Frame(mainframe)
-        _, board_canvas = self.main_game.make_navigable_view(parent=board_frame)
-        board_canvas.bind("<Configure>", board_canvas.on_resize)
-        
-        main_timer_view = self.main_timer.make_timer_pane(
-            parent=mainframe,
-        )
-        # Main problem list
-        problem_list_pane = self.main_problem_list.make_problem_list_pane(
-            parent=mainframe,
-        )
-        # Solution text label.
-        # The wraplength isn't right.
-        lbl_solution = SolutionLabel(mainframe, justify="left", height=3,
-            wraplength=board_canvas.width,
-        )
-        # Problem navigation controls
-        self._navcons = {
-            "free" : FreeModeNavControls(
-                parent=mainframe, controller=self,
-            ),
-            "speedrun" : SpeedrunNavControls(
-                parent=mainframe, controller=self,
-            )
-        }
-        for navcon in self._navcons.values():
-            navcon.grid(column=0, row=2)
-            navcon.grid_remove()
-        self.nav_controls = self._navcons["free"]
-        
-        # Speedrun buttons
-        speedrun_frame = ttk.Frame(mainframe)
-        btn_speedrun = ttk.Button(speedrun_frame, text="Start speedrun",
-            command=self.start_speedrun
-        )
-        btn_abort_speedrun = ttk.Button(speedrun_frame, text="Abort speedrun",
-            command=self.abort_speedrun
-        )
-        
-        # assign all views to self for later reference if needed.
-        self.board_frame = board_frame
-        self.board = board_canvas
-        self.board_views: List[bc.BoardCanvas] = []
-        self.board_views.append(board_canvas)
-        self.lbl_solution = lbl_solution
-        self.main_timer_view = main_timer_view
-        self.problem_list_pane = problem_list_pane
-        self.btn_speedrun = btn_speedrun
-        self.btn_abort_speedrun = btn_abort_speedrun
-        btn_abort_speedrun.config(state="disabled")
+        self.mainframe: MainWindowView = MainWindowView(root, self)
+        self.mainframe.grid_items_normal()
         
         # Keyboard shortcuts
         self.bindings = Bindings(self)
         self.bindings.bind_shortcuts(self.root, self.bindings.MASTER_SHORTCUTS)
         self.bindings.bind_shortcuts(self.root, self.bindings.FREE_SHORTCUTS)
-        
-        # grid everything
-        mainframe.grid_columnconfigure(0, weight=1)
-        mainframe.grid_columnconfigure(1, weight=1)
-        mainframe.grid_rowconfigure(0, weight=1)
-        
-        board_frame.grid_columnconfigure(0, weight=1)
-        board_frame.grid_rowconfigure(0, weight=1)
-        main_timer_view.grid_columnconfigure(0, weight=0)
-        main_timer_view.grid_rowconfigure(0, weight=0)
-        problem_list_pane.grid_columnconfigure(0, weight=1)
-        problem_list_pane.grid_rowconfigure(0, weight=1)
-        
-        board_frame.grid(column=0, row=0, sticky="NSEW")
-        board_frame.grid_configure(padx=5, pady=5)
-        board_canvas.grid(column=0, row=0, sticky="NSEW")
-        lbl_solution.grid(column=0, row=1, sticky="W")
-        lbl_solution.grid_configure(padx=5, pady=5)
-        self.nav_controls.grid()
-        main_timer_view.grid(column=1, row=1)
-        problem_list_pane.grid(column=1, row=0, sticky="NSEW")
-        problem_list_pane.grid_configure(padx=5, pady=5)
-        speedrun_frame.grid(column=1, row=2)
-        btn_speedrun.grid(column=0, row=0)
-        btn_abort_speedrun.grid(column=1, row=0)
         return
     
     def open_folder(self, event: Optional[tk.Event] = None,
@@ -210,11 +129,9 @@ class RootController(evt.IObserver):
         """
         self._read_problem(prob)
         window_title = "tsumemi - " + str(prob.filepath)
-        self.board.draw()
-        move_input_handler = self.board.move_input_handler
-        if move_input_handler is not None:
-            move_input_handler.enable()
-        self.lbl_solution.hide_solution()
+        self.mainframe.refresh_main_board()
+        self.mainframe.enable_move_input()
+        self.mainframe.hide_solution()
         self.root.title(window_title)
         return
     
@@ -228,7 +145,7 @@ class RootController(evt.IObserver):
         if game is None:
             return # file unreadable, error out
         move_string_list = game.to_notation_ja_kif() # at end of game
-        self.lbl_solution.set_solution_text("　".join(move_string_list))
+        self.mainframe.set_solution("　".join(move_string_list))
         game.go_to_start()
         self.main_game.set_game(game)
         return
@@ -287,35 +204,25 @@ class RootController(evt.IObserver):
         self.speedrun_controller.abort_speedrun()
         return
     
+    def update_nav_control_pane(self, nav_pane_constructor) -> None:
+        self.mainframe.update_nav_control_pane(nav_pane_constructor)
+        return
+    
     def set_speedrun_ui(self) -> None:
-        # Make UI changes
-        self.nav_controls.grid_remove()
-        self.nav_controls = self._navcons["speedrun"]
-        self.nav_controls.show_sol_skip()
-        self.nav_controls.grid()
-        # Set application state
+        # TODO: rename method
         self.bindings.unbind_shortcuts(self.root, self.bindings.FREE_SHORTCUTS)
         return
     
     def remove_speedrun_ui(self) -> None:
-        # Abort speedrun, go back to free browsing
-        # Make UI changes
-        self.nav_controls.grid_remove()
-        self.nav_controls = self._navcons["free"]
-        self.nav_controls.grid()
-        # Set application state
+        # TODO: rename method
+        self.update_nav_control_pane(self.mainframe.make_nav_pane_normal)
         self.bindings.bind_shortcuts(self.root, self.bindings.FREE_SHORTCUTS)
         return
     
     #=== GUI display methods
     def toggle_solution(self, event: Optional[tk.Event] = None) -> None:
         # GUI callback
-        self.lbl_solution.toggle_solution()
-        return
-    
-    def flip_board(self, want_upside_down: bool) -> None:
-        # GUI callback
-        self.board.flip_board(want_upside_down)
+        self.mainframe.toggle_solution()
         return
     
     def apply_skin_settings(self, settings: imghand.SkinSettings
@@ -323,12 +230,7 @@ class RootController(evt.IObserver):
         # GUI callback
         self.skin_settings = settings
         self.main_game.skin_settings = settings
-        piece_skin, board_skin, komadai_skin = settings.get()
-        for board_canvas in self.board_views:
-            board_canvas.apply_piece_skin(piece_skin)
-            board_canvas.apply_board_skin(board_skin)
-            board_canvas.apply_komadai_skin(komadai_skin)
-            board_canvas.draw()
+        self.mainframe.apply_skins(settings)
         return
     
     #=== Observer callbacks
@@ -346,44 +248,6 @@ class RootController(evt.IObserver):
         return
 
 
-class SolutionLabel(tk.Label):
-    """Label to display, show, and hide problem solutions.
-    """
-    def __init__(self, parent: tk.Widget, *args, **kwargs) -> None:
-        super().__init__(parent, *args, **kwargs)
-        self.is_solution_shown: bool = True
-        self.solution_text: str = "Open a folder of problems to display."
-        self.textvar: tk.StringVar = tk.StringVar(value=self.solution_text)
-        self["textvariable"] = self.textvar
-        
-        defaultfont = font.Font(font=self["font"])
-        typeface = defaultfont["family"]
-        fontsize = defaultfont["size"]
-        self.config(font=(typeface, fontsize+2))
-        return
-    
-    def set_solution_text(self, text: str) -> None:
-        self.solution_text = text
-        return
-    
-    def hide_solution(self) -> None:
-        self.textvar.set("[solution hidden]")
-        self.is_solution_shown = False
-        return
-    
-    def show_solution(self) -> None:
-        self.textvar.set(self.solution_text)
-        self.is_solution_shown = True
-        return
-    
-    def toggle_solution(self, event: Optional[tk.Event] = None) -> None:
-        if self.is_solution_shown:
-            self.hide_solution()
-        else:
-            self.show_solution()
-        return
-
-
 class Bindings:
     # Just to group all shortcut bindings together for convenience.
     def __init__(self, controller):
@@ -397,8 +261,8 @@ class Bindings:
         }
         
         self.FREE_SHORTCUTS = {
-            "<Key-h>": self.controller.toggle_solution,
-            "<Key-H>": self.controller.toggle_solution,
+            "<Key-h>": self.controller.mainframe.toggle_solution,
+            "<Key-H>": self.controller.mainframe.toggle_solution,
             "<Left>": self.controller.go_prev_file,
             "<Right>": self.controller.go_next_file,
         }
@@ -553,12 +417,12 @@ class StatisticsDialog(tk.Toplevel):
         self.grid_rowconfigure(2, weight=1)
         for child in self.winfo_children():
             child.grid_configure(padx=5, pady=5)
-        lbl_report.grid(column=0, row=0, columnspan=2)
-        lbl_message.grid(column=0, row=1, columnspan=2)
-        txt_report.grid(column=0, row=2, sticky="NSEW")
-        vsc_txt_report.grid(column=1, row=2, sticky="NS")
-        hsc_txt_report.grid(column=0, row=3, sticky="EW")
-        btn_ok.grid(column=0, row=4)
+        lbl_report.grid(row=0, column=0, columnspan=2)
+        lbl_message.grid(row=1, column=0, columnspan=2)
+        txt_report.grid(row=2, column=0, sticky="NSEW")
+        vsc_txt_report.grid(row=2, column=1, sticky="NS")
+        hsc_txt_report.grid(row=3, column=0, sticky="EW")
+        btn_ok.grid(row=4, column=0)
         return
 
 

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from tkinter import messagebox
+from tkinter import messagebox, ttk
 from typing import TYPE_CHECKING
 
 import tsumemi.src.tsumemi.event as evt
@@ -31,27 +31,40 @@ class SpeedrunController:
         old_state.on_exit()
         new_state.on_entry()
         self.current_speedrun_state = new_state
+        self._state_change_callback(new_state)
+        return
+    
+    def _state_change_callback(self, state: SpeedrunState) -> None:
+        if isinstance(state, SpeedrunQuestionState):
+            constructor = self.make_nav_pane_question
+            self.target.update_nav_control_pane(constructor)
+        elif isinstance(state, SpeedrunAnswerState):
+            constructor = self.make_nav_pane_answer
+            self.target.update_nav_control_pane(constructor)
+        elif isinstance(state, SpeedrunSolutionState):
+            constructor = self.make_nav_pane_solution
+            self.target.update_nav_control_pane(constructor)
         return
     
     def start_speedrun(self) -> None:
         self.target.go_to_file(idx=0)
         self.target.main_game.set_speedrun_mode()
         self.target.set_speedrun_ui()
-        self.target.main_timer_view.allow_only_pause()
+        self.target.mainframe.main_timer_view.allow_only_pause()
         self.target.main_timer.reset()
         self.start_timer()
-        self.target.btn_speedrun.config(state="disabled")
-        self.target.btn_abort_speedrun.config(state="normal")
+        self.target.mainframe.btn_speedrun.config(state="disabled")
+        self.target.mainframe.btn_abort_speedrun.config(state="normal")
         self.go_to_state("question")
         return
     
     def abort_speedrun(self) -> None:
         self.stop_timer()
-        self.target.main_timer_view.allow_all()
+        self.target.mainframe.main_timer_view.allow_all()
         self.target.main_game.set_free_mode()
         self.target.remove_speedrun_ui()
-        self.target.btn_speedrun.config(state="normal")
-        self.target.btn_abort_speedrun.config(state="disabled")
+        self.target.mainframe.btn_speedrun.config(state="normal")
+        self.target.mainframe.btn_abort_speedrun.config(state="disabled")
         self.go_to_state("off")
         return
     
@@ -68,7 +81,7 @@ class SpeedrunController:
         return has_next
     
     def show_solution(self) -> None:
-        self.target.lbl_solution.show_solution()
+        self.target.mainframe.show_solution()
         return
     
     def start_timer(self) -> None:
@@ -95,29 +108,65 @@ class SpeedrunController:
         self.target.main_problem_list.set_status(plist.ProblemStatus.SKIP)
         return
     
-    def show_continue(self) -> None:
-        self.target.nav_controls.show_continue()
-        return
-    
-    def show_correct_wrong(self) -> None:
-        self.target.nav_controls.show_correct_wrong()
-        return
-    
-    def show_sol_skip(self) -> None:
-        self.target.nav_controls.show_sol_skip()
-        return
-    
     def disable_solving(self) -> None:
-        move_input_handler = self.target.board.move_input_handler
-        if move_input_handler is not None:
-            move_input_handler.disable()
+        self.target.mainframe.disable_move_input()
         return
     
     def enable_solving(self) -> None:
-        move_input_handler = self.target.board.move_input_handler
-        if move_input_handler is not None:
-            move_input_handler.enable()
+        self.target.mainframe.enable_move_input()
         return
+    
+    def make_nav_pane_question(self, parent):
+        nav = ttk.Frame(parent) #NavControlPane
+        btn_show_solution = ttk.Button(nav,
+            text="Show solution",
+            command=self._speedrun_states["question"].show_answer
+        )
+        btn_show_solution.grid(
+            row=0, column=0, sticky="E",
+            padx=5, pady=5
+        )
+        btn_skip = ttk.Button(nav,
+            text="Skip",
+            command=self._speedrun_states["question"].skip
+        )
+        btn_skip.grid(
+            row=0, column=1, sticky="W",
+            padx=5, pady=5
+        )
+        return nav
+    
+    def make_nav_pane_answer(self, parent):
+        nav = ttk.Frame(parent) #NavControlPane
+        btn_correct = ttk.Button(nav,
+            text="Correct",
+            command=self._speedrun_states["answer"].mark_correct_and_continue
+        )
+        btn_correct.grid(
+            row=0, column=0, sticky="E",
+            padx=5, pady=5
+        )
+        btn_wrong = ttk.Button(nav,
+            text="Wrong",
+            command=self._speedrun_states["answer"].mark_wrong_and_continue
+        )
+        btn_wrong.grid(
+            row=0, column=1, sticky="W",
+            padx=5, pady=5
+        )
+        return nav
+    
+    def make_nav_pane_solution(self, parent):
+        nav = ttk.Frame(parent) #NavControlPane
+        btn_continue = ttk.Button(nav,
+            text="Next",
+            command=self._speedrun_states["solution"].next_question
+        )
+        btn_continue.grid(
+            row=0, column=0,
+            padx=5, pady=5
+        )
+        return nav
 
 
 class SpeedrunState(evt.IObserver):
@@ -142,7 +191,6 @@ class SpeedrunQuestionState(SpeedrunState):
         return
     
     def on_entry(self) -> None:
-        self.controller.show_sol_skip()
         self.controller.start_timer()
         return
     
@@ -193,7 +241,6 @@ class SpeedrunAnswerState(SpeedrunState):
         self.controller.split_timer()
         self.controller.stop_timer()
         self.controller.show_solution()
-        self.controller.show_correct_wrong()
         return
     
     def mark_correct_and_continue(self) -> None:
@@ -214,7 +261,6 @@ class SpeedrunSolutionState(SpeedrunState):
         self.controller.split_timer()
         self.controller.stop_timer()
         self.controller.show_solution()
-        self.controller.show_continue()
         return
     
     def next_question(self) -> None:
