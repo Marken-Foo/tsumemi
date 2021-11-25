@@ -112,10 +112,16 @@ class TestTimer(unittest.TestCase):
         cases = [0, 60, 61, 3600, 3601, 3660, 3662]
         answers = [(0,0,0), (0,1,0), (0,1,1), (1,0,0), (1,0,1), (1,1,0), (1,1,2)]
         for case, answer in zip(cases, answers):
-            self.assertEqual(timer.sec_to_hms(case), answer)
+            self.assertEqual(
+                timer.Time.to_hms(timer.Time(case)),
+                answer
+            )
     
     def test_sec_to_str(self, places=1):
         cases = [0.0, 34.1, 78.2, 1437.0, 3602.6, 86400.0, 359999.9, 363659.7]
         answers = ["00:00:00.0", "00:00:34.1", "00:01:18.2", "00:23:57.0", "01:00:02.6", "24:00:00.0", "99:59:59.9", "101:00:59.7"]
         for case, answer in zip(cases, answers):
-            self.assertEqual(timer.sec_to_str(case, places=1), answer)
+            self.assertEqual(
+                timer.Time.to_hms_str(timer.Time(case), places=1),
+                answer
+            )

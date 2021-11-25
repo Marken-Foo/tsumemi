@@ -78,7 +78,7 @@ class TestProblemList(unittest.TestCase):
     
     def verify_list_event(self):
         self.assertTrue(isinstance(self.event, ProbListEvent))
-        self.assertEqual(self.event.prob_list, self.problem_list.problems)
+        self.assertEqual(self.event.sender, self.problem_list)
     
     def test_clear(self):
         self.problem_list.clear()
@@ -154,25 +154,25 @@ class TestProblemList(unittest.TestCase):
     def test_next_normal(self):
         idx = 5
         self.problem_list.go_to_idx(idx)
-        self.assertTrue(self.problem_list.next())
+        self.assertTrue(self.problem_list.go_to_next())
         self.verify_active_prob_by_idx(idx+1)
     
     def test_next_at_end(self):
         end_idx = len(self.problem_list.problems) - 1
         self.problem_list.go_to_idx(end_idx)
-        self.assertFalse(self.problem_list.next())
+        self.assertFalse(self.problem_list.go_to_next())
         self.verify_active_prob_by_idx(end_idx)
     
     def test_prev_normal(self):
         idx = 5
         self.problem_list.go_to_idx(idx)
-        self.assertTrue(self.problem_list.prev())
+        self.assertTrue(self.problem_list.go_to_prev())
         self.verify_active_prob_by_idx(idx-1)
     
     def test_prev_at_start(self):
         start_idx = 0
         self.problem_list.go_to_idx(start_idx)
-        self.assertFalse(self.problem_list.prev())
+        self.assertFalse(self.problem_list.go_to_prev())
         self.verify_active_prob_by_idx(start_idx)
     
     def test_sort_by_file(self):
