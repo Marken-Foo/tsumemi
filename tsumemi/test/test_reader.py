@@ -31,7 +31,7 @@ class TestReadKifu(unittest.TestCase):
         sfen_test = reader.game.position.to_sfen()
         read_file(r"./tsumemi/test/test_kifus/testlinear.kifu", reader, visitor)
         # print(reader.game.position)
-        sfen_answer = "+R3g1knl/3s2g2/p1p1pp1pp/3p5/9/1S5P1/P+sN1PPP1P/2+b2S1R1/LK5NL w B2GN4Plp 72"
+        sfen_answer = "+R3g1knl/3s2g2/p1p1pp1pp/3p5/9/1S5P1/P+sN1PPP1P/2+b2S1R1/LK5NL b B2GN4Plp 72"
         reader.game.go_to_end()
         self.assertEqual(reader.game.position.to_sfen(), sfen_answer)
         # print(reader.game.movetree.to_latin())

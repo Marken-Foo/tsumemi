@@ -46,7 +46,8 @@ class BoardRepresentation:
                 idx = self.cr_to_idx(col_num, row_num)
                 self.board[idx] = Koma.NONE
                 self.empty_idxs.add(idx)
-        # Koma set; indexed by side and komatype, contents are indices of where they are located on the board.
+        # Koma set: indexed by side and komatype
+        # contents are indices of where they are located on the board.
         koma_sente: Dict[Koma, Set[int]] = {
             Koma.make(Side.SENTE, ktype): set() for ktype in KOMA_TYPES
         }
@@ -87,14 +88,19 @@ class BoardRepresentation:
         idx = self.sq_to_idx(sq)
         self.board[idx] = koma
         if prev_koma == Koma.INVALID:
-            raise ValueError(f"Cannot set koma {str(koma)} to replace Koma.INVALID")
+            raise ValueError(
+                f"Cannot set koma {str(koma)} to replace Koma.INVALID"
+            )
+        if koma == Koma.INVALID:
+            raise ValueError(
+                f"Cannot set koma to be Koma.INVALID"
+            )
         if koma == Koma.NONE:
             self.empty_idxs.add(idx)
-        elif koma != Koma.INVALID:
-            # cannot set koma to INVALID
+        else:
             self.koma_sets[koma].add(idx)
             self.empty_idxs.discard(idx)
-        if prev_koma != Koma.NONE and prev_koma != Koma.INVALID:
+        if prev_koma != Koma.NONE:
             self.koma_sets[prev_koma].discard(idx)
         return
     
@@ -223,8 +229,8 @@ class Position:
     def make_move(self, move: Move) -> None:
         """Makes a move on the board.
         """
-        if move.is_null():
-            # to account for game terminations, which are null moves
+        if move.is_pass():
+            # to account for game terminations or other passing moves
             self.movenum += 1
             return
         elif move.is_drop:
@@ -247,7 +253,7 @@ class Position:
     
     def unmake_move(self, move: Move) -> None:
         """Unplays/retracts a move from the board."""
-        if move.is_null():
+        if move.is_pass():
             self.movenum -= 1
             return
         elif move.is_drop:
