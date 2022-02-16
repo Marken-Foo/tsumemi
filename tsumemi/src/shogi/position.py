@@ -25,15 +25,12 @@ class Dir(IntEnum):
     NW = 12
 
 
-class Position:
-    """Represents a shogi position, including board position, side to
-    move, and pieces in hand.
-    
-    Board representation used is mailbox: a 1D array interpreted as a
-    9x9 array with padding.
-    """
+class PositionRepresentation:
+    # Internal representation for the position.
+    # Board representation used is mailbox.
+    # 1D array interpreted as a 9x9 array with padding.
+    # Its interfaces should use Squares.
     def __init__(self) -> None:
-        # mailbox representation; 11 cols, 13 rows (2-square padding)
         self.board: List[Koma] = [Koma.INVALID] * 143
         # indices of squares containing Koma.NONE (empty squares)
         self.empty_idxs: Set[int] = set()
@@ -49,14 +46,15 @@ class Position:
                 self.board[idx] = Koma.NONE
                 self.empty_idxs.add(idx)
         # Koma set; indexed by side and komatype, contents are indices of where they are located on the board.
-        koma_sente: Dict[Koma, Set[int]] = {Koma.make(Side.SENTE, ktype): set() for ktype in KOMA_TYPES}
-        koma_gote: Dict[Koma, Set[int]] = {Koma.make(Side.GOTE, ktype): set() for ktype in KOMA_TYPES}
-        self.koma_sets: Dict[Koma, Set[int]] = {**koma_sente, **koma_gote}
-        # hands and other info
-        self.hand_sente: Dict[KomaType, int] = {ktype: 0 for ktype in HAND_TYPES}
-        self.hand_gote: Dict[KomaType, int] = {ktype: 0 for ktype in HAND_TYPES}
-        self.turn = Side.SENTE
-        self.movenum = 1
+        koma_sente: Dict[Koma, Set[int]] = {
+            Koma.make(Side.SENTE, ktype): set() for ktype in KOMA_TYPES
+        }
+        koma_gote: Dict[Koma, Set[int]] = {
+            Koma.make(Side.GOTE, ktype): set() for ktype in KOMA_TYPES
+        }
+        self.koma_sets: Dict[Koma, Set[int]] = {
+            **koma_sente, **koma_gote
+        }
         return
     
     def sq_to_idx(self, sq: Square) -> int:
@@ -84,24 +82,6 @@ class Position:
         else:
             return True if row in (7, 8, 9) else False
     
-    def __str__(self) -> str:
-        """Return visual text representation of position.
-        """
-        rows = []
-        for row_num in range(1, 10, 1):
-            row = []
-            for col_num in range(9, 0, -1):
-                row.append(str(self.board[self.cr_to_idx(col_num, row_num)]))
-            rows.append("".join(row))
-        board = "\n".join(rows)
-        elems = [
-            board, "NONE-FU-KY-KE-GI-KI-KA-HI",
-            "Sente hand:", str(self.hand_sente),
-            "Gote hand:", str(self.hand_gote),
-            "Turn: Sente" if self.turn == Side.SENTE else "Turn: Gote"
-        ]
-        return "\n".join(elems)
-    
     def set_koma(self, koma: Koma, sq: Square) -> None:
         prev_koma = self.get_koma(sq)
         idx = self.sq_to_idx(sq)
@@ -117,6 +97,50 @@ class Position:
     
     def get_koma(self, sq: Square) -> Koma:
         return self.board[self.sq_to_idx(sq)]
+
+
+class Position:
+    """Represents a shogi position, including board position, side to
+    move, and pieces in hand.
+    
+    Board representation used is mailbox: a 1D array interpreted as a
+    9x9 array with padding.
+    """
+    def __init__(self) -> None:
+        self.board_representation = PositionRepresentation()
+        self.reset()
+        return
+    
+    def reset(self) -> None:
+        self.board_representation.reset()
+        # hands and other info
+        self.hand_sente: Dict[KomaType, int] = {
+            ktype: 0 for ktype in HAND_TYPES
+        }
+        self.hand_gote: Dict[KomaType, int] = {
+            ktype: 0 for ktype in HAND_TYPES
+        }
+        self.turn = Side.SENTE
+        self.movenum = 1
+        return
+    
+    def __str__(self) -> str:
+        """Return visual text representation of position.
+        """
+        rows = []
+        for row_num in range(1, 10, 1):
+            row = []
+            for col_num in range(9, 0, -1):
+                row.append(str(self.board_representation.board[self.board_representation.cr_to_idx(col_num, row_num)]))
+            rows.append("".join(row))
+        board = "\n".join(rows)
+        elems = [
+            board, "NONE-FU-KY-KE-GI-KI-KA-HI",
+            "Sente hand:", str(self.hand_sente),
+            "Gote hand:", str(self.hand_gote),
+            "Turn: Sente" if self.turn == Side.SENTE else "Turn: Gote"
+        ]
+        return "\n".join(elems)
     
     def get_hand(self, side: Side) -> Dict[KomaType, int]:
         return self.hand_sente if side is Side.SENTE else self.hand_gote
@@ -142,6 +166,12 @@ class Position:
     def is_hand_empty(self, side: Side) -> bool:
         target = self.get_hand(side)
         return not any(target)
+    
+    def set_koma(self, koma: Koma, sq: Square) -> None:
+        return self.board_representation.set_koma(koma, sq)
+    
+    def get_koma(self, sq: Square) -> Koma:
+        return self.board_representation.get_koma(sq)
     
     def create_move(self, sq1: Square, sq2: Square, is_promotion: bool = False) -> Move:
         """Creates a move from two squares. Move may not necessarily
@@ -240,7 +270,7 @@ class Position:
             blanks = 0
             row = []
             for col_num in range(9, 0, -1):
-                koma = self.board[self.cr_to_idx(col_num, row_num)]
+                koma = self.board_representation.board[self.board_representation.cr_to_idx(col_num, row_num)]
                 if koma is Koma.NONE:
                     blanks += 1
                 else:
