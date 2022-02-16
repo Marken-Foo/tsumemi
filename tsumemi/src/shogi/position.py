@@ -14,7 +14,7 @@ from tsumemi.src.shogi.basetypes import HAND_TYPES, KOMA_FROM_SFEN, KOMA_TYPES, 
 
 
 class Dir(IntEnum):
-    # Direction; for use with board representation in Position
+    # Direction; dependent on board representation
     N = -1
     NE = -14
     E = -13
@@ -29,7 +29,6 @@ class BoardRepresentation:
     # Internal representation for the position.
     # Board representation used is mailbox.
     # 1D array interpreted as a 9x9 array with padding.
-    # Its interfaces should use Squares.
     def __init__(self) -> None:
         self.board: List[Koma] = [Koma.INVALID] * 143
         # indices of squares containing Koma.NONE (empty squares)
@@ -37,6 +36,42 @@ class BoardRepresentation:
         self.koma_sets: Dict[Koma, Set[int]] = {}
         self.reset()
         return
+    
+    def __str__(self) -> str:
+        rows = []
+        for row_num in range(1, 10, 1):
+            row = []
+            for col_num in range(9, 0, -1):
+                koma = self.board[self.cr_to_idx(col_num, row_num)]
+                row.append(str(koma))
+            rows.append("".join(row))
+        board = "\n".join(rows)
+        return board
+    
+    def to_sfen(self) -> str:
+        board = []
+        for row_num in range(1, 10):
+            board.append(self._build_sfen_row(row_num))
+        return "/".join(board)
+    
+    def _build_sfen_row(self, row_num: int) -> str:
+        blanks = 0
+        row: List[str] = []
+        for col_num in range(9, 0, -1):
+            koma = self.board[self.cr_to_idx(col_num, row_num)]
+            if koma is Koma.NONE:
+                blanks += 1
+                continue
+            elif blanks != 0:
+                row.append(str(blanks))
+                blanks = 0
+            koma_symbol = SFEN_FROM_KOMA[koma]
+            if koma.is_gote():
+                koma_symbol = koma_symbol.lower()
+            row.append(koma_symbol)
+        if blanks != 0:
+            row.append(str(blanks))
+        return "".join(row)
     
     def reset(self) -> None:
         for i in range(143):
@@ -115,6 +150,26 @@ class HandRepresentation:
         }
         return
     
+    def __str__(self) -> str:
+        string_gen = (
+            f"{str(ktype)}: {str(count)}"
+            for ktype, count in self.mochigoma_dict.items()
+        )
+        return ", ".join(string_gen)
+    
+    def to_sfen(self) -> str:
+        if self.is_empty():
+            # Writing '-' in SFEN needs both hands, not just one
+            return ""
+        sfen_hand = []
+        for ktype in HAND_TYPES:
+            count = self.mochigoma_dict[ktype]
+            if count > 1:
+                sfen_hand.append(str(count))
+            if count > 0:
+                sfen_hand.append(SFEN_FROM_KOMA[Koma(ktype)])
+        return "".join(sfen_hand)
+    
     def reset(self) -> None:
         self.mochigoma_dict = {
             ktype: 0 for ktype in HAND_TYPES
@@ -158,17 +213,8 @@ class Position:
         return
     
     def __str__(self) -> str:
-        """Return visual text representation of position.
-        """
-        rows = []
-        for row_num in range(1, 10, 1):
-            row = []
-            for col_num in range(9, 0, -1):
-                row.append(str(self.board_representation.board[self.board_representation.cr_to_idx(col_num, row_num)]))
-            rows.append("".join(row))
-        board = "\n".join(rows)
         elems = [
-            board, "NONE-FU-KY-KE-GI-KI-KA-HI",
+            str(self.board_representation),
             "Sente hand:", str(self.hand_sente),
             "Gote hand:", str(self.hand_gote),
             "Turn: Sente" if self.turn == Side.SENTE else "Turn: Gote"
@@ -183,7 +229,7 @@ class Position:
         self.movenum = 1
         return
     
-    def get_hand_of_side(self, side: Side) -> Dict[KomaType, int]:
+    def get_hand_of_side(self, side: Side) -> HandRepresentation:
         return self.hand_sente if side is Side.SENTE else self.hand_gote
     
     def set_hand_koma_count(self,
@@ -214,8 +260,12 @@ class Position:
     def get_koma(self, sq: Square) -> Koma:
         return self.board_representation.get_koma(sq)
     
-    def create_move(self, sq1: Square, sq2: Square, is_promotion: bool = False) -> Move:
-        """Creates a move from two squares. Move may not necessarily
+    def create_move(self,
+            sq1: Square, 
+            sq2: Square,
+            is_promotion: bool = False
+        ) -> Move:
+        """Creates a move from two squares. Move need not necessarily
         be legal or even valid.
         """
         return Move(
@@ -242,7 +292,10 @@ class Position:
         else:
             self.set_koma(Koma.NONE, move.start_sq)
             if move.captured != Koma.NONE:
-                self.inc_hand_koma(move.side, KomaType.get(move.captured).unpromote())
+                self.inc_hand_koma(
+                    move.side,
+                    KomaType.get(move.captured).unpromote()
+                )
             self.set_koma(
                 move.koma.promote() if move.is_promotion else move.koma,
                 move.end_sq
@@ -252,7 +305,8 @@ class Position:
             return
     
     def unmake_move(self, move: Move) -> None:
-        """Unplays/retracts a move from the board."""
+        """Unplays/retracts a move from the board.
+        """
         if move.is_pass():
             self.movenum -= 1
             return
@@ -264,92 +318,116 @@ class Position:
             return
         else:
             if move.captured != Koma.NONE:
-                self.dec_hand_koma(move.side, KomaType.get(move.captured).unpromote())
+                self.dec_hand_koma(
+                    move.side,
+                    KomaType.get(move.captured).unpromote()
+                )
             self.set_koma(move.captured, move.end_sq)
             self.set_koma(move.koma, move.start_sq)
             self.turn = self.turn.switch()
             self.movenum -= 1
             return
     
-    def from_sfen(self, sfen: str) -> None:
-        """Parse an SFEN string and set up the position it represents.
-        """
-        board, turn, hands, move_num = sfen.split(" ")
-        self.reset()
-        self.turn = Side.SENTE if turn == "b" else Side.GOTE
-        self.movenum = int(move_num)
-        rows = board.split("/")
+    def _set_koma_from_sfen(self,
+            ch: str, 
+            col_num: int,
+            row_num: int,
+            promotion_flag: bool
+        ) -> None:
+        try:
+            koma = KOMA_FROM_SFEN[ch]
+        except KeyError:
+            raise ValueError(f"SFEN contains unknown character '{ch}'")
+        sq = Square.from_cr(col_num=col_num, row_num=row_num)
+        if promotion_flag:
+            koma = koma.promote()
+        self.set_koma(koma, sq)
+        return
+    
+    def _parse_sfen_board(self, sfen_board: str) -> None:
+        # Parses the part of an SFEN string representing the board.
+        rows = sfen_board.split("/")
+        if len(rows) != 9:
+            raise ValueError("SFEN board has wrong number of rows")
         for i, row in enumerate(rows):
             col_num = 9
-            promo = False
+            promotion_flag = False
             for ch in row:
+                if col_num <= 0:
+                    raise ValueError("SFEN row has wrong length")
                 if ch.isdigit():
+                    if promotion_flag:
+                        raise ValueError("Digit cannot follow + in SFEN")
                     col_num -= int(ch)
                     continue
                 elif ch == "+":
-                    promo = True
+                    if promotion_flag:
+                        raise ValueError("+ cannot follow + in SFEN")
+                    promotion_flag = True
                     continue
                 else:
-                    koma = KOMA_FROM_SFEN[ch]
-                    if promo:
-                        koma = koma.promote()
-                        promo = False
-                    self.set_koma(koma, Square.from_cr(col_num=col_num, row_num=i+1))
+                    # This line has the intended side effects
+                    self._set_koma_from_sfen(
+                        ch, col_num, i+1, promotion_flag
+                    )
+                    promotion_flag = False
                     col_num -= 1
-        # Hand
-        it_hands = re.findall(r"(\d*)([plnsgbrPLNSGBR])", hands)
+            else: # for-else loop over row
+                if col_num != 0:
+                    raise ValueError("SFEN row has wrong length")
+                if promotion_flag:
+                    raise ValueError("SFEN row cannot end with +")
+        return
+    
+    def _parse_sfen_hands(self, sfen_hands: str) -> None:
+        it_hands = re.findall(r"(\d*)([plnsgbrPLNSGBR])", sfen_hands)
         for ch_count, ch in it_hands:
-            koma = KOMA_FROM_SFEN[ch]
+            try:
+                koma = KOMA_FROM_SFEN[ch]
+            except KeyError:
+                raise ValueError(f"SFEN contains unknown character '{ch}'")
             ktype = KomaType.get(koma)
-            target = self.hand_sente if ch.isupper() else self.hand_gote
+            target_hand = self.hand_sente if ch.isupper() else self.hand_gote
             count = int(ch_count) if ch_count else 1
-            target.set_komatype_count(ktype, count)
+            target_hand.set_komatype_count(ktype, count)
+        return
+    
+    def from_sfen(self, sfen: str) -> None:
+        """Parse an SFEN string and set up the position it represents.
+        """
+        sfen_board, sfen_turn, sfen_hands, sfen_move_num = sfen.split(" ")
+        self.reset()
+        if sfen_turn == "b":
+            self.turn = Side.SENTE
+        elif sfen_turn == "w":
+            self.turn = Side.GOTE
+        else:
+            # This is possibly too strict
+            raise ValueError("SFEN contains unknown side to move")
+        try:
+            self.movenum = int(sfen_move_num)
+        except ValueError:
+            raise ValueError(
+                f"SFEN contains unknown movenumber '{sfen_move_num}'"
+            )
+        try:
+            self._parse_sfen_board(sfen_board)
+            self._parse_sfen_hands(sfen_hands)
+        except ValueError as e:
+            raise ValueError(f"Invalid SFEN: '{sfen}'") from e
         return
     
     def to_sfen(self) -> str:
         """Return SFEN string representing the current position.
         """
-        sfen = []
-        # Start with board
-        for row_num in range(1, 10, 1):
-            blanks = 0
-            row = []
-            for col_num in range(9, 0, -1):
-                koma = self.board_representation.board[self.board_representation.cr_to_idx(col_num, row_num)]
-                if koma is Koma.NONE:
-                    blanks += 1
-                else:
-                    if blanks != 0:
-                        row.append(str(blanks))
-                        blanks = 0
-                    pc_symbol = SFEN_FROM_KOMA[koma]
-                    if koma.is_gote():
-                        pc_symbol = pc_symbol.lower()
-                    row.append(pc_symbol)
-            if blanks != 0:
-                row.append(str(blanks))
-            sfen.extend(row)
-            sfen.append("/")
-        sfen.pop(-1) # pop extra "/" char
-        # Side to move
-        stm = " b " if self.turn is Side.SENTE else " w "
-        sfen.append(stm)
-        # Hands, sente then gote
+        sfen_board = self.board_representation.to_sfen()
+        sfen_turn = "b" if self.turn is Side.SENTE else "w"
         if self.hand_sente.is_empty() and self.hand_gote.is_empty():
-            sfen.append("-")
+            sfen_hands = "-"
         else:
-            for pcty in HAND_TYPES:
-                count = self.hand_sente.get_komatype_count(pcty)
-                if count > 1:
-                    sfen.append(str(count))
-                if count != 0:
-                    sfen.append(SFEN_FROM_KOMA[Koma(pcty)])
-            for pcty in HAND_TYPES:
-                count = self.hand_gote.get_komatype_count(pcty)
-                if count > 1:
-                    sfen.append(str(count))
-                if count != 0:
-                    sfen.append(SFEN_FROM_KOMA[Koma(pcty)].lower())
-        # Move count
-        sfen.append(" " + str(self.movenum))
-        return "".join(sfen)
+            sfen_hands = "".join((
+                self.hand_sente.to_sfen(),
+                self.hand_gote.to_sfen().lower()
+            ))
+        sfen_move_num = str(self.movenum)
+        return " ".join((sfen_board, sfen_turn, sfen_hands, sfen_move_num))
