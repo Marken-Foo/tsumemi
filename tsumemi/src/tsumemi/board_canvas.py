@@ -298,7 +298,7 @@ class BoardCanvas(tk.Canvas):
         pad = (komadai_text_size / 8 if is_text else komadai_piece_size / 8)
         mochigoma_heading_size = 4 * komadai_char_height # "▲\n持\n駒\n"
         
-        c_hand = {ktype: count for (ktype, count) in hand.items() if count > 0}
+        c_hand = {ktype: count for (ktype, count) in hand.mochigoma_dict.items() if count > 0}
         num_piece_types = len(c_hand)
         k_width = 2 * komadai_piece_size
         k_height = (

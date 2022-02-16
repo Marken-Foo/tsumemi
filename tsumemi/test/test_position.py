@@ -1,13 +1,18 @@
 import unittest
 
 from tsumemi.src.shogi.basetypes import Koma, KomaType, Move, Side, Square
-from tsumemi.src.shogi.position import Position
+from tsumemi.src.shogi.position import HandRepresentation, Position
 
 
 class TestPositionMethods(unittest.TestCase):
     def setUp(self):
         self.position = Position()
         self.position.reset()
+    
+    def test_set_hand_komatype_count(self):
+        self.hand = HandRepresentation()
+        self.hand.set_komatype_count(KomaType.KE, 4)
+        self.assertEqual(self.hand.get_komatype_count(KomaType.KE), 4)
     
     def test_king_is_not_promoted(self):
         self.assertFalse(KomaType.get(Koma.OU).is_promoted())
@@ -18,7 +23,7 @@ class TestPositionMethods(unittest.TestCase):
     
     def test_set_hand_koma_count(self):
         self.position.set_hand_koma_count(Side.SHITATE, Koma.KE, 4)
-        self.assertEqual(self.position.get_hand(Side.SENTE)[Koma.KE], 4)
+        self.assertEqual(self.position.get_hand_of_side(Side.SENTE).mochigoma_dict[Koma.KE], 4)
     
     def test_make_move(self):
         self.position.set_koma(Koma.vGI, Square.b76)
@@ -26,7 +31,7 @@ class TestPositionMethods(unittest.TestCase):
         move = Move(start_sq=Square.b76, end_sq=Square.b87, is_promotion=True, koma=Koma.vGI, captured=Koma.UM)
         self.position.make_move(move)
         self.assertEqual(self.position.get_koma(sq=Square.b87), Koma.vNG)
-        self.assertEqual(self.position.get_hand(Side.GOTE)[Koma.KA], 1)
+        self.assertEqual(self.position.get_hand_of_side(Side.GOTE).mochigoma_dict[Koma.KA], 1)
     
     def test_from_to_sfen(self):
         sfen = "nk1n5/1g3g3/p8/2BP5/3+r5/9/9/9/9 b RBGg4s2n4l16p 17"

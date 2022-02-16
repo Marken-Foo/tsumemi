@@ -25,7 +25,7 @@ class Dir(IntEnum):
     NW = 12
 
 
-class PositionRepresentation:
+class BoardRepresentation:
     # Internal representation for the position.
     # Board representation used is mailbox.
     # 1D array interpreted as a 9x9 array with padding.
@@ -34,6 +34,7 @@ class PositionRepresentation:
         self.board: List[Koma] = [Koma.INVALID] * 143
         # indices of squares containing Koma.NONE (empty squares)
         self.empty_idxs: Set[int] = set()
+        self.koma_sets: Dict[Koma, Set[int]] = {}
         self.reset()
         return
     
@@ -52,13 +53,12 @@ class PositionRepresentation:
         koma_gote: Dict[Koma, Set[int]] = {
             Koma.make(Side.GOTE, ktype): set() for ktype in KOMA_TYPES
         }
-        self.koma_sets: Dict[Koma, Set[int]] = {
+        self.koma_sets = {
             **koma_sente, **koma_gote
         }
         return
     
     def sq_to_idx(self, sq: Square) -> int:
-        # Everything that comes from a Square should go through this
         return self.cr_to_idx(*(sq.get_cr()))
     
     def idx_to_sq(self, idx: int) -> Square:
@@ -86,9 +86,12 @@ class PositionRepresentation:
         prev_koma = self.get_koma(sq)
         idx = self.sq_to_idx(sq)
         self.board[idx] = koma
+        if prev_koma == Koma.INVALID:
+            raise ValueError(f"Cannot set koma {str(koma)} to replace Koma.INVALID")
         if koma == Koma.NONE:
             self.empty_idxs.add(idx)
         elif koma != Koma.INVALID:
+            # cannot set koma to INVALID
             self.koma_sets[koma].add(idx)
             self.empty_idxs.discard(idx)
         if prev_koma != Koma.NONE and prev_koma != Koma.INVALID:
@@ -99,27 +102,51 @@ class PositionRepresentation:
         return self.board[self.sq_to_idx(sq)]
 
 
-class Position:
-    """Represents a shogi position, including board position, side to
-    move, and pieces in hand.
-    
-    Board representation used is mailbox: a 1D array interpreted as a
-    9x9 array with padding.
-    """
+class HandRepresentation:
     def __init__(self) -> None:
-        self.board_representation = PositionRepresentation()
-        self.reset()
+        self.mochigoma_dict: Dict[KomaType, int] = {
+            ktype: 0 for ktype in HAND_TYPES
+        }
         return
     
     def reset(self) -> None:
-        self.board_representation.reset()
-        # hands and other info
-        self.hand_sente: Dict[KomaType, int] = {
+        self.mochigoma_dict = {
             ktype: 0 for ktype in HAND_TYPES
         }
-        self.hand_gote: Dict[KomaType, int] = {
-            ktype: 0 for ktype in HAND_TYPES
-        }
+        return
+    
+    def set_komatype_count(self, ktype: KomaType, count: int) -> None:
+        self.mochigoma_dict[ktype] = count
+        return
+    
+    def get_komatype_count(self, ktype: KomaType) -> int:
+        return self.mochigoma_dict[ktype]
+    
+    def inc_komatype(self, ktype: KomaType) -> None:
+        try:
+            self.mochigoma_dict[ktype] += 1
+        except KeyError:
+            self.mochigoma_dict[ktype] = 1
+        return
+    
+    def dec_komatype(self, ktype: KomaType) -> None:
+        if self.mochigoma_dict[ktype] <= 0:
+            raise ValueError("Cannot decrease number of pieces in hand below 0")
+        self.mochigoma_dict[ktype] -= 1
+        return
+    
+    def is_empty(self) -> bool:
+        return not any(self.mochigoma_dict.values())
+
+
+class Position:
+    """Represents a shogi position, including board position, side to
+    move, and pieces in hand.
+    """
+    def __init__(self) -> None:
+        self.board_representation = BoardRepresentation()
+        self.hand_sente = HandRepresentation()
+        self.hand_gote = HandRepresentation()
         self.turn = Side.SENTE
         self.movenum = 1
         return
@@ -142,30 +169,38 @@ class Position:
         ]
         return "\n".join(elems)
     
-    def get_hand(self, side: Side) -> Dict[KomaType, int]:
+    def reset(self) -> None:
+        self.board_representation.reset()
+        self.hand_sente.reset()
+        self.hand_gote.reset()
+        self.turn = Side.SENTE
+        self.movenum = 1
+        return
+    
+    def get_hand_of_side(self, side: Side) -> Dict[KomaType, int]:
         return self.hand_sente if side is Side.SENTE else self.hand_gote
     
-    def set_hand_koma_count(self, side: Side, ktype: KomaType, count: int) -> None:
-        target = self.get_hand(side)
-        target[ktype] = count
+    def set_hand_koma_count(self,
+            side: Side,
+            ktype: KomaType,
+            count: int
+        ) -> None:
+        hand = self.get_hand_of_side(side)
+        hand.set_komatype_count(ktype, count)
         return
     
     def inc_hand_koma(self, side: Side, ktype: KomaType) -> None:
-        target = self.get_hand(side)
-        try:
-            target[ktype] += 1
-        except KeyError:
-            target[ktype] = 1
+        hand = self.get_hand_of_side(side)
+        hand.inc_komatype(ktype)
         return
     
     def dec_hand_koma(self, side: Side, ktype: KomaType) -> None:
-        target = self.get_hand(side)
-        target[ktype] -= 1
+        hand = self.get_hand_of_side(side)
+        hand.dec_komatype(ktype)
         return
     
     def is_hand_empty(self, side: Side) -> bool:
-        target = self.get_hand(side)
-        return not any(target)
+        return self.get_hand_of_side(side).is_empty()
     
     def set_koma(self, koma: Koma, sq: Square) -> None:
         return self.board_representation.set_koma(koma, sq)
@@ -177,8 +212,12 @@ class Position:
         """Creates a move from two squares. Move may not necessarily
         be legal or even valid.
         """
-        return Move(start_sq=sq1, end_sq=sq2, is_promotion=is_promotion,
-            koma=self.get_koma(sq1), captured=self.get_koma(sq2)
+        return Move(
+            start_sq=sq1,
+            end_sq=sq2,
+            is_promotion=is_promotion,
+            koma=self.get_koma(sq1),
+            captured=self.get_koma(sq2)
         )
     
     def make_move(self, move: Move) -> None:
@@ -258,7 +297,7 @@ class Position:
             ktype = KomaType.get(koma)
             target = self.hand_sente if ch.isupper() else self.hand_gote
             count = int(ch_count) if ch_count else 1
-            target[ktype] = count
+            target.set_komatype_count(ktype, count)
         return
     
     def to_sfen(self) -> str:
@@ -290,17 +329,17 @@ class Position:
         stm = " b " if self.turn is Side.SENTE else " w "
         sfen.append(stm)
         # Hands, sente then gote
-        if not any(self.hand_sente.values()) and not any(self.hand_gote.values()):
+        if self.hand_sente.is_empty() and self.hand_gote.is_empty():
             sfen.append("-")
         else:
             for pcty in HAND_TYPES:
-                count = self.hand_sente[pcty]
+                count = self.hand_sente.get_komatype_count(pcty)
                 if count > 1:
                     sfen.append(str(count))
                 if count != 0:
                     sfen.append(SFEN_FROM_KOMA[Koma(pcty)])
             for pcty in HAND_TYPES:
-                count = self.hand_gote[pcty]
+                count = self.hand_gote.get_komatype_count(pcty)
                 if count > 1:
                     sfen.append(str(count))
                 if count != 0:

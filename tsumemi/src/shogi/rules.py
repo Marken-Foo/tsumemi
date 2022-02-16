@@ -41,8 +41,7 @@ def generate_drop_moves(
     if ktype not in HAND_TYPES:
         return []
     mvlist: List[Move] = []
-    hand = pos.hand_sente if side == Side.SENTE else pos.hand_gote
-    if hand[ktype] == 0:
+    if pos.get_hand_of_side(side).get_komatype_count(ktype) == 0:
         return mvlist
     for end_idx in pos.board_representation.empty_idxs:
         if ktype == KomaType.FU:
