@@ -155,39 +155,44 @@ class Position:
         self.set_koma(koma, sq)
         return
     
+    def _parse_sfen_board_row(self, sfen_row: str, row_num: int) -> None:
+        # Parses one row of an SFEN board string.
+        col_num = 9
+        promotion_flag = False
+        for ch in sfen_row:
+            if col_num <= 0:
+                raise ValueError("SFEN row has wrong length")
+            if ch.isdigit():
+                if promotion_flag:
+                    raise ValueError("Digit cannot follow + in SFEN")
+                col_num -= int(ch)
+                continue
+            elif ch == "+":
+                if promotion_flag:
+                    raise ValueError("+ cannot follow + in SFEN")
+                promotion_flag = True
+                continue
+            else:
+                # This line has the intended side effects
+                self._set_koma_from_sfen(
+                    ch, col_num, row_num, promotion_flag
+                )
+                promotion_flag = False
+                col_num -= 1
+        else: # for-else loop over row
+            if col_num != 0:
+                raise ValueError("SFEN row has wrong length")
+            if promotion_flag:
+                raise ValueError("SFEN row cannot end with +")
+        return
+    
     def _parse_sfen_board(self, sfen_board: str) -> None:
         # Parses the part of an SFEN string representing the board.
         rows = sfen_board.split("/")
         if len(rows) != 9:
             raise ValueError("SFEN board has wrong number of rows")
         for i, row in enumerate(rows):
-            col_num = 9
-            promotion_flag = False
-            for ch in row:
-                if col_num <= 0:
-                    raise ValueError("SFEN row has wrong length")
-                if ch.isdigit():
-                    if promotion_flag:
-                        raise ValueError("Digit cannot follow + in SFEN")
-                    col_num -= int(ch)
-                    continue
-                elif ch == "+":
-                    if promotion_flag:
-                        raise ValueError("+ cannot follow + in SFEN")
-                    promotion_flag = True
-                    continue
-                else:
-                    # This line has the intended side effects
-                    self._set_koma_from_sfen(
-                        ch, col_num, i+1, promotion_flag
-                    )
-                    promotion_flag = False
-                    col_num -= 1
-            else: # for-else loop over row
-                if col_num != 0:
-                    raise ValueError("SFEN row has wrong length")
-                if promotion_flag:
-                    raise ValueError("SFEN row cannot end with +")
+            self._parse_sfen_board_row(row, i+1)
         return
     
     def _parse_sfen_hands(self, sfen_hands: str) -> None:
