@@ -53,6 +53,10 @@ class Position:
         hand.set_komatype_count(ktype, count)
         return
     
+    def get_hand_koma_count(self, side: Side, ktype: KomaType) -> int:
+        hand = self.get_hand_of_side(side)
+        return hand.get_komatype_count(ktype)
+    
     def inc_hand_koma(self, side: Side, ktype: KomaType) -> None:
         hand = self.get_hand_of_side(side)
         hand.inc_komatype(ktype)

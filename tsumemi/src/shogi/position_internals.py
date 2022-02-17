@@ -47,6 +47,36 @@ class BoardRepresentation:
         board_str = "\n".join(rows)
         return board_str
     
+    @staticmethod
+    def sq_to_idx(sq: Square) -> int:
+        return BoardRepresentation.cr_to_idx(*(sq.get_cr()))
+    
+    @staticmethod
+    def idx_to_sq(idx: int) -> Square:
+        col = BoardRepresentation.idx_to_c(idx)
+        row = BoardRepresentation.idx_to_r(idx)
+        return Square.from_cr(col, row)
+    
+    @staticmethod
+    def cr_to_idx(col_num: int, row_num: int) -> int:
+        return 13*col_num + row_num+1
+    
+    @staticmethod
+    def idx_to_c(idx: int) -> int:
+        return (idx-1) // 13
+    
+    @staticmethod
+    def idx_to_r(idx: int) -> int:
+        return (idx-1) % 13
+    
+    @staticmethod
+    def is_idx_in_zone(idx: int, side: Side) -> bool:
+        row = BoardRepresentation.idx_to_r(idx)
+        if side == Side.SENTE:
+            return True if row in (1, 2, 3) else False
+        else:
+            return True if row in (7, 8, 9) else False
+    
     def to_sfen(self) -> str:
         board = []
         for row_num in range(1, 10):
@@ -92,30 +122,6 @@ class BoardRepresentation:
             **koma_sente, **koma_gote
         }
         return
-    
-    def sq_to_idx(self, sq: Square) -> int:
-        return self.cr_to_idx(*(sq.get_cr()))
-    
-    def idx_to_sq(self, idx: int) -> Square:
-        col = self.idx_to_c(idx)
-        row = self.idx_to_r(idx)
-        return Square.from_cr(col, row)
-    
-    def cr_to_idx(self, col_num: int, row_num: int) -> int:
-        return 13*col_num + row_num+1
-    
-    def idx_to_c(self, idx: int) -> int:
-        return (idx-1) // 13
-    
-    def idx_to_r(self, idx: int) -> int:
-        return (idx-1) % 13
-    
-    def is_idx_in_zone(self, idx: int, side: Side) -> bool:
-        row = self.idx_to_r(idx)
-        if side == Side.SENTE:
-            return True if row in (1, 2, 3) else False
-        else:
-            return True if row in (7, 8, 9) else False
     
     def set_koma(self, koma: Koma, sq: Square) -> None:
         prev_koma = self.get_koma(sq)
