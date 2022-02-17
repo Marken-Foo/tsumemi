@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import functools
 
+import tsumemi.src.shogi.destination_generation as destgen
+
 from typing import TYPE_CHECKING
 
 from tsumemi.src.shogi.basetypes import Koma, KomaType, Move, NullMove, Side, Square
 from tsumemi.src.shogi.basetypes import HAND_TYPES, KOMA_TYPES
-from tsumemi.src.shogi.position_internals import BoardRepresentation, Dir
-from tsumemi.src.shogi.rules.destination_generation import *
+from tsumemi.src.shogi.position_internals import BoardRepresentation
 
 if TYPE_CHECKING:
     from typing import Any, Callable, Dict, List, Tuple
@@ -168,121 +169,6 @@ def is_in_check(pos: Position, side: Side) -> bool:
                 return True
     return False
 
-# === Basic reusable movement patterns of pieces
-
-def _generate_line_idxs(
-        pos: Position, side: Side, start_idx: int, dir: Dir
-    ) -> List[int]:
-    """Generate a list of target destination square indices,
-    assuming a koma at location start_idx that moves in a line
-    along the direction dir.
-    """
-    res = []
-    dest = start_idx + dir
-    dest_koma = pos.board.mailbox[dest]
-    while dest_koma == Koma.NONE:
-        res.append(dest)
-        dest += dir
-        dest_koma = pos.board.mailbox[dest]
-    if dest_koma != Koma.INVALID and dest_koma.side() != side:
-        res.append(dest)
-    return res
-
-def steps_fu(start_idx: int, side: Side) -> Tuple[int, ...]:
-    forward = Dir.S if side == Side.GOTE else Dir.N
-    return (start_idx+forward,)
-
-def steps_ke(start_idx: int, side: Side) -> Tuple[int, ...]:
-    forward = Dir.S if side == Side.GOTE else Dir.N
-    return (
-        start_idx+forward+forward+Dir.E,
-        start_idx+forward+forward+Dir.W
-    )
-
-def steps_gi(start_idx: int, side: Side) -> Tuple[int, ...]:
-    forward = Dir.S if side == Side.GOTE else Dir.N
-    return (
-        start_idx+forward, start_idx+Dir.NE, start_idx+Dir.SE,
-        start_idx+Dir.SW, start_idx+Dir.NW
-    )
-
-def steps_ki(start_idx: int, side: Side) -> Tuple[int, ...]:
-    forward = Dir.S if side == Side.GOTE else Dir.N
-    return (
-        start_idx+Dir.N, start_idx+Dir.S, start_idx+Dir.E, start_idx+Dir.W,
-        start_idx+forward+Dir.E, start_idx+forward+Dir.W
-    )
-
-def steps_ou(start_idx: int, side: Side) -> Tuple[int, ...]:
-    return (
-        start_idx+Dir.N, start_idx+Dir.NE, start_idx+Dir.E,
-        start_idx+Dir.SE, start_idx+Dir.S, start_idx+Dir.SW,
-        start_idx+Dir.W, start_idx+Dir.NW
-    )
-
-# === Destination generators.
-#  They may return invalid destinations.
-#  Filter the output before use.
-
-def generate_dests_steps(
-        pos: Position, start_idx: int, side: Side,
-        steps: Callable[[int, Side], Tuple[int, ...]]
-    ) -> List[int]:
-    res = []
-    targets = steps(start_idx, side)
-    for target in targets:
-        target_koma = pos.board.mailbox[target]
-        is_valid_target = (
-            (target_koma != Koma.INVALID)
-            and (target_koma == Koma.NONE or target_koma.side() != side)
-        )
-        if is_valid_target:
-            res.append(target)
-    return res
-
-def generate_dests_ky(
-        pos: Position, start_idx: int, side: Side
-    ) -> List[int]:
-    forward = Dir.S if side == Side.GOTE else Dir.N
-    return _generate_line_idxs(pos, side, start_idx, forward)
-
-def generate_dests_ka(
-        pos: Position, start_idx: int, side: Side
-    ) -> List[int]:
-    ne = _generate_line_idxs(pos, side, start_idx, Dir.NE)
-    se = _generate_line_idxs(pos, side, start_idx, Dir.SE)
-    nw = _generate_line_idxs(pos, side, start_idx, Dir.NW)
-    sw = _generate_line_idxs(pos, side, start_idx, Dir.SW)
-    return ne + se + nw + sw
-
-def generate_dests_hi(
-        pos: Position, start_idx: int, side: Side
-    ) -> List[int]:
-    n = _generate_line_idxs(pos, side, start_idx, Dir.N)
-    s = _generate_line_idxs(pos, side, start_idx, Dir.S)
-    e = _generate_line_idxs(pos, side, start_idx, Dir.E)
-    w = _generate_line_idxs(pos, side, start_idx, Dir.W)
-    return n + s + e + w
-
-def generate_dests_um(
-        pos: Position, start_idx: int, side: Side
-    ) -> List[int]:
-    kaku = generate_dests_ka(pos, start_idx, side)
-    wazir = [
-        start_idx+Dir.N, start_idx+Dir.S,
-        start_idx+Dir.E, start_idx+Dir.W
-    ]
-    return kaku + wazir
-
-def generate_dests_ry(
-        pos: Position, start_idx: int, side: Side
-    ) -> List[int]:
-    hisha = generate_dests_hi(pos, start_idx, side)
-    alfil = [
-        start_idx+Dir.NE, start_idx+Dir.SE,
-        start_idx+Dir.SW, start_idx+Dir.NW
-    ]
-    return hisha + alfil
 
 # === Promotion constrainers.
 # They determine if there are promotion and/or nonpromotion moves
@@ -354,44 +240,44 @@ MOVEGEN_FUNCTIONS: Dict[KomaType,
         Tuple[Callable[..., Any], Callable[..., Any]]
     ] = {
     KomaType.FU: (
-        functools.partial(generate_dests_steps, steps=steps_fu),
+        functools.partial(destgen.generate_dests_steps, steps=destgen.steps_fu),
         constrain_promotions_ky
     ),
-    KomaType.KY: (generate_dests_ky, constrain_promotions_ky),
+    KomaType.KY: (destgen.generate_dests_ky, constrain_promotions_ky),
     KomaType.KE: (
-        functools.partial(generate_dests_steps, steps=steps_ke),
+        functools.partial(destgen.generate_dests_steps, steps=destgen.steps_ke),
         constrain_promotions_ke
     ),
     KomaType.GI: (
-        functools.partial(generate_dests_steps, steps=steps_gi),
+        functools.partial(destgen.generate_dests_steps, steps=destgen.steps_gi),
         constrain_promotable
     ),
     KomaType.KI: (
-        functools.partial(generate_dests_steps, steps=steps_ki),
+        functools.partial(destgen.generate_dests_steps, steps=destgen.steps_ki),
         constrain_unpromotable
     ),
-    KomaType.KA: (generate_dests_ka, constrain_promotable),
-    KomaType.HI: (generate_dests_hi, constrain_promotable),
+    KomaType.KA: (destgen.generate_dests_ka, constrain_promotable),
+    KomaType.HI: (destgen.generate_dests_hi, constrain_promotable),
     KomaType.OU: (
-        functools.partial(generate_dests_steps, steps=steps_ou),
+        functools.partial(destgen.generate_dests_steps, steps=destgen.steps_ou),
         constrain_unpromotable
     ),
     KomaType.TO: (
-        functools.partial(generate_dests_steps, steps=steps_ki),
+        functools.partial(destgen.generate_dests_steps, steps=destgen.steps_ki),
         constrain_unpromotable
     ),
     KomaType.NY: (
-        functools.partial(generate_dests_steps, steps=steps_ki),
+        functools.partial(destgen.generate_dests_steps, steps=destgen.steps_ki),
         constrain_unpromotable
     ),
     KomaType.NK: (
-        functools.partial(generate_dests_steps, steps=steps_ki),
+        functools.partial(destgen.generate_dests_steps, steps=destgen.steps_ki),
         constrain_unpromotable
     ),
     KomaType.NG: (
-        functools.partial(generate_dests_steps, steps=steps_ki),
+        functools.partial(destgen.generate_dests_steps, steps=destgen.steps_ki),
         constrain_unpromotable
     ),
-    KomaType.UM: (generate_dests_um, constrain_unpromotable),
-    KomaType.RY: (generate_dests_ry, constrain_unpromotable),
+    KomaType.UM: (destgen.generate_dests_um, constrain_unpromotable),
+    KomaType.RY: (destgen.generate_dests_ry, constrain_unpromotable),
 }
