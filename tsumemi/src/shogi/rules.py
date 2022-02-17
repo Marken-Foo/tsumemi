@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from tsumemi.src.shogi.basetypes import Koma, KomaType, Move, Side, Square
 from tsumemi.src.shogi.basetypes import HAND_TYPES, KOMA_TYPES
-from tsumemi.src.shogi.position import Dir
+from tsumemi.src.shogi.position_internals import Dir
 
 if TYPE_CHECKING:
     from typing import Any, Callable, Dict, List, Tuple
