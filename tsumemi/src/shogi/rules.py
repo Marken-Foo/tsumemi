@@ -13,6 +13,7 @@ from tsumemi.src.shogi.position_internals import BoardRepresentation
 if TYPE_CHECKING:
     from typing import Any, Callable, Dict, List, Tuple
     from tsumemi.src.shogi.position import Position
+    DestGen = Callable[[BoardRepresentation, int, Side], List[int]]
 
 
 # === Public interface (functions meant to be used by other code)
@@ -101,8 +102,12 @@ def is_drop_illegal_ke(side: Side, end_idx: int) -> bool:
 # === Convenience functions to create Moves.
 
 def _move(
-        pos: Position, start_idx: int, end_idx: int, side: Side,
-        ktype: KomaType, is_promotion=False
+        board: BoardRepresentation,
+        start_idx: int,
+        end_idx: int,
+        side: Side,
+        ktype: KomaType,
+        is_promotion=False
     ) -> Move:
     """Construct a Move given the relevant inputs. Convenient.
     """
@@ -110,7 +115,7 @@ def _move(
         start_sq=BoardRepresentation.idx_to_sq(start_idx),
         end_sq=BoardRepresentation.idx_to_sq(end_idx),
         koma=Koma.make(side, ktype),
-        captured=pos.board.mailbox[end_idx],
+        captured=board.mailbox[end_idx],
         is_promotion=is_promotion
     )
 
@@ -130,7 +135,7 @@ def generate_moves_base(
         pos: Position,
         side: Side,
         ktype: KomaType,
-        dest_generator: Callable[[Position, int, Side], List[int]],
+        dest_generator: Callable[[BoardRepresentation, int, Side], List[int]],
         promotion_constrainer: Callable[
             [Position, Side, int, int], List[Tuple[int, int, bool]]
         ]
@@ -140,18 +145,19 @@ def generate_moves_base(
     list of all valid moves by that koma type (not counting drops)
     in the given Position (pos)."""
     mvlist = []
-    locations = pos.board.koma_sets[Koma.make(side, ktype)]
+    board = pos.board
+    locations = board.koma_sets[Koma.make(side, ktype)]
     for start_idx in locations:
-        destinations = dest_generator(pos, start_idx, side)
+        destinations = dest_generator(board, start_idx, side)
         # TODO: this requires internals of Position! Refactor!
         filtered_dests = [
-            idx for idx in destinations if pos.board.mailbox[idx] != Koma.INVALID
+            idx for idx in destinations if board.mailbox[idx] != Koma.INVALID
         ]
         for end_idx in filtered_dests:
             tuplist = promotion_constrainer(pos, side, start_idx, end_idx)
             for tup in tuplist:
                 start, end, promo = tup
-                move = _move(pos, start, end, side, ktype, promo)
+                move = _move(board, start, end, side, ktype, promo)
                 mvlist.append(move)
     return mvlist
 
@@ -236,9 +242,7 @@ def constrain_unpromotable(
     return [(start_idx, end_idx, False),]
 
 # Contains the functions to generate valid moves for each KomaType.
-MOVEGEN_FUNCTIONS: Dict[KomaType,
-        Tuple[Callable[..., Any], Callable[..., Any]]
-    ] = {
+MOVEGEN_FUNCTIONS: Dict[KomaType, Tuple[DestGen, Callable[..., Any]]] = {
     KomaType.FU: (
         functools.partial(destgen.generate_dests_steps, steps=destgen.steps_fu),
         constrain_promotions_ky
