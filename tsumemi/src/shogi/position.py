@@ -11,6 +11,7 @@ from tsumemi.src.shogi.basetypes import Koma, KomaType, Side, Square
 from tsumemi.src.shogi.basetypes import KOMA_FROM_SFEN
 from tsumemi.src.shogi.position_internals import BoardRepresentation, HandRepresentation
 
+
 class Position:
     """Represents a shogi position, including board position, side to
     move, and pieces in hand.
@@ -139,20 +140,66 @@ class Position:
             self.movenum -= 1
             return
     
-    def _set_koma_from_sfen(self,
-            ch: str, 
-            col_num: int,
-            row_num: int,
-            promotion_flag: bool
-        ) -> None:
+    def to_sfen(self) -> str:
+        """Return SFEN string representing the current position.
+        """
+        sfen_board = self.board.to_sfen()
+        sfen_turn = "b" if self.turn is Side.SENTE else "w"
+        if self.hand_sente.is_empty() and self.hand_gote.is_empty():
+            sfen_hands = "-"
+        else:
+            sfen_hands = "".join((
+                self.hand_sente.to_sfen(),
+                self.hand_gote.to_sfen().lower()
+            ))
+        sfen_move_num = str(self.movenum)
+        return " ".join((sfen_board, sfen_turn, sfen_hands, sfen_move_num))
+    
+    def from_sfen(self, sfen: str) -> None:
+        """Parse an SFEN string and set up the position it represents.
+        """
+        sfen_board, sfen_turn, sfen_hands, sfen_move_num = sfen.split(" ")
+        self.reset()
+        if sfen_turn == "b":
+            self.turn = Side.SENTE
+        elif sfen_turn == "w":
+            self.turn = Side.GOTE
+        else:
+            # This is possibly too strict
+            raise ValueError("SFEN contains unknown side to move")
         try:
-            koma = KOMA_FROM_SFEN[ch]
-        except KeyError:
-            raise ValueError(f"SFEN contains unknown character '{ch}'")
-        sq = Square.from_cr(col_num=col_num, row_num=row_num)
-        if promotion_flag:
-            koma = koma.promote()
-        self.set_koma(koma, sq)
+            self.movenum = int(sfen_move_num)
+        except ValueError:
+            raise ValueError(
+                f"SFEN contains unknown movenumber '{sfen_move_num}'"
+            )
+        try:
+            self._parse_sfen_board(sfen_board)
+            self._parse_sfen_hands(sfen_hands)
+        except ValueError as e:
+            raise ValueError(f"Invalid SFEN: '{sfen}'") from e
+        return
+    
+    def _parse_sfen_hands(self, sfen_hands: str) -> None:
+        it_hands = re.findall(r"(\d*)([plnsgbrPLNSGBR])", sfen_hands)
+        for ch_count, ch in it_hands:
+            try:
+                koma = KOMA_FROM_SFEN[ch]
+            except KeyError:
+                raise ValueError(f"SFEN contains unknown character '{ch}'")
+            ktype = KomaType.get(koma)
+            target_hand = self.hand_sente if ch.isupper() else self.hand_gote
+            count = int(ch_count) if ch_count else 1
+            target_hand.set_komatype_count(ktype, count)
+        return
+    
+    def _parse_sfen_board(self, sfen_board: str) -> None:
+        # Parses the part of an SFEN string representing the board.
+        rows = sfen_board.split("/")
+        if len(rows) != 9:
+            raise ValueError("SFEN board has wrong number of rows")
+        for i, row in enumerate(rows):
+            self._parse_sfen_board_row(row, i+1)
         return
     
     def _parse_sfen_board_row(self, sfen_row: str, row_num: int) -> None:
@@ -186,64 +233,19 @@ class Position:
                 raise ValueError("SFEN row cannot end with +")
         return
     
-    def _parse_sfen_board(self, sfen_board: str) -> None:
-        # Parses the part of an SFEN string representing the board.
-        rows = sfen_board.split("/")
-        if len(rows) != 9:
-            raise ValueError("SFEN board has wrong number of rows")
-        for i, row in enumerate(rows):
-            self._parse_sfen_board_row(row, i+1)
-        return
-    
-    def _parse_sfen_hands(self, sfen_hands: str) -> None:
-        it_hands = re.findall(r"(\d*)([plnsgbrPLNSGBR])", sfen_hands)
-        for ch_count, ch in it_hands:
-            try:
-                koma = KOMA_FROM_SFEN[ch]
-            except KeyError:
-                raise ValueError(f"SFEN contains unknown character '{ch}'")
-            ktype = KomaType.get(koma)
-            target_hand = self.hand_sente if ch.isupper() else self.hand_gote
-            count = int(ch_count) if ch_count else 1
-            target_hand.set_komatype_count(ktype, count)
-        return
-    
-    def from_sfen(self, sfen: str) -> None:
-        """Parse an SFEN string and set up the position it represents.
-        """
-        sfen_board, sfen_turn, sfen_hands, sfen_move_num = sfen.split(" ")
-        self.reset()
-        if sfen_turn == "b":
-            self.turn = Side.SENTE
-        elif sfen_turn == "w":
-            self.turn = Side.GOTE
-        else:
-            # This is possibly too strict
-            raise ValueError("SFEN contains unknown side to move")
+    def _set_koma_from_sfen(self,
+            ch: str, 
+            col_num: int,
+            row_num: int,
+            promotion_flag: bool
+        ) -> None:
         try:
-            self.movenum = int(sfen_move_num)
-        except ValueError:
-            raise ValueError(
-                f"SFEN contains unknown movenumber '{sfen_move_num}'"
-            )
-        try:
-            self._parse_sfen_board(sfen_board)
-            self._parse_sfen_hands(sfen_hands)
-        except ValueError as e:
-            raise ValueError(f"Invalid SFEN: '{sfen}'") from e
+            koma = KOMA_FROM_SFEN[ch]
+        except KeyError:
+            raise ValueError(f"SFEN contains unknown character '{ch}'")
+        sq = Square.from_cr(col_num=col_num, row_num=row_num)
+        if promotion_flag:
+            koma = koma.promote()
+        self.set_koma(koma, sq)
         return
     
-    def to_sfen(self) -> str:
-        """Return SFEN string representing the current position.
-        """
-        sfen_board = self.board.to_sfen()
-        sfen_turn = "b" if self.turn is Side.SENTE else "w"
-        if self.hand_sente.is_empty() and self.hand_gote.is_empty():
-            sfen_hands = "-"
-        else:
-            sfen_hands = "".join((
-                self.hand_sente.to_sfen(),
-                self.hand_gote.to_sfen().lower()
-            ))
-        sfen_move_num = str(self.movenum)
-        return " ".join((sfen_board, sfen_turn, sfen_hands, sfen_move_num))
