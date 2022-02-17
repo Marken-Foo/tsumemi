@@ -403,7 +403,7 @@ class BoardCanvas(tk.Canvas):
         self.draw_board()
         # Draw board pieces
         is_text = not self.koma_img_cache.has_images()
-        for koma, kset in position.board_representation.koma_sets.items():
+        for koma, kset in position.board.koma_sets.items():
             ktype = KomaType.get(koma)
             side = koma.side()
             invert = (
@@ -411,8 +411,8 @@ class BoardCanvas(tk.Canvas):
                 or (not is_north_sente and (side == Side.GOTE))
             )
             for idx in kset:
-                col_num = position.board_representation.idx_to_c(idx)
-                row_num = position.board_representation.idx_to_r(idx)
+                col_num = position.board.idx_to_c(idx)
+                row_num = position.board.idx_to_r(idx)
                 x = col_num-1 if self.is_upside_down else 9-col_num
                 y = 9-row_num if self.is_upside_down else row_num-1
                 id = self.draw_koma(

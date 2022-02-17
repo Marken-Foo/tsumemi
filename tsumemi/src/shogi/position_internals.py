@@ -29,7 +29,7 @@ class BoardRepresentation:
     # Board representation used is mailbox.
     # 1D array interpreted as a 9x9 array with padding.
     def __init__(self) -> None:
-        self.board: List[Koma] = [Koma.INVALID] * 143
+        self.mailbox: List[Koma] = [Koma.INVALID] * 143
         # indices of squares containing Koma.NONE (empty squares)
         self.empty_idxs: Set[int] = set()
         self.koma_sets: Dict[Koma, Set[int]] = {}
@@ -41,11 +41,11 @@ class BoardRepresentation:
         for row_num in range(1, 10, 1):
             row = []
             for col_num in range(9, 0, -1):
-                koma = self.board[self.cr_to_idx(col_num, row_num)]
+                koma = self.mailbox[self.cr_to_idx(col_num, row_num)]
                 row.append(str(koma))
             rows.append("".join(row))
-        board = "\n".join(rows)
-        return board
+        board_str = "\n".join(rows)
+        return board_str
     
     def to_sfen(self) -> str:
         board = []
@@ -57,7 +57,7 @@ class BoardRepresentation:
         blanks = 0
         row: List[str] = []
         for col_num in range(9, 0, -1):
-            koma = self.board[self.cr_to_idx(col_num, row_num)]
+            koma = self.mailbox[self.cr_to_idx(col_num, row_num)]
             if koma is Koma.NONE:
                 blanks += 1
                 continue
@@ -74,11 +74,11 @@ class BoardRepresentation:
     
     def reset(self) -> None:
         for i in range(143):
-            self.board[i] = Koma.INVALID
+            self.mailbox[i] = Koma.INVALID
         for col_num in range(1, 10):
             for row_num in range(1, 10):
                 idx = self.cr_to_idx(col_num, row_num)
-                self.board[idx] = Koma.NONE
+                self.mailbox[idx] = Koma.NONE
                 self.empty_idxs.add(idx)
         # Koma set: indexed by side and komatype
         # contents are indices of where they are located on the board.
@@ -120,7 +120,7 @@ class BoardRepresentation:
     def set_koma(self, koma: Koma, sq: Square) -> None:
         prev_koma = self.get_koma(sq)
         idx = self.sq_to_idx(sq)
-        self.board[idx] = koma
+        self.mailbox[idx] = koma
         if prev_koma == Koma.INVALID:
             raise ValueError(
                 f"Cannot set koma {str(koma)} to replace Koma.INVALID"
@@ -139,7 +139,7 @@ class BoardRepresentation:
         return
     
     def get_koma(self, sq: Square) -> Koma:
-        return self.board[self.sq_to_idx(sq)]
+        return self.mailbox[self.sq_to_idx(sq)]
 
 
 class HandRepresentation:

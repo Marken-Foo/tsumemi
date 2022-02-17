@@ -16,7 +16,7 @@ class Position:
     move, and pieces in hand.
     """
     def __init__(self) -> None:
-        self.board_representation = BoardRepresentation()
+        self.board = BoardRepresentation()
         self.hand_sente = HandRepresentation()
         self.hand_gote = HandRepresentation()
         self.turn = Side.SENTE
@@ -25,7 +25,7 @@ class Position:
     
     def __str__(self) -> str:
         elems = [
-            str(self.board_representation),
+            str(self.board),
             "Sente hand:", str(self.hand_sente),
             "Gote hand:", str(self.hand_gote),
             "Turn: Sente" if self.turn == Side.SENTE else "Turn: Gote"
@@ -33,7 +33,7 @@ class Position:
         return "\n".join(elems)
     
     def reset(self) -> None:
-        self.board_representation.reset()
+        self.board.reset()
         self.hand_sente.reset()
         self.hand_gote.reset()
         self.turn = Side.SENTE
@@ -66,10 +66,10 @@ class Position:
         return self.get_hand_of_side(side).is_empty()
     
     def set_koma(self, koma: Koma, sq: Square) -> None:
-        return self.board_representation.set_koma(koma, sq)
+        return self.board.set_koma(koma, sq)
     
     def get_koma(self, sq: Square) -> Koma:
-        return self.board_representation.get_koma(sq)
+        return self.board.get_koma(sq)
     
     def create_move(self,
             sq1: Square, 
@@ -236,7 +236,7 @@ class Position:
     def to_sfen(self) -> str:
         """Return SFEN string representing the current position.
         """
-        sfen_board = self.board_representation.to_sfen()
+        sfen_board = self.board.to_sfen()
         sfen_turn = "b" if self.turn is Side.SENTE else "w"
         if self.hand_sente.is_empty() and self.hand_gote.is_empty():
             sfen_hands = "-"

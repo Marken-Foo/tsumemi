@@ -43,30 +43,30 @@ def generate_drop_moves(
     mvlist: List[Move] = []
     if pos.get_hand_of_side(side).get_komatype_count(ktype) == 0:
         return mvlist
-    for end_idx in pos.board_representation.empty_idxs:
+    for end_idx in pos.board.empty_idxs:
         if ktype == KomaType.FU:
-            row_num = pos.board_representation.idx_to_r(end_idx)
+            row_num = pos.board.idx_to_r(end_idx)
             if (((side == Side.SENTE) and (row_num == 1))
                     or ((side == Side.GOTE) and (row_num == 9))
             ):
                 continue
             # nifu
-            col = pos.board_representation.idx_to_c(end_idx)
+            col = pos.board.idx_to_c(end_idx)
             is_nifu = False
             for row in range(1, 10, 1):
-                idx = pos.board_representation.cr_to_idx(col, row)
-                if pos.board_representation.board[idx] == Koma.make(side, KomaType.FU):
+                idx = pos.board.cr_to_idx(col, row)
+                if pos.board.mailbox[idx] == Koma.make(side, KomaType.FU):
                     is_nifu = True
             if is_nifu:
                 continue
         elif ktype == KomaType.KY:
-            row_num = pos.board_representation.idx_to_r(end_idx)
+            row_num = pos.board.idx_to_r(end_idx)
             if (((side == Side.SENTE) and (row_num == 1))
                     or ((side == Side.GOTE) and (row_num == 9))
             ):
                 continue
         elif ktype == KomaType.KE:
-            row_num = pos.board_representation.idx_to_r(end_idx)
+            row_num = pos.board.idx_to_r(end_idx)
             if ((
                     (side == Side.SENTE)
                     and ((row_num == 1) or (row_num == 2))
@@ -91,8 +91,8 @@ def _move(
     """Construct a Move given the relevant inputs. Convenient.
     """
     return Move(
-        start_sq=pos.board_representation.idx_to_sq(start_idx), end_sq=pos.board_representation.idx_to_sq(end_idx),
-        koma=Koma.make(side, ktype), captured=pos.board_representation.board[end_idx],
+        start_sq=pos.board.idx_to_sq(start_idx), end_sq=pos.board.idx_to_sq(end_idx),
+        koma=Koma.make(side, ktype), captured=pos.board.mailbox[end_idx],
         is_promotion=is_promotion
     )
 
@@ -103,7 +103,7 @@ def _drop(
     inputs. Convenient.
     """
     return Move(
-        start_sq=Square.HAND, end_sq=pos.board_representation.idx_to_sq(end_idx),
+        start_sq=Square.HAND, end_sq=pos.board.idx_to_sq(end_idx),
         koma=Koma.make(side, ktype)
     )
 
@@ -121,12 +121,12 @@ def generate_moves_base(
     list of all valid moves by that koma type (not counting drops)
     in the given Position (pos)."""
     mvlist = []
-    locations = pos.board_representation.koma_sets[Koma.make(side, ktype)]
+    locations = pos.board.koma_sets[Koma.make(side, ktype)]
     for start_idx in locations:
         destinations = dest_generator(pos, start_idx, side)
         # TODO: this requires internals of Position! Refactor!
         filtered_dests = [
-            idx for idx in destinations if pos.board_representation.board[idx] != Koma.INVALID
+            idx for idx in destinations if pos.board.mailbox[idx] != Koma.INVALID
         ]
         for end_idx in filtered_dests:
             tuplist = promotion_constrainer(pos, side, start_idx, end_idx)
@@ -139,7 +139,7 @@ def generate_moves_base(
 def is_in_check(pos: Position, side: Side) -> bool:
     # assumes royal king(s)
     king = Koma.make(side, KomaType.OU)
-    king_pos = [pos.board_representation.idx_to_sq(idx) for idx in pos.board_representation.koma_sets[king]]
+    king_pos = [pos.board.idx_to_sq(idx) for idx in pos.board.koma_sets[king]]
     for ktype in KOMA_TYPES:
         mvlist = generate_valid_moves(pos, side.switch(), ktype)
         for mv in mvlist:
@@ -158,11 +158,11 @@ def _generate_line_idxs(
     """
     res = []
     dest = start_idx + dir
-    dest_koma = pos.board_representation.board[dest]
+    dest_koma = pos.board.mailbox[dest]
     while dest_koma == Koma.NONE:
         res.append(dest)
         dest += dir
-        dest_koma = pos.board_representation.board[dest]
+        dest_koma = pos.board.mailbox[dest]
     if dest_koma != Koma.INVALID and dest_koma.side() != side:
         res.append(dest)
     return res
@@ -210,7 +210,7 @@ def generate_dests_steps(
     res = []
     targets = steps(start_idx, side)
     for target in targets:
-        target_koma = pos.board_representation.board[target]
+        target_koma = pos.board.mailbox[target]
         is_valid_target = (
             (target_koma != Koma.INVALID)
             and (target_koma == Koma.NONE or target_koma.side() != side)
@@ -272,10 +272,10 @@ def constrain_promotions_ky(
     ) -> List[Tuple[int, int, bool]]:
     res: List[Tuple[int, int, bool]] = []
     must_promote = (
-        (side == Side.SENTE and pos.board_representation.idx_to_r(end_idx) == 1)
-        or (side == Side.GOTE and pos.board_representation.idx_to_r(end_idx) == 9)
+        (side == Side.SENTE and pos.board.idx_to_r(end_idx) == 1)
+        or (side == Side.GOTE and pos.board.idx_to_r(end_idx) == 9)
     )
-    can_promote = pos.board_representation.is_idx_in_zone(end_idx, side)
+    can_promote = pos.board.is_idx_in_zone(end_idx, side)
     if must_promote:
         res.append((start_idx, end_idx, True))
     else:
@@ -289,10 +289,10 @@ def constrain_promotions_ke(
     ) -> List[Tuple[int, int, bool]]:
     res: List[Tuple[int, int, bool]] = []
     must_promote = (
-        (side == Side.SENTE and pos.board_representation.idx_to_r(end_idx) in (1, 2))
-        or (side == Side.GOTE and pos.board_representation.idx_to_r(end_idx) in (8, 9))
+        (side == Side.SENTE and pos.board.idx_to_r(end_idx) in (1, 2))
+        or (side == Side.GOTE and pos.board.idx_to_r(end_idx) in (8, 9))
     )
-    can_promote = pos.board_representation.is_idx_in_zone(end_idx, side)
+    can_promote = pos.board.is_idx_in_zone(end_idx, side)
     if must_promote:
         res.append((start_idx, end_idx, True))
     else:
@@ -310,8 +310,8 @@ def constrain_promotable(
     """
     res: List[Tuple[int, int, bool]] = []
     can_promote = (
-        pos.board_representation.is_idx_in_zone(start_idx, side)
-        or pos.board_representation.is_idx_in_zone(end_idx, side)
+        pos.board.is_idx_in_zone(start_idx, side)
+        or pos.board.is_idx_in_zone(end_idx, side)
     )
     res.append((start_idx, end_idx, False))
     if can_promote:
