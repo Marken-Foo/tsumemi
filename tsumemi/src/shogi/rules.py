@@ -16,14 +16,26 @@ if TYPE_CHECKING:
     DestGen = Callable[[BoardRepresentation, int, Side], List[int]]
 
 
-# === Public interface (functions meant to be used by other code)
-
 def is_legal(mv: Move, pos: Position) -> bool:
     side = pos.turn
     pos.make_move(mv)
     ans = not is_in_check(pos, side)
     pos.unmake_move(mv)
     return ans
+
+def is_in_check(pos: Position, side: Side) -> bool:
+    # assumes royal king(s)
+    king = Koma.make(side, KomaType.OU)
+    king_pos = [
+        BoardRepresentation.idx_to_sq(idx)
+        for idx in pos.board.koma_sets[king]
+    ]
+    for ktype in KOMA_TYPES:
+        mvlist = generate_valid_moves(pos, side.switch(), ktype)
+        for mv in mvlist:
+            if mv.end_sq in king_pos:
+                return True
+    return False
 
 def generate_legal_moves(pos: Position) -> List[Move]:
     pass
@@ -32,10 +44,36 @@ def generate_valid_moves(
         pos: Position, side: Side, ktype: KomaType
     ) -> List[Move]:
     dest_generator, promotion_constrainer = MOVEGEN_FUNCTIONS[ktype]
-    return generate_moves_base(
-        pos=pos, side=side, ktype=ktype,
-        dest_generator=dest_generator,
-        promotion_constrainer=promotion_constrainer
+    mvlist = []
+    board = pos.board
+    locations = board.koma_sets[Koma.make(side, ktype)]
+    for start_idx in locations:
+        destinations = dest_generator(board, start_idx, side)
+        filtered_dests = [
+            idx for idx in destinations if board.mailbox[idx] != Koma.INVALID
+        ]
+        for end_idx in filtered_dests:
+            tuplist = promotion_constrainer(pos, side, start_idx, end_idx)
+            for tup in tuplist:
+                start, end, promo = tup
+                move = _move(board, start, end, side, ktype, promo)
+                mvlist.append(move)
+    return mvlist
+
+def _move(
+        board: BoardRepresentation,
+        start_idx: int,
+        end_idx: int,
+        side: Side,
+        ktype: KomaType,
+        is_promotion=False
+    ) -> Move:
+    return Move(
+        start_sq=BoardRepresentation.idx_to_sq(start_idx),
+        end_sq=BoardRepresentation.idx_to_sq(end_idx),
+        koma=Koma.make(side, ktype),
+        captured=board.mailbox[end_idx],
+        is_promotion=is_promotion
     )
 
 def generate_drop_moves(
@@ -98,83 +136,12 @@ def is_drop_illegal_ke(side: Side, end_idx: int) -> bool:
         )
     )
 
-
-# === Convenience functions to create Moves.
-
-def _move(
-        board: BoardRepresentation,
-        start_idx: int,
-        end_idx: int,
-        side: Side,
-        ktype: KomaType,
-        is_promotion=False
-    ) -> Move:
-    """Construct a Move given the relevant inputs. Convenient.
-    """
-    return Move(
-        start_sq=BoardRepresentation.idx_to_sq(start_idx),
-        end_sq=BoardRepresentation.idx_to_sq(end_idx),
-        koma=Koma.make(side, ktype),
-        captured=board.mailbox[end_idx],
-        is_promotion=is_promotion
-    )
-
 def _drop(side: Side, ktype: KomaType, end_idx: int) -> Move:
-    """Construct a Move representing a drop, given the relevant
-    inputs. Convenient.
-    """
     return Move(
         start_sq=Square.HAND,
         end_sq=BoardRepresentation.idx_to_sq(end_idx),
         koma=Koma.make(side, ktype)
     )
-
-# === For move generation
-
-def generate_moves_base(
-        pos: Position,
-        side: Side,
-        ktype: KomaType,
-        dest_generator: Callable[[BoardRepresentation, int, Side], List[int]],
-        promotion_constrainer: Callable[
-            [Position, Side, int, int], List[Tuple[int, int, bool]]
-        ]
-    ) -> List[Move]:
-    """Given a koma type (ktype), how it moves (dest_generator),
-    and promotion constraints (promotion_constrainer), returns a
-    list of all valid moves by that koma type (not counting drops)
-    in the given Position (pos)."""
-    mvlist = []
-    board = pos.board
-    locations = board.koma_sets[Koma.make(side, ktype)]
-    for start_idx in locations:
-        destinations = dest_generator(board, start_idx, side)
-        # TODO: this requires internals of Position! Refactor!
-        filtered_dests = [
-            idx for idx in destinations if board.mailbox[idx] != Koma.INVALID
-        ]
-        for end_idx in filtered_dests:
-            tuplist = promotion_constrainer(pos, side, start_idx, end_idx)
-            for tup in tuplist:
-                start, end, promo = tup
-                move = _move(board, start, end, side, ktype, promo)
-                mvlist.append(move)
-    return mvlist
-
-def is_in_check(pos: Position, side: Side) -> bool:
-    # assumes royal king(s)
-    king = Koma.make(side, KomaType.OU)
-    king_pos = [
-        BoardRepresentation.idx_to_sq(idx)
-        for idx in pos.board.koma_sets[king]
-    ]
-    for ktype in KOMA_TYPES:
-        mvlist = generate_valid_moves(pos, side.switch(), ktype)
-        for mv in mvlist:
-            if mv.end_sq in king_pos:
-                return True
-    return False
-
 
 # === Promotion constrainers.
 # They determine if there are promotion and/or nonpromotion moves
