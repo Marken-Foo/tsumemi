@@ -9,7 +9,7 @@ if TYPE_CHECKING:
 
 from tsumemi.src.shogi.basetypes import Koma, KomaType, Side, Square
 from tsumemi.src.shogi.basetypes import KOMA_FROM_SFEN
-from tsumemi.src.shogi.position_internals import BoardRepresentation, HandRepresentation
+from tsumemi.src.shogi.position_internals import HandRepresentation, MailboxBoard
 
 
 class Position:
@@ -17,7 +17,7 @@ class Position:
     move, and pieces in hand.
     """
     def __init__(self) -> None:
-        self.board = BoardRepresentation()
+        self.board = MailboxBoard()
         self.hand_sente = HandRepresentation()
         self.hand_gote = HandRepresentation()
         self.turn = Side.SENTE

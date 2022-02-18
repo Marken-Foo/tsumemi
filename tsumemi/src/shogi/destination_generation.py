@@ -3,10 +3,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from tsumemi.src.shogi.basetypes import Koma, Side
-from tsumemi.src.shogi.position_internals import BoardRepresentation, Dir
+from tsumemi.src.shogi.position_internals import Dir
 
 if TYPE_CHECKING:
     from typing import Callable, List, Tuple
+    from tsumemi.src.shogi.position_internals import MailboxBoard
     Steps = Tuple[int, ...]
 
 
@@ -42,8 +43,14 @@ def steps_ou(start_idx: int, side: Side) -> Steps:
         start_idx+Dir.W, start_idx+Dir.NW
     )
 
+def filter_for_valid_dests(
+        dest_idx_list: List[int],
+        board: MailboxBoard
+    ) -> List[int]:
+    return [idx for idx in dest_idx_list if board.mailbox[idx] != Koma.INVALID]
+
 def _generate_line_idxs(
-        board: BoardRepresentation, side: Side, start_idx: int, dir: Dir
+        board: MailboxBoard, side: Side, start_idx: int, dir: Dir
     ) -> List[int]:
     """Generate a list of target destination square indices,
     assuming a koma at location start_idx that moves in a line
@@ -61,7 +68,7 @@ def _generate_line_idxs(
     return res
 
 def generate_dests_steps(
-        board: BoardRepresentation, start_idx: int, side: Side,
+        board: MailboxBoard, start_idx: int, side: Side,
         steps: Callable[[int, Side], Steps]
     ) -> List[int]:
     res = []
@@ -77,13 +84,13 @@ def generate_dests_steps(
     return res
 
 def generate_dests_ky(
-        board: BoardRepresentation, start_idx: int, side: Side
+        board: MailboxBoard, start_idx: int, side: Side
     ) -> List[int]:
     forward = Dir.S if side == Side.GOTE else Dir.N
     return _generate_line_idxs(board, side, start_idx, forward)
 
 def generate_dests_ka(
-        board: BoardRepresentation, start_idx: int, side: Side
+        board: MailboxBoard, start_idx: int, side: Side
     ) -> List[int]:
     ne = _generate_line_idxs(board, side, start_idx, Dir.NE)
     se = _generate_line_idxs(board, side, start_idx, Dir.SE)
@@ -92,7 +99,7 @@ def generate_dests_ka(
     return ne + se + nw + sw
 
 def generate_dests_hi(
-        board: BoardRepresentation, start_idx: int, side: Side
+        board: MailboxBoard, start_idx: int, side: Side
     ) -> List[int]:
     n = _generate_line_idxs(board, side, start_idx, Dir.N)
     s = _generate_line_idxs(board, side, start_idx, Dir.S)
@@ -101,7 +108,7 @@ def generate_dests_hi(
     return n + s + e + w
 
 def generate_dests_um(
-        board: BoardRepresentation, start_idx: int, side: Side
+        board: MailboxBoard, start_idx: int, side: Side
     ) -> List[int]:
     kaku = generate_dests_ka(board, start_idx, side)
     wazir = [
@@ -111,7 +118,7 @@ def generate_dests_um(
     return kaku + wazir
 
 def generate_dests_ry(
-        board: BoardRepresentation, start_idx: int, side: Side
+        board: MailboxBoard, start_idx: int, side: Side
     ) -> List[int]:
     hisha = generate_dests_hi(board, start_idx, side)
     alfil = [

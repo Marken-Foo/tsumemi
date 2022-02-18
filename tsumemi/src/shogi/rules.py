@@ -8,13 +8,14 @@ from typing import TYPE_CHECKING
 
 from tsumemi.src.shogi.basetypes import Koma, KomaType, Move, NullMove, Side, Square
 from tsumemi.src.shogi.basetypes import HAND_TYPES, KOMA_TYPES
-from tsumemi.src.shogi.position_internals import BoardRepresentation
+from tsumemi.src.shogi.position_internals import MailboxBoard
 
 if TYPE_CHECKING:
-    from typing import Any, Callable, Dict, List, Tuple
+    from typing import Any, Callable, Dict, List, Tuple, Union
     from tsumemi.src.shogi.position import Position
-    DestGen = Callable[[BoardRepresentation, int, Side], List[int]]
-    PromConstr = Callable[[Side, int, int], List[Tuple[int, int, bool]]]
+    DestGen = Callable[[MailboxBoard, int, Side], List[int]]
+    PromConstrTuple = Union[Tuple[bool], Tuple[bool, bool]]
+    PromConstr = Callable[[Side, int, int], PromConstrTuple]
 
 
 def is_legal(mv: Move, pos: Position) -> bool:
@@ -28,7 +29,7 @@ def is_in_check(pos: Position, side: Side) -> bool:
     # assumes royal king(s)
     king = Koma.make(side, KomaType.OU)
     king_pos = [
-        BoardRepresentation.idx_to_sq(idx)
+        MailboxBoard.idx_to_sq(idx)
         for idx in pos.board.koma_sets[king]
     ]
     for ktype in KOMA_TYPES:
@@ -49,20 +50,17 @@ def generate_valid_moves(
     board = pos.board
     locations = board.koma_sets[Koma.make(side, ktype)]
     for start_idx in locations:
-        destinations = dest_generator(board, start_idx, side)
-        filtered_dests = [
-            idx for idx in destinations if board.mailbox[idx] != Koma.INVALID
-        ]
-        for end_idx in filtered_dests:
-            tuplist = promotion_constrainer(side, start_idx, end_idx)
-            for tup in tuplist:
-                start, end, promo = tup
-                move = _move(board, start, end, side, ktype, promo)
+        destinations = destgen.filter_for_valid_dests(
+            dest_generator(board, start_idx, side), board
+        )
+        for end_idx in destinations:
+            for can_promote in promotion_constrainer(side, start_idx, end_idx):
+                move = _move(board, start_idx, end_idx, side, ktype, can_promote)
                 mvlist.append(move)
     return mvlist
 
 def _move(
-        board: BoardRepresentation,
+        board: MailboxBoard,
         start_idx: int,
         end_idx: int,
         side: Side,
@@ -70,8 +68,8 @@ def _move(
         is_promotion=False
     ) -> Move:
     return Move(
-        start_sq=BoardRepresentation.idx_to_sq(start_idx),
-        end_sq=BoardRepresentation.idx_to_sq(end_idx),
+        start_sq=MailboxBoard.idx_to_sq(start_idx),
+        end_sq=MailboxBoard.idx_to_sq(end_idx),
         koma=Koma.make(side, ktype),
         captured=board.mailbox[end_idx],
         is_promotion=is_promotion
@@ -93,7 +91,7 @@ def generate_drop_moves(
     return mvlist
 
 def create_valid_drop_from_idx(
-        board: BoardRepresentation,
+        board: MailboxBoard,
         side: Side,
         ktype: KomaType,
         end_idx: int
@@ -111,36 +109,24 @@ def create_valid_drop_from_idx(
             return NullMove()
     return _drop(side, ktype, end_idx)
 
-def is_drop_nifu(board: BoardRepresentation, side: Side, end_idx: int) -> bool:
-    col_num = BoardRepresentation.idx_to_c(end_idx)
+def is_drop_nifu(board: MailboxBoard, side: Side, end_idx: int) -> bool:
+    col_num = MailboxBoard.idx_to_c(end_idx)
     for row_num in range(1, 10, 1):
-        idx = BoardRepresentation.cr_to_idx(col_num, row_num)
+        idx = MailboxBoard.cr_to_idx(col_num, row_num)
         if board.mailbox[idx] == Koma.make(side, KomaType.FU):
             return True
     return False
 
 def is_drop_illegal_ky(side: Side, end_idx: int) -> bool:
-    row_num = BoardRepresentation.idx_to_r(end_idx)
-    return (
-        ((side == Side.SENTE) and (row_num == 1))
-        or ((side == Side.GOTE) and (row_num == 9))
-    )
+    return MailboxBoard.is_idx_in_last_row(end_idx, side)
 
 def is_drop_illegal_ke(side: Side, end_idx: int) -> bool:
-    row_num = BoardRepresentation.idx_to_r(end_idx)
-    return (
-        ((side == Side.SENTE)
-            and ((row_num == 1) or (row_num == 2))
-        ) or (
-        (side == Side.GOTE)
-            and ((row_num == 9) or (row_num == 8))
-        )
-    )
+    return MailboxBoard.is_idx_in_last_two_rows(end_idx, side)
 
 def _drop(side: Side, ktype: KomaType, end_idx: int) -> Move:
     return Move(
         start_sq=Square.HAND,
-        end_sq=BoardRepresentation.idx_to_sq(end_idx),
+        end_sq=MailboxBoard.idx_to_sq(end_idx),
         koma=Koma.make(side, ktype)
     )
 
@@ -150,64 +136,51 @@ def _drop(side: Side, ktype: KomaType, end_idx: int) -> Move:
 
 def constrain_promotions_ky(
         side: Side, start_idx: int, end_idx: int
-    ) -> List[Tuple[int, int, bool]]:
-    res: List[Tuple[int, int, bool]] = []
-    end_row_num = BoardRepresentation.idx_to_r(end_idx)
-    must_promote = (
-        (side == Side.SENTE and end_row_num == 1)
-        or (side == Side.GOTE and end_row_num == 9)
-    )
-    can_promote = BoardRepresentation.is_idx_in_zone(end_idx, side)
+    ) -> PromConstrTuple:
+    must_promote = MailboxBoard.is_idx_in_last_row(end_idx, side)
+    can_promote = MailboxBoard.is_idx_in_promotion_zone(end_idx, side)
     if must_promote:
-        res.append((start_idx, end_idx, True))
+        return (True,)
+    elif can_promote:
+        return (True, False)
     else:
-        res.append((start_idx, end_idx, False))
-        if can_promote:
-            res.append((start_idx, end_idx, True))
-    return res
+        return (False,)
 
 def constrain_promotions_ke(
         side: Side, start_idx: int, end_idx: int
-    ) -> List[Tuple[int, int, bool]]:
-    res: List[Tuple[int, int, bool]] = []
-    end_row_num = BoardRepresentation.idx_to_r(end_idx)
-    must_promote = (
-        (side == Side.SENTE and end_row_num in (1, 2))
-        or (side == Side.GOTE and end_row_num in (8, 9))
-    )
-    can_promote = BoardRepresentation.is_idx_in_zone(end_idx, side)
+    ) -> PromConstrTuple:
+    must_promote = MailboxBoard.is_idx_in_last_two_rows(end_idx, side)
+    can_promote = MailboxBoard.is_idx_in_promotion_zone(end_idx, side)
     if must_promote:
-        res.append((start_idx, end_idx, True))
+        return (True,)
+    elif can_promote:
+        return (True, False)
     else:
-        res.append((start_idx, end_idx, False))
-        if can_promote:
-            res.append((start_idx, end_idx, True))
-    return res
+        return (False,)
 
 def constrain_promotable(
         side: Side, start_idx: int, end_idx: int
-    ) -> List[Tuple[int, int, bool]]:
+    ) -> PromConstrTuple:
     """Identify promotion and non-promotion moves for pieces that
     are not forced to promote and can move in and out of the
     promotion zone.
     """
-    res: List[Tuple[int, int, bool]] = []
     can_promote = (
-        BoardRepresentation.is_idx_in_zone(start_idx, side)
-        or BoardRepresentation.is_idx_in_zone(end_idx, side)
+        MailboxBoard.is_idx_in_promotion_zone(start_idx, side)
+        or MailboxBoard.is_idx_in_promotion_zone(end_idx, side)
     )
-    res.append((start_idx, end_idx, False))
     if can_promote:
-        res.append((start_idx, end_idx, True))
-    return res
+        return (True, False)
+    else:
+        return (False,)
 
 def constrain_unpromotable(
         side: Side, start_idx: int, end_idx: int
-    ) -> List[Tuple[int, int, bool]]:
+    ) -> PromConstrTuple:
     """Identify promotion and non-promotion moves for pieces that
     cannot promote.
     """
-    return [(start_idx, end_idx, False),]
+    return (False,)
 
 # Contains the functions to generate valid moves for each KomaType.
 MOVEGEN_FUNCTIONS: Dict[KomaType, Tuple[DestGen, PromConstr]] = {

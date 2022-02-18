@@ -24,7 +24,7 @@ class Dir(IntEnum):
     NW = 12
 
 
-class BoardRepresentation:
+class MailboxBoard:
     # Internal representation for the position.
     # Board representation used is mailbox.
     # 1D array interpreted as a 9x9 array with padding.
@@ -49,12 +49,12 @@ class BoardRepresentation:
     
     @staticmethod
     def sq_to_idx(sq: Square) -> int:
-        return BoardRepresentation.cr_to_idx(*(sq.get_cr()))
+        return MailboxBoard.cr_to_idx(*(sq.get_cr()))
     
     @staticmethod
     def idx_to_sq(idx: int) -> Square:
-        col = BoardRepresentation.idx_to_c(idx)
-        row = BoardRepresentation.idx_to_r(idx)
+        col = MailboxBoard.idx_to_c(idx)
+        row = MailboxBoard.idx_to_r(idx)
         return Square.from_cr(col, row)
     
     @staticmethod
@@ -70,12 +70,28 @@ class BoardRepresentation:
         return (idx-1) % 13
     
     @staticmethod
-    def is_idx_in_zone(idx: int, side: Side) -> bool:
-        row = BoardRepresentation.idx_to_r(idx)
+    def is_idx_in_promotion_zone(idx: int, side: Side) -> bool:
+        row = MailboxBoard.idx_to_r(idx)
         if side == Side.SENTE:
             return True if row in (1, 2, 3) else False
         else:
             return True if row in (7, 8, 9) else False
+    
+    @staticmethod
+    def is_idx_in_last_two_rows(idx: int, side: Side) -> bool:
+        row = MailboxBoard.idx_to_r(idx)
+        if side == Side.SENTE:
+            return True if row in (1, 2) else False
+        else:
+            return True if row in (8, 9) else False
+    
+    @staticmethod
+    def is_idx_in_last_row(idx: int, side: Side) -> bool:
+        row = MailboxBoard.idx_to_r(idx)
+        if side == Side.SENTE:
+            return True if row == 1 else False
+        else:
+            return True if row == 9 else False
     
     def to_sfen(self) -> str:
         board = []
