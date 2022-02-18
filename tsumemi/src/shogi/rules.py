@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from typing import Any, Callable, Dict, List, Tuple
     from tsumemi.src.shogi.position import Position
     DestGen = Callable[[BoardRepresentation, int, Side], List[int]]
+    PromConstr = Callable[[Side, int, int], List[Tuple[int, int, bool]]]
 
 
 def is_legal(mv: Move, pos: Position) -> bool:
@@ -53,7 +54,7 @@ def generate_valid_moves(
             idx for idx in destinations if board.mailbox[idx] != Koma.INVALID
         ]
         for end_idx in filtered_dests:
-            tuplist = promotion_constrainer(pos, side, start_idx, end_idx)
+            tuplist = promotion_constrainer(side, start_idx, end_idx)
             for tup in tuplist:
                 start, end, promo = tup
                 move = _move(board, start, end, side, ktype, promo)
@@ -148,7 +149,7 @@ def _drop(side: Side, ktype: KomaType, end_idx: int) -> Move:
 # given the piece type and the start and end squares.
 
 def constrain_promotions_ky(
-        pos: Position, side: Side, start_idx: int, end_idx: int
+        side: Side, start_idx: int, end_idx: int
     ) -> List[Tuple[int, int, bool]]:
     res: List[Tuple[int, int, bool]] = []
     end_row_num = BoardRepresentation.idx_to_r(end_idx)
@@ -166,7 +167,7 @@ def constrain_promotions_ky(
     return res
 
 def constrain_promotions_ke(
-        pos: Position, side: Side, start_idx: int, end_idx: int
+        side: Side, start_idx: int, end_idx: int
     ) -> List[Tuple[int, int, bool]]:
     res: List[Tuple[int, int, bool]] = []
     end_row_num = BoardRepresentation.idx_to_r(end_idx)
@@ -184,7 +185,7 @@ def constrain_promotions_ke(
     return res
 
 def constrain_promotable(
-        pos: Position, side: Side, start_idx: int, end_idx: int
+        side: Side, start_idx: int, end_idx: int
     ) -> List[Tuple[int, int, bool]]:
     """Identify promotion and non-promotion moves for pieces that
     are not forced to promote and can move in and out of the
@@ -201,7 +202,7 @@ def constrain_promotable(
     return res
 
 def constrain_unpromotable(
-        pos: Position, side: Side, start_idx: int, end_idx: int
+        side: Side, start_idx: int, end_idx: int
     ) -> List[Tuple[int, int, bool]]:
     """Identify promotion and non-promotion moves for pieces that
     cannot promote.
@@ -209,7 +210,7 @@ def constrain_unpromotable(
     return [(start_idx, end_idx, False),]
 
 # Contains the functions to generate valid moves for each KomaType.
-MOVEGEN_FUNCTIONS: Dict[KomaType, Tuple[DestGen, Callable[..., Any]]] = {
+MOVEGEN_FUNCTIONS: Dict[KomaType, Tuple[DestGen, PromConstr]] = {
     KomaType.FU: (
         functools.partial(destgen.generate_dests_steps, steps=destgen.steps_fu),
         constrain_promotions_ky
