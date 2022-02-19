@@ -322,8 +322,11 @@ class BoardState(MoveInputHandlerState):
             if is_completed:
                 caller._set_state("ready")
                 return
-            else:
+            elif is_completed is None:
                 caller._set_state("wait_for_promotion")
+                return
+            else:
+                caller._set_state("ready")
                 return
 
 
