@@ -18,6 +18,83 @@ if TYPE_CHECKING:
     PromConstr = Callable[[Side, int, int], PromConstrTuple]
 
 
+def exists_valid_move_given_squares(
+        pos: Position, start_sq: Square, end_sq: Square
+    ) -> bool:
+    if start_sq == Square.HAND:
+        raise ValueError(f"expected non-drop; got {start_sq}, {end_sq}")
+    koma = pos.get_koma(start_sq)
+    if koma == Koma.NONE or koma == Koma.INVALID:
+        return False
+    if koma.side() != pos.turn:
+        return False
+    ktype = KomaType.get(koma)
+    board = pos.board
+    side = koma.side()
+    start_idx = board.sq_to_idx(start_sq)
+    end_idx = board.sq_to_idx(end_sq)
+    dest_generator, _ = MOVEGEN_FUNCTIONS[ktype]
+    destinations = destgen.filter_for_valid_dests(
+        dest_generator(board, start_idx, side), board
+    )
+    return True if end_idx in destinations else False
+
+def create_legal_moves_given_squares(
+        pos: Position, start_sq: Square, end_sq: Square
+    ) -> List[Move]:
+    mvlist = create_valid_moves_given_squares(pos, start_sq, end_sq)
+    return [move for move in mvlist if is_legal(move, pos)]
+
+def create_valid_moves_given_squares(
+        pos: Position, start_sq: Square, end_sq: Square
+    ) -> List[Move]:
+    if not exists_valid_move_given_squares(pos, start_sq, end_sq):
+        return []
+    koma = pos.get_koma(start_sq)
+    ktype = KomaType.get(koma)
+    board = pos.board
+    side = koma.side()
+    start_idx = board.sq_to_idx(start_sq)
+    end_idx = board.sq_to_idx(end_sq)
+    _, promotion_constrainer = MOVEGEN_FUNCTIONS[ktype]
+    return [
+        _move(board, start_idx, end_idx, side, ktype, can_promote)
+        for can_promote in promotion_constrainer(side, start_idx, end_idx)
+    ]
+
+def exists_valid_drop_given_square(
+        pos: Position, side: Side, ktype: KomaType, end_sq: Square
+    ) -> bool:
+    if ktype not in HAND_TYPES:
+        raise ValueError(f"{ktype} is not a valid KomaType for a drop move")
+    if pos.get_hand_koma_count(side, ktype) == 0:
+        return False
+    end_idx = pos.board.sq_to_idx(end_sq)
+    if is_drop_innately_illegal(pos.board, side, ktype, end_idx):
+        return False
+    return True
+
+def create_legal_drop_given_square(
+        pos: Position, side: Side, ktype: KomaType, end_sq: Square
+    ) -> Move:
+    move = create_valid_drop_given_square(pos, side, ktype, end_sq)
+    if move.is_null():
+        return move
+    elif is_legal(move, pos):
+        return move
+    else:
+        return NullMove()
+
+def create_valid_drop_given_square(
+        pos: Position, side: Side, ktype: KomaType, end_sq: Square
+    ) -> Move:
+    if exists_valid_drop_given_square(pos, side, ktype, end_sq):
+        end_idx = pos.board.sq_to_idx(end_sq)
+        return _drop(side, ktype, end_idx)
+    else:
+        return NullMove()
+    
+
 def is_legal(mv: Move, pos: Position) -> bool:
     side = pos.turn
     pos.make_move(mv)
@@ -79,7 +156,7 @@ def generate_drop_moves(
         pos: Position, side: Side, ktype: KomaType
     ) -> List[Move]:
     if ktype not in HAND_TYPES:
-        return []
+        raise ValueError(f"{ktype} is not a valid KomaType for a drop move")
     mvlist: List[Move] = []
     if pos.get_hand_koma_count(side, ktype) == 0:
         return mvlist
@@ -96,18 +173,29 @@ def create_valid_drop_from_idx(
         ktype: KomaType,
         end_idx: int
     ) -> Move:
+    if is_drop_innately_illegal(board, side, ktype, end_idx):
+        return NullMove()
+    return _drop(side, ktype, end_idx)
+
+def is_drop_innately_illegal(
+        board: MailboxBoard,
+        side: Side,
+        ktype: KomaType,
+        end_idx: int
+    ) -> bool:
+    if board.mailbox[end_idx] != Koma.NONE:
+        return True
     if ktype == KomaType.FU:
-        if is_drop_illegal_ky(side, end_idx):
-            return NullMove()
-        if is_drop_nifu(board, side, end_idx):
-            return NullMove()
+        if (is_drop_illegal_ky(side, end_idx)
+            or is_drop_nifu(board, side, end_idx)):
+            return True
     elif ktype == KomaType.KY:
         if is_drop_illegal_ky(side, end_idx):
-            return NullMove()
+            return True
     elif ktype == KomaType.KE:
         if is_drop_illegal_ke(side, end_idx):
-            return NullMove()
-    return _drop(side, ktype, end_idx)
+            return True
+    return False
 
 def is_drop_nifu(board: MailboxBoard, side: Side, end_idx: int) -> bool:
     col_num = MailboxBoard.idx_to_c(end_idx)
