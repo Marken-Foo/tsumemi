@@ -298,7 +298,7 @@ class BoardCanvas(tk.Canvas):
         pad = (komadai_text_size / 8 if is_text else komadai_piece_size / 8)
         mochigoma_heading_size = 4 * komadai_char_height # "▲\n持\n駒\n"
         
-        c_hand = {ktype: count for (ktype, count) in hand.items() if count > 0}
+        c_hand = {ktype: count for (ktype, count) in hand.mochigoma_dict.items() if count > 0}
         num_piece_types = len(c_hand)
         k_width = 2 * komadai_piece_size
         k_height = (
@@ -403,7 +403,7 @@ class BoardCanvas(tk.Canvas):
         self.draw_board()
         # Draw board pieces
         is_text = not self.koma_img_cache.has_images()
-        for koma, kset in position.koma_sets.items():
+        for koma, kset in position.board.koma_sets.items():
             ktype = KomaType.get(koma)
             side = koma.side()
             invert = (
@@ -411,8 +411,8 @@ class BoardCanvas(tk.Canvas):
                 or (not is_north_sente and (side == Side.GOTE))
             )
             for idx in kset:
-                col_num = position.idx_to_c(idx)
-                row_num = position.idx_to_r(idx)
+                col_num = position.board.idx_to_c(idx)
+                row_num = position.board.idx_to_r(idx)
                 x = col_num-1 if self.is_upside_down else 9-col_num
                 y = 9-row_num if self.is_upside_down else row_num-1
                 id = self.draw_koma(

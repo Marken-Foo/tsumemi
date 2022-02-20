@@ -12,8 +12,7 @@ from tsumemi.src.shogi.basetypes import Koma, KomaType, Move, Side, Square
 
 if TYPE_CHECKING:
     import tkinter.Event as tkEvent
-    from typing import Dict, List, Optional, Tuple
-    from tsumemi.src.shogi.game import Game
+    from typing import Dict, List, Optional
     from tsumemi.src.shogi.position import Position
     from tsumemi.src.tsumemi.board_canvas import BoardCanvas
 
@@ -50,31 +49,37 @@ class MoveInputHandler(evt.Emitter):
         self.position = board_canvas.position
         return
     
-    def receive_square(self, event: tkEvent,
-            sq: Square, hand_ktype: KomaType = KomaType.NONE,
+    def receive_square(self,
+            event: tkEvent,
+            sq: Square,
+            hand_ktype: KomaType = KomaType.NONE,
             hand_side: Side = Side.SENTE
         ) -> None:
         """Receive a Square and other relevant inputs from GUI. Let
         the state machine handle it.
         """
         try:
-            self.active_state.receive_input(event=event, caller=self, sq=sq,
-                hand_ktype=hand_ktype, hand_side=hand_side
+            self.active_state.receive_input(
+                event=event, caller=self,
+                sq=sq, hand_ktype=hand_ktype, hand_side=hand_side
             )
         except RuntimeError as e:
             self._set_state("ready")
             logger.warning(e, exc_info=True)
         return
     
-    def execute_promotion_choice(self, is_promotion: Optional[bool],
-            sq: Square, ktype: KomaType
+    def execute_promotion_choice(self,
+            is_promotion: Optional[bool],
+            sq: Square,
+            ktype: KomaType
         ) -> None:
         """Attempt to carry out the promotion choice by delegating to
         the state machine. is_promotion is True if promotion, False if
         not a promotion, and None otherwise (e.g. instead of choosing,
         the move was cancelled instead.)
         """
-        self.active_state.receive_promotion(caller=self,
+        self.active_state.receive_promotion(
+            caller=self,
             is_promotion=is_promotion, sq=sq, ktype=ktype
         )
         return
@@ -110,84 +115,45 @@ class MoveInputHandler(evt.Emitter):
         return
     
     def _send_move(self, move: Move) -> None:
-        """Send out a move once it has been determined to be legal.
-        """
         self._notify_observers(MoveEvent(move))
         return
     
     def _attempt_drop(self, sq: Square) -> bool:
-        """Check if a legal drop move can be made.
-        """
-        # create drop moves then check legality
-        exists_valid_move, mvlist = self._check_validity(
-            start_sq=self.focused_sq, end_sq=sq,
-            ktype=self.focused_ktype
+        move = rules.create_legal_drop_given_square(
+            pos=self.position,
+            side=self.position.turn,
+            ktype=self.focused_ktype,
+            end_sq=sq
         )
-        if exists_valid_move:
-            # Given the end square and koma type, if a valid
-            # drop exists, it's the only one.
-            if rules.is_legal(mvlist[0], self.position):
-                self._send_move(mvlist[0])
-                return True
-        return False
+        if move.is_null():
+            return False
+        else:
+            self._send_move(move)
+            return True
     
     def _attempt_move(self, sq: Square) -> Optional[bool]:
-        """Check if a legal move can be made. Returns None if more
-        information is needed (e.g. choice of promotion/nonpromotion.
+        """Check if a legal move can be made. Returns True and sends
+        out the move if it is, False if not.
+        Returns None if more information is needed (e.g. choice of promotion/nonpromotion.
         """
-        ktype = KomaType.get(self.position.get_koma(self.focused_sq))
-        exists_valid_move, mvlist = self._check_validity(
-            start_sq=self.focused_sq, end_sq=sq, ktype=ktype
+        mvlist: List[Move] = rules.create_legal_moves_given_squares(
+            pos=self.position,
+            start_sq=self.focused_sq,
+            end_sq=sq
         )
-        if exists_valid_move:
-            # For normal shogi, either one move (promo or non)
-            # or two (choice between promo or non)
-            if len(mvlist) == 1:
-                if rules.is_legal(mvlist[0], self.position):
-                    self._send_move(mvlist[0])
-                return True
-            elif len(mvlist) == 2:
-                # If the promotion is legal, so is the
-                # nonpromotion, and vice-versa.
-                if rules.is_legal(mvlist[0], self.position):
-                    # more info needed, GUI prompts for input
-                    self.board_canvas.prompt_promotion(sq, ktype)
-                    return None
-                else:
-                    return True
-        return False
-    
-    def _check_validity(self,
-            start_sq: Square, end_sq: Square,
-            ktype: KomaType = KomaType.NONE
-        ) -> Tuple[bool, List[Move]]:
-        """Decide if there exists a valid move given the start and
-        end Squares, and KomaType (needed for hand pieces).
-        """
-        res_bool = False
-        if start_sq == Square.HAND:
-            mvlist = rules.generate_drop_moves(
-                pos=self.position, side=self.position.turn, ktype=ktype
-            )
-            mvlist_filtered = [mv for mv in mvlist if (mv.end_sq == end_sq)]
-            if len(mvlist_filtered) == 1:
-                res_bool = True
-            return res_bool, mvlist_filtered
-        # Now start_sq should be a valid Square on the board
-        koma = self.position.get_koma(start_sq)
-        if koma.side() == self.position.turn:
-            ktype = KomaType.get(koma)
-            mvlist = rules.generate_valid_moves(
-                pos=self.position, side=self.position.turn, ktype=ktype
-            )
-            mvlist_filtered = [
-                mv for mv in mvlist
-                if (mv.start_sq == start_sq) and (mv.end_sq == end_sq)
-            ]
-            if (len(mvlist_filtered) == 1) or (len(mvlist_filtered) == 2):
-                res_bool = True
-            return res_bool, mvlist_filtered
-        return False, []
+        if not mvlist:
+            return False
+        elif len(mvlist) == 1:
+            self._send_move(mvlist[0])
+            return True
+        elif len(mvlist) == 2:
+            # There is a promotion and nonpromotion option.
+            # More info needed, GUI prompts for input.
+            koma = self.position.get_koma(self.focused_sq)
+            self.board_canvas.prompt_promotion(sq, KomaType.get(koma))
+            return None
+        else:
+            raise RuntimeError("Unexpected mvlist length in _attempt_move()")
 
 
 class MoveInputHandlerState(ABC):
@@ -319,11 +285,11 @@ class BoardState(MoveInputHandlerState):
                 return
         else:
             is_completed = caller._attempt_move(sq)
-            if is_completed:
-                caller._set_state("ready")
+            if is_completed is None:
+                caller._set_state("wait_for_promotion")
                 return
             else:
-                caller._set_state("wait_for_promotion")
+                caller._set_state("ready")
                 return
 
 

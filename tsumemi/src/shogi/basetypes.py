@@ -316,6 +316,9 @@ class Move:
     def is_null(self) -> bool:
         return False
     
+    def is_pass(self) -> bool:
+        return self.start_sq == self.end_sq
+    
     def to_text(self) -> str:
         """Return easily-parseable string representation of a Move.
         Components are:

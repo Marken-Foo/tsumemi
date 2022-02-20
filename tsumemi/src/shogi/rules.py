@@ -2,18 +2,21 @@ from __future__ import annotations
 
 import functools
 
+import tsumemi.src.shogi.destination_generation as destgen
+
 from typing import TYPE_CHECKING
 
-from tsumemi.src.shogi.basetypes import Koma, KomaType, Move, Side, Square
+from tsumemi.src.shogi.basetypes import Koma, KomaType, Move, NullMove, Side, Square
 from tsumemi.src.shogi.basetypes import HAND_TYPES, KOMA_TYPES
-from tsumemi.src.shogi.position import Dir
+from tsumemi.src.shogi.position_internals import MailboxBoard
 
 if TYPE_CHECKING:
-    from typing import Any, Callable, Dict, List, Tuple
+    from typing import Callable, Dict, Iterable, List, Tuple, Union
     from tsumemi.src.shogi.position import Position
+    DestGen = Callable[[MailboxBoard, int, Side], destgen.IdxIterable]
+    PromConstrTuple = Union[Tuple[bool], Tuple[bool, bool]]
+    PromConstr = Callable[[Side, Square, Square], PromConstrTuple]
 
-
-# === Public interface (functions meant to be used by other code)
 
 def is_legal(mv: Move, pos: Position) -> bool:
     side = pos.turn
@@ -22,125 +25,13 @@ def is_legal(mv: Move, pos: Position) -> bool:
     pos.unmake_move(mv)
     return ans
 
-def generate_legal_moves(pos: Position) -> List[Move]:
-    pass
-
-def generate_valid_moves(
-        pos: Position, side: Side, ktype: KomaType
-    ) -> List[Move]:
-    dest_generator, promotion_constrainer = MOVEGEN_FUNCTIONS[ktype]
-    return generate_moves_base(
-        pos=pos, side=side, ktype=ktype,
-        dest_generator=dest_generator,
-        promotion_constrainer=promotion_constrainer
-    )
-
-def generate_drop_moves(
-        pos: Position, side: Side, ktype: KomaType
-    ) -> List[Move]:
-    if ktype not in HAND_TYPES:
-        return []
-    mvlist: List[Move] = []
-    hand = pos.hand_sente if side == Side.SENTE else pos.hand_gote
-    if hand[ktype] == 0:
-        return mvlist
-    for end_idx in pos.empty_idxs:
-        if ktype == KomaType.FU:
-            row_num = pos.idx_to_r(end_idx)
-            if (((side == Side.SENTE) and (row_num == 1))
-                    or ((side == Side.GOTE) and (row_num == 9))
-            ):
-                continue
-            # nifu
-            col = pos.idx_to_c(end_idx)
-            is_nifu = False
-            for row in range(1, 10, 1):
-                idx = pos.cr_to_idx(col, row)
-                if pos.board[idx] == Koma.make(side, KomaType.FU):
-                    is_nifu = True
-            if is_nifu:
-                continue
-        elif ktype == KomaType.KY:
-            row_num = pos.idx_to_r(end_idx)
-            if (((side == Side.SENTE) and (row_num == 1))
-                    or ((side == Side.GOTE) and (row_num == 9))
-            ):
-                continue
-        elif ktype == KomaType.KE:
-            row_num = pos.idx_to_r(end_idx)
-            if ((
-                    (side == Side.SENTE)
-                    and ((row_num == 1) or (row_num == 2))
-                ) or (
-                    (side == Side.GOTE)
-                    and ((row_num == 9) or (row_num == 8))
-                )
-            ):
-                continue
-        move = _drop(
-            pos=pos, end_idx=end_idx, side=side, ktype=ktype
-        )
-        mvlist.append(move)
-    return mvlist
-
-# === Convenience functions to create Moves.
-
-def _move(
-        pos: Position, start_idx: int, end_idx: int, side: Side,
-        ktype: KomaType, is_promotion=False
-    ) -> Move:
-    """Construct a Move given the relevant inputs. Convenient.
-    """
-    return Move(
-        start_sq=pos.idx_to_sq(start_idx), end_sq=pos.idx_to_sq(end_idx),
-        koma=Koma.make(side, ktype), captured=pos.board[end_idx],
-        is_promotion=is_promotion
-    )
-
-def _drop(
-        pos: Position, end_idx: int, side: Side, ktype: KomaType
-    ) -> Move:
-    """Construct a Move representing a drop, given the relevant
-    inputs. Convenient.
-    """
-    return Move(
-        start_sq=Square.HAND, end_sq=pos.idx_to_sq(end_idx),
-        koma=Koma.make(side, ktype)
-    )
-
-# === For move generation
-
-def generate_moves_base(
-        pos: Position, side: Side, ktype: KomaType,
-        dest_generator: Callable[[Position, int, Side], List[int]],
-        promotion_constrainer: Callable[
-            [Position, Side, int, int], List[Tuple[int, int, bool]]
-        ]
-    ) -> List[Move]:
-    """Given a koma type (ktype), how it moves (dest_generator),
-    and promotion constraints (promotion_constrainer), returns a
-    list of all valid moves by that koma type (not counting drops)
-    in the given Position (pos)."""
-    mvlist = []
-    locations = pos.koma_sets[Koma.make(side, ktype)]
-    for start_idx in locations:
-        destinations = dest_generator(pos, start_idx, side)
-        # TODO: this requires internals of Position! Refactor!
-        filtered_dests = [
-            idx for idx in destinations if pos.board[idx] != Koma.INVALID
-        ]
-        for end_idx in filtered_dests:
-            tuplist = promotion_constrainer(pos, side, start_idx, end_idx)
-            for tup in tuplist:
-                start, end, promo = tup
-                move = _move(pos, start, end, side, ktype, promo)
-                mvlist.append(move)
-    return mvlist
-
 def is_in_check(pos: Position, side: Side) -> bool:
     # assumes royal king(s)
     king = Koma.make(side, KomaType.OU)
-    king_pos = [pos.idx_to_sq(idx) for idx in pos.koma_sets[king]]
+    king_pos = [
+        MailboxBoard.idx_to_sq(idx)
+        for idx in pos.board.koma_sets[king]
+    ]
     for ktype in KOMA_TYPES:
         mvlist = generate_valid_moves(pos, side.switch(), ktype)
         for mv in mvlist:
@@ -148,228 +39,248 @@ def is_in_check(pos: Position, side: Side) -> bool:
                 return True
     return False
 
-# === Basic reusable movement patterns of pieces
+def create_legal_moves_given_squares(
+        pos: Position, start_sq: Square, end_sq: Square
+    ) -> List[Move]:
+    mvlist = create_valid_moves_given_squares(pos, start_sq, end_sq)
+    return [move for move in mvlist if is_legal(move, pos)]
 
-def _generate_line_idxs(
-        pos: Position, side: Side, start_idx: int, dir: Dir
-    ) -> List[int]:
-    """Generate a list of target destination square indices,
-    assuming a koma at location start_idx that moves in a line
-    along the direction dir.
-    """
-    res = []
-    dest = start_idx + dir
-    dest_koma = pos.board[dest]
-    while dest_koma == Koma.NONE:
-        res.append(dest)
-        dest += dir
-        dest_koma = pos.board[dest]
-    if dest_koma != Koma.INVALID and dest_koma.side() != side:
-        res.append(dest)
-    return res
-
-def steps_fu(start_idx: int, side: Side) -> Tuple[int, ...]:
-    forward = Dir.S if side == Side.GOTE else Dir.N
-    return (start_idx+forward,)
-
-def steps_ke(start_idx: int, side: Side) -> Tuple[int, ...]:
-    forward = Dir.S if side == Side.GOTE else Dir.N
-    return (
-        start_idx+forward+forward+Dir.E,
-        start_idx+forward+forward+Dir.W
-    )
-
-def steps_gi(start_idx: int, side: Side) -> Tuple[int, ...]:
-    forward = Dir.S if side == Side.GOTE else Dir.N
-    return (
-        start_idx+forward, start_idx+Dir.NE, start_idx+Dir.SE,
-        start_idx+Dir.SW, start_idx+Dir.NW
-    )
-
-def steps_ki(start_idx: int, side: Side) -> Tuple[int, ...]:
-    forward = Dir.S if side == Side.GOTE else Dir.N
-    return (
-        start_idx+Dir.N, start_idx+Dir.S, start_idx+Dir.E, start_idx+Dir.W,
-        start_idx+forward+Dir.E, start_idx+forward+Dir.W
-    )
-
-def steps_ou(start_idx: int, side: Side) -> Tuple[int, ...]:
-    return (
-        start_idx+Dir.N, start_idx+Dir.NE, start_idx+Dir.E,
-        start_idx+Dir.SE, start_idx+Dir.S, start_idx+Dir.SW,
-        start_idx+Dir.W, start_idx+Dir.NW
-    )
-
-# === Destination generators.
-#  They may return invalid destinations.
-#  Filter the output before use.
-
-def generate_dests_steps(
-        pos: Position, start_idx: int, side: Side,
-        steps: Callable[[int, Side], Tuple[int, ...]]
-    ) -> List[int]:
-    res = []
-    targets = steps(start_idx, side)
-    for target in targets:
-        target_koma = pos.board[target]
-        is_valid_target = (
-            (target_koma != Koma.INVALID)
-            and (target_koma == Koma.NONE or target_koma.side() != side)
-        )
-        if is_valid_target:
-            res.append(target)
-    return res
-
-def generate_dests_ky(
-        pos: Position, start_idx: int, side: Side
-    ) -> List[int]:
-    forward = Dir.S if side == Side.GOTE else Dir.N
-    return _generate_line_idxs(pos, side, start_idx, forward)
-
-def generate_dests_ka(
-        pos: Position, start_idx: int, side: Side
-    ) -> List[int]:
-    ne = _generate_line_idxs(pos, side, start_idx, Dir.NE)
-    se = _generate_line_idxs(pos, side, start_idx, Dir.SE)
-    nw = _generate_line_idxs(pos, side, start_idx, Dir.NW)
-    sw = _generate_line_idxs(pos, side, start_idx, Dir.SW)
-    return ne + se + nw + sw
-
-def generate_dests_hi(
-        pos: Position, start_idx: int, side: Side
-    ) -> List[int]:
-    n = _generate_line_idxs(pos, side, start_idx, Dir.N)
-    s = _generate_line_idxs(pos, side, start_idx, Dir.S)
-    e = _generate_line_idxs(pos, side, start_idx, Dir.E)
-    w = _generate_line_idxs(pos, side, start_idx, Dir.W)
-    return n + s + e + w
-
-def generate_dests_um(
-        pos: Position, start_idx: int, side: Side
-    ) -> List[int]:
-    kaku = generate_dests_ka(pos, start_idx, side)
-    wazir = [
-        start_idx+Dir.N, start_idx+Dir.S,
-        start_idx+Dir.E, start_idx+Dir.W
+def create_valid_moves_given_squares(
+        pos: Position, start_sq: Square, end_sq: Square
+    ) -> List[Move]:
+    if not _is_move_from_square_available(pos, start_sq):
+        return []
+    if not _is_move_between_squares_valid(pos, start_sq, end_sq):
+        return []
+    koma = pos.get_koma(start_sq)
+    side = pos.turn
+    _, promotion_constrainer = MOVEGEN_FUNCTIONS[KomaType.get(koma)]
+    return [
+        pos.create_move(start_sq, end_sq, can_promote)
+        for can_promote in promotion_constrainer(side, start_sq, end_sq)
     ]
-    return kaku + wazir
 
-def generate_dests_ry(
-        pos: Position, start_idx: int, side: Side
-    ) -> List[int]:
-    hisha = generate_dests_hi(pos, start_idx, side)
-    alfil = [
-        start_idx+Dir.NE, start_idx+Dir.SE,
-        start_idx+Dir.SW, start_idx+Dir.NW
+def _is_move_from_square_available(pos: Position, start_sq: Square) -> bool:
+    if start_sq == Square.HAND:
+        raise ValueError(f"expected non-drop")
+    koma = pos.get_koma(start_sq)
+    if koma == Koma.NONE or koma == Koma.INVALID:
+        return False
+    if koma.side() != pos.turn:
+        return False
+    return True
+
+def _is_move_between_squares_valid(
+        pos: Position, start_sq: Square, end_sq: Square
+    ) -> bool:
+    koma = pos.get_koma(start_sq)
+    ktype = KomaType.get(koma)
+    board = pos.board
+    side = koma.side()
+    start_idx = MailboxBoard.sq_to_idx(start_sq)
+    end_idx = MailboxBoard.sq_to_idx(end_sq)
+    dest_generator, _ = MOVEGEN_FUNCTIONS[ktype]
+    return end_idx in dest_generator(board, start_idx, side)
+
+def create_legal_drop_given_square(
+        pos: Position, side: Side, ktype: KomaType, end_sq: Square
+    ) -> Move:
+    move = create_valid_drop_given_square(pos, side, ktype, end_sq)
+    if move.is_null():
+        return move
+    elif is_legal(move, pos):
+        return move
+    else:
+        return NullMove()
+
+def create_valid_drop_given_square(
+        pos: Position, side: Side, ktype: KomaType, end_sq: Square
+    ) -> Move:
+    if exists_valid_drop_given_square(pos, side, ktype, end_sq):
+        return _create_drop_move(side, ktype, end_sq)
+    else:
+        return NullMove()
+
+def _create_drop_move(side: Side, ktype: KomaType, end_sq: Square) -> Move:
+    return Move(
+        start_sq=Square.HAND,
+        end_sq=end_sq,
+        koma=Koma.make(side, ktype)
+    )
+
+def exists_valid_drop_given_square(
+        pos: Position, side: Side, ktype: KomaType, end_sq: Square
+    ) -> bool:
+    if not _is_drop_available(pos, side, ktype):
+        return False
+    if _is_drop_innately_illegal(pos, side, ktype, end_sq):
+        return False
+    return True
+
+def _is_drop_available(pos: Position, side: Side, ktype: KomaType) -> bool:
+    if ktype not in HAND_TYPES:
+        raise ValueError(f"{ktype} is not a valid KomaType for a drop move")
+    return pos.get_hand_koma_count(side, ktype) != 0
+
+def _is_drop_innately_illegal(
+        pos: Position,
+        side: Side,
+        ktype: KomaType,
+        end_sq: Square
+    ) -> bool:
+    if pos.get_koma(end_sq) != Koma.NONE:
+        return True
+    if ktype == KomaType.FU:
+        if (_is_drop_illegal_ky(side, end_sq)
+            or _is_drop_nifu(pos.board, side, end_sq)):
+            return True
+    elif ktype == KomaType.KY:
+        if _is_drop_illegal_ky(side, end_sq):
+            return True
+    elif ktype == KomaType.KE:
+        if _is_drop_illegal_ke(side, end_sq):
+            return True
+    return False
+
+def _is_drop_nifu(board: MailboxBoard, side: Side, end_sq: Square) -> bool:
+    col_num, _ = end_sq.get_cr()
+    koma_fu = Koma.make(side, KomaType.FU)
+    for row_num in range(1, 10, 1):
+        idx = MailboxBoard.cr_to_idx(col_num, row_num)
+        if board.mailbox[idx] == koma_fu:
+            return True
+    return False
+
+def _is_drop_illegal_ky(side: Side, end_sq: Square) -> bool:
+    return MailboxBoard.is_sq_in_last_row(end_sq, side)
+
+def _is_drop_illegal_ke(side: Side, end_sq: Square) -> bool:
+    return MailboxBoard.is_sq_in_last_two_rows(end_sq, side)
+
+def generate_valid_moves(
+        pos: Position, side: Side, ktype: KomaType
+    ) -> List[Move]:
+    dest_generator, promotion_constrainer = MOVEGEN_FUNCTIONS[ktype]
+    mvlist = []
+    board = pos.board
+    locations = board.koma_sets[Koma.make(side, ktype)]
+    for start_idx in locations:
+        destinations = dest_generator(board, start_idx, side)
+        start_sq = MailboxBoard.idx_to_sq(start_idx)
+        destination_sqs = _idxs_to_squares(destinations)
+        for end_sq in destination_sqs:
+            for can_promote in promotion_constrainer(side, start_sq, end_sq):
+                move = pos.create_move(start_sq, end_sq, can_promote)
+                mvlist.append(move)
+    return mvlist
+
+def generate_drop_moves(
+        pos: Position, side: Side, ktype: KomaType
+    ) -> List[Move]:
+    if not _is_drop_available(pos, side, ktype):
+        return []
+    empty_sqs = _idxs_to_squares(pos.board.empty_idxs)
+    return [
+        _create_drop_move(side, ktype, end_sq) for end_sq in empty_sqs
+        if not _is_drop_innately_illegal(pos, side, ktype, end_sq)
     ]
-    return hisha + alfil
+
+def _idxs_to_squares(idxs: Iterable[int]) -> Iterable[Square]:
+    return (MailboxBoard.idx_to_sq(idx) for idx in idxs)
 
 # === Promotion constrainers.
 # They determine if there are promotion and/or nonpromotion moves
 # given the piece type and the start and end squares.
 
 def constrain_promotions_ky(
-        pos: Position, side: Side, start_idx: int, end_idx: int
-    ) -> List[Tuple[int, int, bool]]:
-    res: List[Tuple[int, int, bool]] = []
-    must_promote = (
-        (side == Side.SENTE and pos.idx_to_r(end_idx) == 1)
-        or (side == Side.GOTE and pos.idx_to_r(end_idx) == 9)
-    )
-    can_promote = pos.is_idx_in_zone(end_idx, side)
+        side: Side, start_sq: Square, end_sq: Square
+    ) -> PromConstrTuple:
+    must_promote = MailboxBoard.is_sq_in_last_row(end_sq, side)
+    can_promote = MailboxBoard.is_sq_in_promotion_zone(end_sq, side)
     if must_promote:
-        res.append((start_idx, end_idx, True))
+        return (True,)
+    elif can_promote:
+        return (True, False)
     else:
-        res.append((start_idx, end_idx, False))
-        if can_promote:
-            res.append((start_idx, end_idx, True))
-    return res
+        return (False,)
 
 def constrain_promotions_ke(
-        pos: Position, side: Side, start_idx: int, end_idx: int
-    ) -> List[Tuple[int, int, bool]]:
-    res: List[Tuple[int, int, bool]] = []
-    must_promote = (
-        (side == Side.SENTE and pos.idx_to_r(end_idx) in (1, 2))
-        or (side == Side.GOTE and pos.idx_to_r(end_idx) in (8, 9))
-    )
-    can_promote = pos.is_idx_in_zone(end_idx, side)
+        side: Side, start_sq: Square, end_sq: Square
+    ) -> PromConstrTuple:
+    must_promote = MailboxBoard.is_sq_in_last_two_rows(end_sq, side)
+    can_promote = MailboxBoard.is_sq_in_promotion_zone(end_sq, side)
     if must_promote:
-        res.append((start_idx, end_idx, True))
+        return (True,)
+    elif can_promote:
+        return (True, False)
     else:
-        res.append((start_idx, end_idx, False))
-        if can_promote:
-            res.append((start_idx, end_idx, True))
-    return res
+        return (False,)
 
 def constrain_promotable(
-        pos: Position, side: Side, start_idx: int, end_idx: int
-    ) -> List[Tuple[int, int, bool]]:
+        side: Side, start_sq: Square, end_sq: Square
+    ) -> PromConstrTuple:
     """Identify promotion and non-promotion moves for pieces that
     are not forced to promote and can move in and out of the
     promotion zone.
     """
-    res: List[Tuple[int, int, bool]] = []
     can_promote = (
-        pos.is_idx_in_zone(start_idx, side)
-        or pos.is_idx_in_zone(end_idx, side)
+        MailboxBoard.is_sq_in_promotion_zone(start_sq, side)
+        or MailboxBoard.is_sq_in_promotion_zone(end_sq, side)
     )
-    res.append((start_idx, end_idx, False))
     if can_promote:
-        res.append((start_idx, end_idx, True))
-    return res
+        return (True, False)
+    else:
+        return (False,)
 
 def constrain_unpromotable(
-        pos: Position, side: Side, start_idx: int, end_idx: int
-    ) -> List[Tuple[int, int, bool]]:
+        side: Side, start_sq: Square, end_sq: Square
+    ) -> PromConstrTuple:
     """Identify promotion and non-promotion moves for pieces that
     cannot promote.
     """
-    return [(start_idx, end_idx, False),]
+    return (False,)
 
 # Contains the functions to generate valid moves for each KomaType.
-MOVEGEN_FUNCTIONS: Dict[KomaType,
-        Tuple[Callable[..., Any], Callable[..., Any]]
-    ] = {
+MOVEGEN_FUNCTIONS: Dict[KomaType, Tuple[DestGen, PromConstr]] = {
     KomaType.FU: (
-        functools.partial(generate_dests_steps, steps=steps_fu),
+        functools.partial(destgen.generate_dests_steps, steps=destgen.steps_fu),
         constrain_promotions_ky
     ),
-    KomaType.KY: (generate_dests_ky, constrain_promotions_ky),
+    KomaType.KY: (destgen.generate_dests_ky, constrain_promotions_ky),
     KomaType.KE: (
-        functools.partial(generate_dests_steps, steps=steps_ke),
+        functools.partial(destgen.generate_dests_steps, steps=destgen.steps_ke),
         constrain_promotions_ke
     ),
     KomaType.GI: (
-        functools.partial(generate_dests_steps, steps=steps_gi),
+        functools.partial(destgen.generate_dests_steps, steps=destgen.steps_gi),
         constrain_promotable
     ),
     KomaType.KI: (
-        functools.partial(generate_dests_steps, steps=steps_ki),
+        functools.partial(destgen.generate_dests_steps, steps=destgen.steps_ki),
         constrain_unpromotable
     ),
-    KomaType.KA: (generate_dests_ka, constrain_promotable),
-    KomaType.HI: (generate_dests_hi, constrain_promotable),
+    KomaType.KA: (destgen.generate_dests_ka, constrain_promotable),
+    KomaType.HI: (destgen.generate_dests_hi, constrain_promotable),
     KomaType.OU: (
-        functools.partial(generate_dests_steps, steps=steps_ou),
+        functools.partial(destgen.generate_dests_steps, steps=destgen.steps_ou),
         constrain_unpromotable
     ),
     KomaType.TO: (
-        functools.partial(generate_dests_steps, steps=steps_ki),
+        functools.partial(destgen.generate_dests_steps, steps=destgen.steps_ki),
         constrain_unpromotable
     ),
     KomaType.NY: (
-        functools.partial(generate_dests_steps, steps=steps_ki),
+        functools.partial(destgen.generate_dests_steps, steps=destgen.steps_ki),
         constrain_unpromotable
     ),
     KomaType.NK: (
-        functools.partial(generate_dests_steps, steps=steps_ki),
+        functools.partial(destgen.generate_dests_steps, steps=destgen.steps_ki),
         constrain_unpromotable
     ),
     KomaType.NG: (
-        functools.partial(generate_dests_steps, steps=steps_ki),
+        functools.partial(destgen.generate_dests_steps, steps=destgen.steps_ki),
         constrain_unpromotable
     ),
-    KomaType.UM: (generate_dests_um, constrain_unpromotable),
-    KomaType.RY: (generate_dests_ry, constrain_unpromotable),
+    KomaType.UM: (destgen.generate_dests_um, constrain_unpromotable),
+    KomaType.RY: (destgen.generate_dests_ry, constrain_unpromotable),
 }
