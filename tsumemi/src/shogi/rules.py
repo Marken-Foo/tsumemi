@@ -27,34 +27,39 @@ def create_legal_moves_given_squares(
 def create_valid_moves_given_squares(
         pos: Position, start_sq: Square, end_sq: Square
     ) -> List[Move]:
-    end_idx = MailboxBoard.sq_to_idx(end_sq)
-    if not end_idx in _generate_valid_dests_given_square(pos, start_sq):
+    if not _is_move_from_square_available(pos, start_sq):
+        return []
+    if not _is_move_between_squares_valid(pos, start_sq, end_sq):
         return []
     koma = pos.get_koma(start_sq)
-    ktype = KomaType.get(koma)
-    side = koma.side()
-    _, promotion_constrainer = MOVEGEN_FUNCTIONS[ktype]
+    side = pos.turn
+    _, promotion_constrainer = MOVEGEN_FUNCTIONS[KomaType.get(koma)]
     return [
         pos.create_move(start_sq, end_sq, can_promote)
         for can_promote in promotion_constrainer(side, start_sq, end_sq)
     ]
 
-def _generate_valid_dests_given_square(
-        pos: Position, start_sq: Square
-    ) -> destgen.IdxIterable:
+def _is_move_from_square_available(pos: Position, start_sq: Square) -> bool:
     if start_sq == Square.HAND:
         raise ValueError(f"expected non-drop")
     koma = pos.get_koma(start_sq)
     if koma == Koma.NONE or koma == Koma.INVALID:
-        return iter(())
+        return False
     if koma.side() != pos.turn:
-        return iter(())
+        return False
+    return True
+
+def _is_move_between_squares_valid(
+        pos: Position, start_sq: Square, end_sq: Square
+    ) -> bool:
+    koma = pos.get_koma(start_sq)
     ktype = KomaType.get(koma)
     board = pos.board
     side = koma.side()
     start_idx = MailboxBoard.sq_to_idx(start_sq)
+    end_idx = MailboxBoard.sq_to_idx(end_sq)
     dest_generator, _ = MOVEGEN_FUNCTIONS[ktype]
-    return dest_generator(board, start_idx, side)
+    return end_idx in dest_generator(board, start_idx, side)
 
 def create_legal_drop_given_square(
         pos: Position, side: Side, ktype: KomaType, end_sq: Square
