@@ -11,12 +11,33 @@ from tsumemi.src.shogi.basetypes import HAND_TYPES, KOMA_TYPES
 from tsumemi.src.shogi.position_internals import MailboxBoard
 
 if TYPE_CHECKING:
-    from typing import Any, Callable, Dict, Iterable, List, Tuple, Union
+    from typing import Callable, Dict, Iterable, List, Tuple, Union
     from tsumemi.src.shogi.position import Position
     DestGen = Callable[[MailboxBoard, int, Side], destgen.IdxIterable]
     PromConstrTuple = Union[Tuple[bool], Tuple[bool, bool]]
     PromConstr = Callable[[Side, Square, Square], PromConstrTuple]
 
+
+def is_legal(mv: Move, pos: Position) -> bool:
+    side = pos.turn
+    pos.make_move(mv)
+    ans = not is_in_check(pos, side)
+    pos.unmake_move(mv)
+    return ans
+
+def is_in_check(pos: Position, side: Side) -> bool:
+    # assumes royal king(s)
+    king = Koma.make(side, KomaType.OU)
+    king_pos = [
+        MailboxBoard.idx_to_sq(idx)
+        for idx in pos.board.koma_sets[king]
+    ]
+    for ktype in KOMA_TYPES:
+        mvlist = generate_valid_moves(pos, side.switch(), ktype)
+        for mv in mvlist:
+            if mv.end_sq in king_pos:
+                return True
+    return False
 
 def create_legal_moves_given_squares(
         pos: Position, start_sq: Square, end_sq: Square
@@ -80,6 +101,13 @@ def create_valid_drop_given_square(
     else:
         return NullMove()
 
+def _create_drop_move(side: Side, ktype: KomaType, end_sq: Square) -> Move:
+    return Move(
+        start_sq=Square.HAND,
+        end_sq=end_sq,
+        koma=Koma.make(side, ktype)
+    )
+
 def exists_valid_drop_given_square(
         pos: Position, side: Side, ktype: KomaType, end_sq: Square
     ) -> bool:
@@ -88,65 +116,6 @@ def exists_valid_drop_given_square(
     if _is_drop_innately_illegal(pos, side, ktype, end_sq):
         return False
     return True
-
-def is_legal(mv: Move, pos: Position) -> bool:
-    side = pos.turn
-    pos.make_move(mv)
-    ans = not is_in_check(pos, side)
-    pos.unmake_move(mv)
-    return ans
-
-def is_in_check(pos: Position, side: Side) -> bool:
-    # assumes royal king(s)
-    king = Koma.make(side, KomaType.OU)
-    king_pos = [
-        MailboxBoard.idx_to_sq(idx)
-        for idx in pos.board.koma_sets[king]
-    ]
-    for ktype in KOMA_TYPES:
-        mvlist = generate_valid_moves(pos, side.switch(), ktype)
-        for mv in mvlist:
-            if mv.end_sq in king_pos:
-                return True
-    return False
-
-def _create_drop_move(side: Side, ktype: KomaType, end_sq: Square) -> Move:
-    return Move(
-        start_sq=Square.HAND,
-        end_sq=end_sq,
-        koma=Koma.make(side, ktype)
-    )
-
-def _idxs_to_squares(idxs: Iterable[int]) -> Iterable[Square]:
-    return (MailboxBoard.idx_to_sq(idx) for idx in idxs)
-
-def generate_valid_moves(
-        pos: Position, side: Side, ktype: KomaType
-    ) -> List[Move]:
-    dest_generator, promotion_constrainer = MOVEGEN_FUNCTIONS[ktype]
-    mvlist = []
-    board = pos.board
-    locations = board.koma_sets[Koma.make(side, ktype)]
-    for start_idx in locations:
-        destinations = dest_generator(board, start_idx, side)
-        start_sq = MailboxBoard.idx_to_sq(start_idx)
-        destination_sqs = _idxs_to_squares(destinations)
-        for end_sq in destination_sqs:
-            for can_promote in promotion_constrainer(side, start_sq, end_sq):
-                move = pos.create_move(start_sq, end_sq, can_promote)
-                mvlist.append(move)
-    return mvlist
-
-def generate_drop_moves(
-        pos: Position, side: Side, ktype: KomaType
-    ) -> List[Move]:
-    if not _is_drop_available(pos, side, ktype):
-        return []
-    empty_sqs = _idxs_to_squares(pos.board.empty_idxs)
-    return [
-        _create_drop_move(side, ktype, end_sq) for end_sq in empty_sqs
-        if not _is_drop_innately_illegal(pos, side, ktype, end_sq)
-    ]
 
 def _is_drop_available(pos: Position, side: Side, ktype: KomaType) -> bool:
     if ktype not in HAND_TYPES:
@@ -188,6 +157,36 @@ def _is_drop_illegal_ky(side: Side, end_sq: Square) -> bool:
 def _is_drop_illegal_ke(side: Side, end_sq: Square) -> bool:
     return MailboxBoard.is_sq_in_last_two_rows(end_sq, side)
 
+def generate_valid_moves(
+        pos: Position, side: Side, ktype: KomaType
+    ) -> List[Move]:
+    dest_generator, promotion_constrainer = MOVEGEN_FUNCTIONS[ktype]
+    mvlist = []
+    board = pos.board
+    locations = board.koma_sets[Koma.make(side, ktype)]
+    for start_idx in locations:
+        destinations = dest_generator(board, start_idx, side)
+        start_sq = MailboxBoard.idx_to_sq(start_idx)
+        destination_sqs = _idxs_to_squares(destinations)
+        for end_sq in destination_sqs:
+            for can_promote in promotion_constrainer(side, start_sq, end_sq):
+                move = pos.create_move(start_sq, end_sq, can_promote)
+                mvlist.append(move)
+    return mvlist
+
+def generate_drop_moves(
+        pos: Position, side: Side, ktype: KomaType
+    ) -> List[Move]:
+    if not _is_drop_available(pos, side, ktype):
+        return []
+    empty_sqs = _idxs_to_squares(pos.board.empty_idxs)
+    return [
+        _create_drop_move(side, ktype, end_sq) for end_sq in empty_sqs
+        if not _is_drop_innately_illegal(pos, side, ktype, end_sq)
+    ]
+
+def _idxs_to_squares(idxs: Iterable[int]) -> Iterable[Square]:
+    return (MailboxBoard.idx_to_sq(idx) for idx in idxs)
 
 # === Promotion constrainers.
 # They determine if there are promotion and/or nonpromotion moves
