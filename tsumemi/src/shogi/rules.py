@@ -11,10 +11,9 @@ from tsumemi.src.shogi.basetypes import HAND_TYPES, KOMA_TYPES
 from tsumemi.src.shogi.position_internals import MailboxBoard
 
 if TYPE_CHECKING:
-    from typing import Iterable
-    from typing import Any, Callable, Dict, List, Tuple, Union
+    from typing import Any, Callable, Dict, Iterable, List, Tuple, Union
     from tsumemi.src.shogi.position import Position
-    DestGen = Callable[[MailboxBoard, int, Side], List[int]]
+    DestGen = Callable[[MailboxBoard, int, Side], destgen.IdxIterable]
     PromConstrTuple = Union[Tuple[bool], Tuple[bool, bool]]
     PromConstr = Callable[[Side, Square, Square], PromConstrTuple]
 
