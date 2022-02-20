@@ -27,7 +27,8 @@ def create_legal_moves_given_squares(
 def create_valid_moves_given_squares(
         pos: Position, start_sq: Square, end_sq: Square
     ) -> List[Move]:
-    if not exists_valid_move_given_squares(pos, start_sq, end_sq):
+    end_idx = MailboxBoard.sq_to_idx(end_sq)
+    if not end_idx in _generate_valid_dests_given_square(pos, start_sq):
         return []
     koma = pos.get_koma(start_sq)
     ktype = KomaType.get(koma)
@@ -38,26 +39,22 @@ def create_valid_moves_given_squares(
         for can_promote in promotion_constrainer(side, start_sq, end_sq)
     ]
 
-def exists_valid_move_given_squares(
-        pos: Position, start_sq: Square, end_sq: Square
-    ) -> bool:
+def _generate_valid_dests_given_square(
+        pos: Position, start_sq: Square
+    ) -> destgen.IdxIterable:
     if start_sq == Square.HAND:
-        raise ValueError(f"expected non-drop; got {start_sq}, {end_sq}")
+        raise ValueError(f"expected non-drop")
     koma = pos.get_koma(start_sq)
     if koma == Koma.NONE or koma == Koma.INVALID:
-        return False
+        return iter(())
     if koma.side() != pos.turn:
-        return False
+        return iter(())
     ktype = KomaType.get(koma)
     board = pos.board
     side = koma.side()
     start_idx = MailboxBoard.sq_to_idx(start_sq)
-    end_idx = MailboxBoard.sq_to_idx(end_sq)
     dest_generator, _ = MOVEGEN_FUNCTIONS[ktype]
-    destinations = destgen.filter_for_valid_dests(
-        dest_generator(board, start_idx, side), board
-    )
-    return True if end_idx in destinations else False
+    return dest_generator(board, start_idx, side)
 
 def create_legal_drop_given_square(
         pos: Position, side: Side, ktype: KomaType, end_sq: Square
@@ -126,9 +123,7 @@ def generate_valid_moves(
     board = pos.board
     locations = board.koma_sets[Koma.make(side, ktype)]
     for start_idx in locations:
-        destinations = destgen.filter_for_valid_dests(
-            dest_generator(board, start_idx, side), board
-        )
+        destinations = dest_generator(board, start_idx, side)
         start_sq = MailboxBoard.idx_to_sq(start_idx)
         destination_sqs = _idxs_to_squares(destinations)
         for end_sq in destination_sqs:
@@ -148,7 +143,7 @@ def generate_drop_moves(
         if not _is_drop_innately_illegal(pos, side, ktype, end_sq)
     ]
 
-def _is_drop_available(pos: Position, side: Side, ktype: KomaType):
+def _is_drop_available(pos: Position, side: Side, ktype: KomaType) -> bool:
     if ktype not in HAND_TYPES:
         raise ValueError(f"{ktype} is not a valid KomaType for a drop move")
     return pos.get_hand_koma_count(side, ktype) != 0

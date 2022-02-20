@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import functools
 import itertools
 
 from typing import TYPE_CHECKING
@@ -12,6 +13,7 @@ if TYPE_CHECKING:
     from tsumemi.src.shogi.position_internals import MailboxBoard
     Steps = Generator[int, None, None]
     IdxIterable = Iterable[int]
+    DestIdxGenerator = Callable[..., IdxIterable]
 
 def _forward(side: Side) -> Dir:
     return Dir.S if side == Side.GOTE else Dir.N
@@ -49,10 +51,18 @@ def steps_ou(start_idx: int, side: Side) -> Steps:
     )
 
 def filter_for_valid_dests(
-        dest_idx_list: Iterable[int],
-        board: MailboxBoard
-    ) -> IdxIterable:
-    return (idx for idx in dest_idx_list if board.mailbox[idx] != Koma.INVALID)
+        dest_idx_generator: DestIdxGenerator
+    ) -> DestIdxGenerator:
+    @functools.wraps(dest_idx_generator)
+    def wrapper_filter_for_valid_dests(
+            board: MailboxBoard, start_idx: int, side: Side,
+            *args, **kwargs
+        ) -> IdxIterable:
+        dest_idxs = dest_idx_generator(
+            board=board, start_idx=start_idx, side=side, *args, **kwargs
+        )
+        return (idx for idx in dest_idxs if board.mailbox[idx] != Koma.INVALID)
+    return wrapper_filter_for_valid_dests
 
 def _generate_line_idxs(
         board: MailboxBoard, side: Side, start_idx: int, dir: Dir
@@ -69,6 +79,7 @@ def _generate_line_idxs(
     if dest_koma != Koma.INVALID and dest_koma.side() != side:
         yield(dest)
 
+@filter_for_valid_dests
 def generate_dests_steps(
         board: MailboxBoard, start_idx: int, side: Side,
         steps: Callable[[int, Side], Steps]
@@ -82,12 +93,14 @@ def generate_dests_steps(
         if is_valid_dest:
             yield dest
 
+@filter_for_valid_dests
 def generate_dests_ky(
         board: MailboxBoard, start_idx: int, side: Side
     ) -> IdxIterable:
     forward = _forward(side)
     return _generate_line_idxs(board, side, start_idx, forward)
 
+@filter_for_valid_dests
 def generate_dests_ka(
         board: MailboxBoard, start_idx: int, side: Side
     ) -> IdxIterable:
@@ -97,6 +110,7 @@ def generate_dests_ka(
     sw = _generate_line_idxs(board, side, start_idx, Dir.SW)
     return itertools.chain(ne, se, nw, sw)
 
+@filter_for_valid_dests
 def generate_dests_hi(
         board: MailboxBoard, start_idx: int, side: Side
     ) -> IdxIterable:
@@ -106,20 +120,24 @@ def generate_dests_hi(
     w = _generate_line_idxs(board, side, start_idx, Dir.W)
     return itertools.chain(n, s, e, w)
 
+@filter_for_valid_dests
 def generate_dests_um(
         board: MailboxBoard, start_idx: int, side: Side
     ) -> IdxIterable:
-    kaku = generate_dests_ka(board, start_idx, side)
+    # mypy __wrapped__ issue: https://github.com/python/typeshed/issues/4826
+    kaku = generate_dests_ka.__wrapped__(board, start_idx, side) # type: ignore
     wazir = (
         start_idx+Dir.N, start_idx+Dir.S,
         start_idx+Dir.E, start_idx+Dir.W
     )
     return itertools.chain(kaku, wazir)
 
+@filter_for_valid_dests
 def generate_dests_ry(
         board: MailboxBoard, start_idx: int, side: Side
     ) -> IdxIterable:
-    hisha = generate_dests_hi(board, start_idx, side)
+    # mypy __wrapped__ issue: https://github.com/python/typeshed/issues/4826
+    hisha = generate_dests_hi.__wrapped__(board, start_idx, side) # type: ignore
     alfil = (
         start_idx+Dir.NE, start_idx+Dir.SE,
         start_idx+Dir.SW, start_idx+Dir.NW
