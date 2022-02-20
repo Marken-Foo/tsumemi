@@ -70,24 +70,24 @@ class MailboxBoard:
         return (idx-1) % 13
     
     @staticmethod
-    def is_idx_in_promotion_zone(idx: int, side: Side) -> bool:
-        row = MailboxBoard.idx_to_r(idx)
+    def is_sq_in_promotion_zone(sq: Square, side: Side) -> bool:
+        _, row = sq.get_cr()
         if side == Side.SENTE:
             return True if row in (1, 2, 3) else False
         else:
             return True if row in (7, 8, 9) else False
     
     @staticmethod
-    def is_idx_in_last_two_rows(idx: int, side: Side) -> bool:
-        row = MailboxBoard.idx_to_r(idx)
+    def is_sq_in_last_two_rows(sq: Square, side: Side) -> bool:
+        _, row = sq.get_cr()
         if side == Side.SENTE:
             return True if row in (1, 2) else False
         else:
             return True if row in (8, 9) else False
     
     @staticmethod
-    def is_idx_in_last_row(idx: int, side: Side) -> bool:
-        row = MailboxBoard.idx_to_r(idx)
+    def is_sq_in_last_row(sq: Square, side: Side) -> bool:
+        _, row = sq.get_cr()
         if side == Side.SENTE:
             return True if row == 1 else False
         else:

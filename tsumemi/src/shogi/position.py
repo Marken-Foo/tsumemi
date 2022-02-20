@@ -4,10 +4,7 @@ import re
 
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from tsumemi.src.shogi.basetypes import Move
-
-from tsumemi.src.shogi.basetypes import Koma, KomaType, Side, Square
+from tsumemi.src.shogi.basetypes import Koma, KomaType, Move, Side, Square
 from tsumemi.src.shogi.basetypes import KOMA_FROM_SFEN
 from tsumemi.src.shogi.position_internals import HandRepresentation, MailboxBoard
 
@@ -77,19 +74,19 @@ class Position:
         return self.board.get_koma(sq)
     
     def create_move(self,
-            sq1: Square, 
-            sq2: Square,
+            start_sq: Square, 
+            end_sq: Square,
             is_promotion: bool = False
         ) -> Move:
         """Creates a move from two squares. Move need not necessarily
         be legal or even valid.
         """
         return Move(
-            start_sq=sq1,
-            end_sq=sq2,
+            start_sq=start_sq,
+            end_sq=end_sq,
             is_promotion=is_promotion,
-            koma=self.get_koma(sq1),
-            captured=self.get_koma(sq2)
+            koma=self.get_koma(start_sq),
+            captured=self.get_koma(end_sq)
         )
     
     def make_move(self, move: Move) -> None:
