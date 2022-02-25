@@ -18,6 +18,12 @@ if TYPE_CHECKING:
     PromConstr = Callable[[Side, Square, Square], PromConstrTuple]
 
 
+def is_promotion_available(move: Move) -> bool:
+    return not move.is_drop and (
+        MailboxBoard.is_sq_in_promotion_zone(move.end_sq, move.side)
+        or MailboxBoard.is_sq_in_promotion_zone(move.start_sq, move.side)
+    )
+
 def get_ambiguous_moves(pos: Position, move: Move) -> List[Move]:
     start_sq = move.start_sq
     if not _is_move_from_square_available(pos, start_sq):

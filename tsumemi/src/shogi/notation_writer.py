@@ -6,12 +6,11 @@ from typing import TYPE_CHECKING
 
 import tsumemi.src.shogi.rules as rules
 
-from tsumemi.src.shogi.basetypes import Koma, KomaType, Move, Square, SFEN_FROM_KOMA
-from tsumemi.src.shogi.position import Position
+from tsumemi.src.shogi.basetypes import Koma, Move, Square, SFEN_FROM_KOMA
 
 if TYPE_CHECKING:
     from typing import Iterable, Sequence
-    from tsumemi.src.shogi.basetypes import Side
+    from tsumemi.src.shogi.position import Position
     MoveFormat = Sequence[MoveParts]
 
 
@@ -35,26 +34,15 @@ WESTERN_MOVE_FORMAT: MoveFormat = (
 class AbstractMoveWriter(ABC):
     def __init__(self, move_format: MoveFormat) -> None:
         self.move_format: MoveFormat = move_format
-        # self.aggressive_disambiguation = True
+        self.aggressive_disambiguation = False
         return
     
     def write_move(self, move: Move, pos: Position) -> str:
         res = []
-        ambiguous_moves = self.get_ambiguous_moves(move, pos)
-        for amb_move in ambiguous_moves:
-            if ((amb_move.start_sq == move.start_sq)
-                and (amb_move.end_sq == move.end_sq)
-                and (amb_move.is_promotion != move.is_promotion)
-            ):
-                needs_promotion = True
-                break
-        else:
-            needs_promotion = False
-        needs_disambiguation = (
-            len(list(ambiguous_moves)) > 1
-            and not (needs_promotion and len(list(ambiguous_moves)) == 2)
-        )
-        
+        ambiguous_moves = rules.get_ambiguous_moves(pos, move)
+        needs_promotion = rules.is_promotion_available(move)
+        needs_disambiguation = self.needs_disambiguation(move, pos, ambiguous_moves)
+            
         for component in self.move_format:
             component_str = ""
             if component == MoveParts.KOMA:
@@ -76,12 +64,25 @@ class AbstractMoveWriter(ABC):
             res.append(component_str)
         return "".join(res)
     
-    def get_ambiguous_moves(self, move: Move, pos: Position) -> Iterable[Move]:
-        side: Side = move.side
-        ktype: KomaType = KomaType.get(move.koma)
-        end_sq: Square = move.end_sq
-        res = rules.get_ambiguous_moves(pos, move)
-        return res
+    def needs_disambiguation(self,
+            move: Move,
+            pos: Position,
+            ambiguous_moves: Iterable[Move]
+        ) -> bool:
+        needs_promotion = rules.is_promotion_available(move)
+        if self.aggressive_disambiguation:
+            return (
+                len(list(ambiguous_moves)) > 1
+                and not (needs_promotion and len(list(ambiguous_moves)) == 2)
+            )
+        else:
+            for amb_move in ambiguous_moves:
+                if (rules.is_promotion_available(amb_move) == needs_promotion
+                        and move.start_sq != amb_move.start_sq
+                ):
+                    return True
+            else:
+                return False
     
     @abstractmethod
     def write_koma(self, koma: Koma) -> str:

@@ -32,11 +32,11 @@ test nonpromotion and disambiguation
 
 test promotion as disambiguation
 9/7+R1/sS1+p1+P2+R/2p+P1+P3/SS1n+pn3/9/9/9/3N5 b 2S2s 1
-83 94 + S94+
+83 94 + S-94+
 
 test nonpromotion as disambiguation
 9/7+R1/sS1+p1+P2+R/2p+P1+P3/SS1n+pn3/9/9/9/3N5 b 2S2s 1
-83 94 = S94=
+83 94 = S-94=
 
 test cannot promote as disambiguation
 9/7+R1/sS1+p1+P2+R/2p+P1+P3/SS1n+pn3/9/9/9/3N5 b 2S2s 1
