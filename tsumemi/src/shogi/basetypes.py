@@ -32,6 +32,12 @@ class KanjiNumber(IntEnum):
     十 = 10
 
 
+FULL_WIDTH_NUMBER: Dict[int, str] = {
+    0: "０", 1: "１", 2: "２", 3: "３", 4: "４",
+    5: "５", 6: "６", 7: "７", 8: "８", 9: "９"
+}
+
+
 class Side(IntFlag):
     SENTE = 0
     GOTE = 1
@@ -276,6 +282,10 @@ class Square(IntEnum):
     
     def is_board(self) -> bool:
         return self.name.startswith("b")
+    
+    def to_japanese(self) -> str:
+        col, row = self.get_cr()
+        return FULL_WIDTH_NUMBER[col] + KanjiNumber(row).name
 
 
 class Move:
