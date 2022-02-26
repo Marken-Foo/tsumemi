@@ -31,6 +31,49 @@ WESTERN_MOVE_FORMAT: MoveFormat = (
 )
 
 
+# WESTERN_MOVE_FORMAT = (
+    # KomaNotationBuilder,
+    # DisambiguationNotationBuilder,
+    # MovetypeNotationBuilder,
+    # DestinationNotationBuilder,
+    # PromotionNotationBuilder,
+# )
+
+
+class MoveNotationBuilder(ABC):
+    def __init__(self) -> None:
+        return
+    
+    @abstractmethod
+    def build(self, move_writer: AbstractMoveWriter) -> MoveNotationBuilder:
+        raise NotImplementedError
+
+
+# class KomaNotationBuilder(MoveNotationBuilder):
+    # def build(self, move: Move, move_writer: AbstractMoveWriter) -> str:
+        # return move_writer.write_koma(move)
+
+
+# class DisambiguationNotationBuilder(MoveNotationBuilder):
+    # def build(self, move: Move, move_writer: AbstractMoveWriter) -> str:
+        # return move_writer.write_disambiguation(move)
+
+
+# class MovetypeNotationBuilder(MoveNotationBuilder):
+    # def build(self, move: Move, move_writer: AbstractMoveWriter) -> str:
+        # return move_writer.write_movetype(move)
+
+
+# class DestinationNotationBuilder(MoveNotationBuilder):
+    # def build(self, move: Move, move_writer: AbstractMoveWriter) -> str:
+        # return move_writer.write_destination(move)
+
+
+# class PromotionNotationBuilder(MoveNotationBuilder):
+    # def build(self, move: Move, move_writer: AbstractMoveWriter) -> str:
+        # return move_writer.write_promotion(move)
+
+
 class AbstractMoveWriter(ABC):
     def __init__(self, move_format: MoveFormat) -> None:
         self.move_format: MoveFormat = move_format
@@ -39,10 +82,18 @@ class AbstractMoveWriter(ABC):
     
     def write_move(self, move: Move, pos: Position) -> str:
         res = []
+        needs_promotion = rules.can_promote(move)
         ambiguous_moves = rules.get_ambiguous_moves(pos, move)
-        needs_promotion = rules.is_promotion_available(move)
-        needs_disambiguation = self.needs_disambiguation(move, pos, ambiguous_moves)
-            
+        needs_disambiguation = self.needs_disambiguation(move, ambiguous_moves)
+        
+        # for builder in self.move_format:
+            # if isinstance(builder, PromotionNotationBuilder) and not needs_promotion:
+                # continue
+            # if isinstance(builder, DisambiguationNotationBuilder) and not needs_disambiguation:
+                # continue
+            # res.append(builder.build(move, self))
+        # return "".join(res)
+        
         for component in self.move_format:
             component_str = ""
             if component == MoveParts.KOMA:
@@ -65,24 +116,16 @@ class AbstractMoveWriter(ABC):
         return "".join(res)
     
     def needs_disambiguation(self,
-            move: Move,
-            pos: Position,
-            ambiguous_moves: Iterable[Move]
+            move: Move, ambiguous_moves: Iterable[Move]
         ) -> bool:
-        needs_promotion = rules.is_promotion_available(move)
+        needs_promotion = rules.can_promote(move)
         if self.aggressive_disambiguation:
-            return (
-                len(list(ambiguous_moves)) > 1
-                and not (needs_promotion and len(list(ambiguous_moves)) == 2)
-            )
+            return bool(list(ambiguous_moves))
         else:
             for amb_move in ambiguous_moves:
-                if (rules.is_promotion_available(amb_move) == needs_promotion
-                        and move.start_sq != amb_move.start_sq
-                ):
+                if (rules.can_promote(amb_move) == needs_promotion):
                     return True
-            else:
-                return False
+            return False
     
     @abstractmethod
     def write_koma(self, koma: Koma) -> str:

@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     PromConstr = Callable[[Side, Square, Square], PromConstrTuple]
 
 
-def is_promotion_available(move: Move) -> bool:
+def can_promote(move: Move) -> bool:
     return not move.is_drop and (
         MailboxBoard.is_sq_in_promotion_zone(move.end_sq, move.side)
         or MailboxBoard.is_sq_in_promotion_zone(move.start_sq, move.side)
@@ -33,7 +33,8 @@ def get_ambiguous_moves(pos: Position, move: Move) -> List[Move]:
     ktype = KomaType.get(koma)
     return [
         mv for mv in generate_valid_moves(pos, side, ktype)
-        if (mv.end_sq == move.end_sq) and is_legal(mv, pos)
+        if (mv.end_sq == move.end_sq) and (mv.start_sq != move.start_sq)
+        and is_legal(mv, pos)
     ]
 
 def is_legal(mv: Move, pos: Position) -> bool:
