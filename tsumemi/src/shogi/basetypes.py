@@ -44,6 +44,9 @@ class Side(IntFlag):
     SHITATE = 0
     UWATE = 1
     
+    def is_sente(self) -> bool:
+        return not bool(self)
+    
     def switch(self) -> Side:
         return Side(~self & 0b1)
 
@@ -282,6 +285,33 @@ class Square(IntEnum):
     
     def is_board(self) -> bool:
         return self.name.startswith("b")
+    
+    def is_left_of(self, sq_other: Square, side: Side) -> bool:
+        col_diff, _ = self._subtract_squares(sq_other)
+        return col_diff > 0 if side.is_sente() else col_diff < 0
+    
+    def is_right_of(self, sq_other: Square, side: Side) -> bool:
+        return sq_other.is_left_of(self, side)
+    
+    def is_forward_of(self, sq_other: Square, side: Side) -> bool:
+        _, row_diff = self._subtract_squares(sq_other)
+        return row_diff < 0 if side.is_sente() else row_diff > 0
+    
+    def is_backward_of(self, sq_other: Square, side: Side) -> bool:
+        return sq_other.is_forward_of(self, side)
+    
+    def is_same_row(self, sq_other: Square) -> bool:
+        _, row_diff = self._subtract_squares(sq_other)
+        return row_diff == 0
+    
+    def _subtract_squares(self, sq_other: Square) -> Tuple[int, int]:
+        col, row = self.get_cr()
+        col_other, row_other = sq_other.get_cr()
+        return (col - col_other, row - row_other)
+    
+    def is_immediately_forward_of(self, sq_other: Square, side: Side) -> bool:
+        forward = -1 if side.is_sente() else 1
+        return self._subtract_squares(sq_other) == (0, forward)
     
     def to_japanese(self) -> str:
         col, row = self.get_cr()

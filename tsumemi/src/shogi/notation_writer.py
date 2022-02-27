@@ -5,11 +5,12 @@ from typing import TYPE_CHECKING
 
 import tsumemi.src.shogi.rules as rules
 
-from tsumemi.src.shogi.basetypes import Koma, KomaType, Move, Side, Square
+from tsumemi.src.shogi.basetypes import Koma, KomaType, Square
 from tsumemi.src.shogi.basetypes import KANJI_NOTATION_FROM_KTYPE, SFEN_FROM_KOMA
 
 if TYPE_CHECKING:
     from typing import Iterable, Tuple
+    from tsumemi.src.shogi.basetypes import Move, Side
     from tsumemi.src.shogi.position import Position
     MoveFormat = Iterable[MoveNotationBuilder]
 
@@ -175,75 +176,9 @@ class JapaneseMoveWriter(AbstractMoveWriter):
     def write_disambiguation(self,
             pos: Position, move: Move, ambiguous_moves: Iterable[Move]
         ) -> str:
-        origin_squares = set((
-            amb_move.start_sq for amb_move in ambiguous_moves
-            if (self.aggressive_disambiguation) or rules.can_promote(amb_move) == rules.can_promote(move)
-        ))
-        general_pieces = set((
-            KomaType.GI, KomaType.KI, KomaType.TO,
-            KomaType.NY, KomaType.NK, KomaType.NG
-        ))
-        koma = move.koma
-        side = koma.side()
-        start_sq = move.start_sq
-        end_sq = move.end_sq
-        start_col, start_row = start_sq.get_cr()
-        end_col, end_row = end_sq.get_cr()
-        # sugu is special case
-        if KomaType.get(koma) in general_pieces:
-            forward = -1 if side == Side.SENTE else 1
-            if start_col == end_col and start_row + forward == end_row:
-                return "直"
-        # sayuu is left/rightmost
-        if self.is_leftmost(start_sq, origin_squares, side):
-            return "左"
-        elif self.is_rightmost(start_sq, origin_squares, side):
-            return "右"
-        # yori if same rank; sayuu if not unique
-        if start_row == end_row:
-            for sq in origin_squares:
-                _, row = sq.get_cr()
-                if row == end_row:
-                    return "左寄" if self.is_left_of(start_sq, sq, side) else "右寄"
-            else: # for-else loop
-                return "寄"
-        # hiki if falling back; sayuu if not unique
-        if self.is_forward_of(start_sq, end_sq, side):
-            for sq in origin_squares:
-                if self.is_forward_of(sq, end_sq, side):
-                    return "左引" if self.is_left_of(start_sq, sq, side) else "右引"
-            else: # for-else loop
-                return "引"
-        # agaru if rising; sayuu if not unique
-        if self.is_forward_of(end_sq, start_sq, side):
-            for sq in origin_squares:
-                if self.is_forward_of(end_sq, sq, side):
-                    return "左上" if self.is_left_of(start_sq, sq, side) else "右上"
-            else: # for-else loop
-                return "上"
-        return self.write_coords(start_sq)
-    
-    def _subtract_squares(self, sq1: Square, sq2: Square) -> Tuple[int, int]:
-        col1, row1 = sq1.get_cr()
-        col2, row2 = sq2.get_cr()
-        return (col1 - col2, row1 - row2)
-    
-    def is_left_of(self, sq1: Square, sq2: Square, side: Side) -> bool:
-        col_diff, _ = self._subtract_squares(sq1, sq2)
-        return (col_diff > 0) if side == Side.SENTE else (col_diff < 0)
-    
-    def is_right_of(self, sq1: Square, sq2: Square, side: Side) -> bool:
-        return self.is_left_of(sq1, sq2, side.switch())
-    
-    def is_forward_of(self, sq1: Square, sq2: Square, side: Side) -> bool:
-        _, row_diff = self._subtract_squares(sq1, sq2)
-        return row_diff < 0 if side == Side.SENTE else row_diff > 0
-    
-    def is_leftmost(self, sq: Square, sqs: Iterable[Square], side: Side) -> bool:
-        return all((self.is_left_of(sq, comp_sq, side) for comp_sq in sqs))
-    
-    def is_rightmost(self, sq: Square, sqs: Iterable[Square], side: Side) -> bool:
-        return all((self.is_right_of(sq, comp_sq, side) for comp_sq in sqs))
+        return _disambiguate_japanese_move(
+            pos, move, ambiguous_moves, self.aggressive_disambiguation
+        )
     
     def write_promotion(self, is_promotion: bool) -> str:
         return "成" if is_promotion else "不成"
@@ -267,3 +202,62 @@ class KitaoKawasakiMoveWriter(AbstractMoveWriter):
 
 class IrohaMoveWriter(AbstractMoveWriter):
     pass
+
+
+def _disambiguate_japanese_move(
+        pos: Position,
+        move: Move,
+        ambiguous_moves: Iterable[Move],
+        aggressive_disambiguation: bool,
+    ) -> str:
+    origin_squares = set((
+        amb_move.start_sq for amb_move in ambiguous_moves
+        if (aggressive_disambiguation)
+        or rules.can_promote(amb_move) == rules.can_promote(move)
+    ))
+    general_pieces = set((
+        KomaType.GI, KomaType.KI, KomaType.TO,
+        KomaType.NY, KomaType.NK, KomaType.NG
+    ))
+    side = move.koma.side()
+    start_sq = move.start_sq
+    end_sq = move.end_sq
+    # sugu is special case
+    if KomaType.get(move.koma) in general_pieces:
+        if end_sq.is_immediately_forward_of(start_sq, side):
+            return "直"
+    if _is_leftmost(start_sq, origin_squares, side):
+        return "左"
+    elif _is_rightmost(start_sq, origin_squares, side):
+        return "右"
+    elif end_sq.is_same_row(start_sq):
+        sqs = [sq for sq in origin_squares if end_sq.is_same_row(sq)]
+        return _disambiguate_character(start_sq, sqs, side) + "寄"
+    elif end_sq.is_forward_of(start_sq, side):
+        sqs = [sq for sq in origin_squares if end_sq.is_forward_of(sq, side)]
+        return _disambiguate_character(start_sq, sqs, side) + "上"
+    elif end_sq.is_backward_of(start_sq, side):
+        sqs = [sq for sq in origin_squares if end_sq.is_backward_of(sq, side)]
+        return _disambiguate_character(start_sq, sqs, side) + "引"
+    raise ValueError(f"Disambiguation failed unexpectedly on move: {str(move)}")
+
+
+def _disambiguate_character(
+        start_sq: Square, other_sqs: Iterable[Square], side: Side
+    ) -> str:
+    if not other_sqs:
+        return ""
+    elif _is_leftmost(start_sq, other_sqs, side):
+        return "左"
+    elif _is_rightmost(start_sq, other_sqs, side):
+        return "右"
+    else:
+        return "中"
+
+
+def _is_leftmost(sq: Square, sqs: Iterable[Square], side: Side) -> bool:
+    return all((sq.is_left_of(sq_other, side) for sq_other in sqs))
+
+
+def _is_rightmost(sq: Square, sqs: Iterable[Square], side: Side) -> bool:
+    return all((sq.is_right_of(sq_other, side) for sq_other in sqs))
