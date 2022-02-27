@@ -5,12 +5,12 @@ from typing import TYPE_CHECKING
 
 import tsumemi.src.shogi.rules as rules
 
-from tsumemi.src.shogi.basetypes import Koma, KomaType, Square
+from tsumemi.src.shogi.basetypes import Koma, KomaType
 from tsumemi.src.shogi.basetypes import KANJI_NOTATION_FROM_KTYPE, SFEN_FROM_KOMA
 
 if TYPE_CHECKING:
-    from typing import Iterable, Tuple
-    from tsumemi.src.shogi.basetypes import Move, Side
+    from typing import Iterable
+    from tsumemi.src.shogi.basetypes import Move, Side, Square
     from tsumemi.src.shogi.position import Position
     MoveFormat = Iterable[MoveNotationBuilder]
 
@@ -116,7 +116,7 @@ class AbstractMoveWriter(ABC):
         raise NotImplementedError
     
     def write_movetype(self, move) -> str:
-        if move.start_sq == Square.HAND:
+        if move.start_sq.is_hand():
             return self.write_drop()
         if move.captured != Koma.NONE:
             return self.write_capture()

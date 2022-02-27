@@ -286,6 +286,9 @@ class Square(IntEnum):
     def is_board(self) -> bool:
         return self.name.startswith("b")
     
+    def is_hand(self) -> bool:
+        return self == 82
+    
     def is_left_of(self, sq_other: Square, side: Side) -> bool:
         col_diff, _ = self._subtract_squares(sq_other)
         return col_diff > 0 if side.is_sente() else col_diff < 0

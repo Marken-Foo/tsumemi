@@ -6,12 +6,13 @@ import tsumemi.src.shogi.destination_generation as destgen
 
 from typing import TYPE_CHECKING
 
-from tsumemi.src.shogi.basetypes import Koma, KomaType, Move, NullMove, Side, Square
+from tsumemi.src.shogi.basetypes import Koma, KomaType, Move, NullMove
 from tsumemi.src.shogi.basetypes import HAND_TYPES, KOMA_TYPES
 from tsumemi.src.shogi.position_internals import MailboxBoard
 
 if TYPE_CHECKING:
     from typing import Callable, Dict, Iterable, List, Tuple, Union
+    from tsumemi.src.shogi.basetypes import Side, Square
     from tsumemi.src.shogi.position import Position
     DestGen = Callable[[MailboxBoard, int, Side], destgen.IdxIterable]
     PromConstrTuple = Union[Tuple[bool], Tuple[bool, bool]]
@@ -87,7 +88,7 @@ def create_valid_moves_given_squares(
     ]
 
 def _is_move_from_square_available(pos: Position, start_sq: Square) -> bool:
-    if start_sq == Square.HAND:
+    if start_sq.is_hand():
         return False
     koma = pos.get_koma(start_sq)
     if koma == Koma.NONE or koma == Koma.INVALID:
