@@ -70,7 +70,7 @@ JAPANESE_MOVE_FORMAT: MoveFormat = (
 class AbstractMoveWriter(ABC):
     def __init__(self, move_format: MoveFormat) -> None:
         self.move_format: MoveFormat = move_format
-        self.aggressive_disambiguation = True
+        self.aggressive_disambiguation = False
         return
     
     def write_move(self, move: Move, pos: Position) -> str:
@@ -234,7 +234,13 @@ def _disambiguate_japanese_move(
         sqs = [sq for sq in origin_squares if end_sq.is_same_row(sq)]
         return _disambiguate_character(start_sq, sqs, side) + "寄"
     elif end_sq.is_forward_of(start_sq, side):
-        sqs = [sq for sq in origin_squares if end_sq.is_forward_of(sq, side)]
+        sqs = []
+        for sq in origin_squares:
+            if end_sq.is_forward_of(sq, side) and not (
+                KomaType.get(move.koma) in general_pieces
+                and end_sq.is_immediately_forward_of(sq, side)
+            ):
+                sqs.append(sq)
         return _disambiguate_character(start_sq, sqs, side) + "上"
     elif end_sq.is_backward_of(start_sq, side):
         sqs = [sq for sq in origin_squares if end_sq.is_backward_of(sq, side)]

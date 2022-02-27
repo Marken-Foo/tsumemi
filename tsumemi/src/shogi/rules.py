@@ -19,7 +19,10 @@ if TYPE_CHECKING:
 
 
 def can_promote(move: Move) -> bool:
-    return not move.is_drop and (
+    ktype = KomaType.get(move.koma)
+    _, promotion_constrainer = MOVEGEN_FUNCTIONS[ktype]
+    komatype_can_promote = (promotion_constrainer == constrain_unpromotable)
+    return not move.is_drop and not komatype_can_promote and (
         MailboxBoard.is_sq_in_promotion_zone(move.end_sq, move.side)
         or MailboxBoard.is_sq_in_promotion_zone(move.start_sq, move.side)
     )

@@ -64,9 +64,9 @@ class TestJapaneseNotation(unittest.TestCase):
         return test_name, move, expected_movestr
     
     def test_moves(self):
-        test_data_file = r"tsumemi/test/test_cases_western_notation.txt"
-        with open(test_data_file) as fh:
-            for line1, line2, line3, _ in itertools.zip_longest(*[fh]*4):
+        test_data_file = r"tsumemi/test/test_cases_japanese_notation.txt"
+        with open(test_data_file, encoding="utf8") as fh:
+            for line1, line2, line3, _ in itertools.zip_longest(*[iter(fh)]*4):
                 (test_name, move, expected_movestr
                 ) = self._parse_move_test(line1, line2, line3)
                 movestr = self.move_writer.write_move(move, self.position)
@@ -78,4 +78,4 @@ class TestJapaneseNotation(unittest.TestCase):
         self.position.from_sfen(sfen)
         move = self.position.create_drop_move(Side.SENTE, KomaType.GI, Square.b84)
         movestr = self.move_writer.write_move(move, self.position)
-        self.assertEqual("S*84", movestr)
+        self.assertEqual("８四銀打", movestr)

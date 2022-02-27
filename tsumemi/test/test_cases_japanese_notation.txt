@@ -1,47 +1,59 @@
 test move
 9/9/9/9/9/9/7P1/9/9 b - 1
-27 26 = P-26
+27 26 = ２六歩
 
 test gote move
 9/9/1p7/9/9/9/9/9/9 b - 1
-83 84 = P-84
+83 84 = ８四歩
 
 test capture
 9/9/9/6n2/9/9/9/9/6L2 b - 1
-39 34 = Lx34
+39 34 = ３四香
 
-test disambiguation
+test straight disambiguation
 9/9/9/5S1S1/9/5SS2/9/9/9 b - 1
-36 35 = S36-35
+36 35 = ３五銀直
+
+test right disambiguation
+9/9/9/5S1S1/9/5SS2/9/9/9 b - 1
+24 35 = ３五銀右
+
+test up disambiguation
+9/9/9/5S1S1/9/5SS2/9/9/9 b - 1
+46 35 = ３五銀上
 
 test horizontal disambiguation
 9/9/4+P4/4+P+P3/9/9/9/9/9 b - 1
-53 43 = +P53-43
+53 43 = ４三と寄
+
+test retreat disambiguation
+9/5+P3/9/5+P3/9/9/9/9/9 b - 1
+42 43 = ４三と引
 
 test promotion
 9/9/9/9/3B5/9/9/9/9 b - 1
-65 32 + B-32+
+65 32 + ３二角成
 
 test nonpromotion
 9/9/9/9/3B5/9/9/9/9 b - 1
-65 32 = B-32=
+65 32 = ３二角不成
 
 test promotion and disambiguation
 9/2R6/9/9/9/9/4R4/9/9 b - 1
-57 52 + R57-52+
+57 52 + ５二飛右成
 
 test nonpromotion and disambiguation
 9/2R6/9/9/9/9/4R4/9/9 b - 1
-72 52 = R72-52=
+72 52 = ５二飛左不成
 
 test promotion as disambiguation
 9/9/7S1/9/7S1/9/9/9/9 b - 1
-23 34 + S-34+
+23 34 + ３四銀成
 
 test nonpromotion as disambiguation
 9/9/7S1/9/7S1/9/9/9/9 b - 1
-23 14 = S-14=
+23 14 = １四銀不成
 
 test cannot promote as disambiguation
 9/9/7S1/9/7S1/9/9/9/9 b - 1
-25 14 = S-14
+25 14 = １四銀
