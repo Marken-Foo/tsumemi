@@ -169,6 +169,17 @@ class WesternMoveWriter(AbstractMoveWriter):
         return "-"
 
 
+class KitaoKawasakiMoveWriter(WesternMoveWriter):
+    def write_koma(self, koma: Koma) -> str:
+        return KANJI_NOTATION_FROM_KTYPE[KomaType.get(koma)]
+    
+    def write_disambiguation(self,
+            pos: Position, move: Move, ambiguous_moves: Iterable[Move]
+        ) -> str:
+        start_sq = move.start_sq
+        return f"({self.write_coords(start_sq)})"
+
+
 class JapaneseMoveWriter(AbstractMoveWriter):
     def write_koma(self, koma: Koma) -> str:
         return KANJI_NOTATION_FROM_KTYPE[KomaType.get(koma)]
@@ -196,12 +207,21 @@ class JapaneseMoveWriter(AbstractMoveWriter):
         return ""
 
 
-class KitaoKawasakiMoveWriter(AbstractMoveWriter):
-    pass
-
-
-class IrohaMoveWriter(AbstractMoveWriter):
-    pass
+class IrohaMoveWriter(JapaneseMoveWriter):
+    IROHA_SQUARES = (
+        "い", "ろ", "は", "に", "ほ", "へ", "と", "ち", "り",
+        "ぬ", "る", "を", "わ", "か", "よ", "た", "れ", "そ",
+        "つ", "ね", "な", "ら", "む", "う", "の", "く", "や",
+        "ま", "け", "ふ", "こ", "え", "て", "あ", "さ", "き",
+        "ゆ", "め", "み", "し", "ひ", "も", "せ", "す", "京",
+        "一", "三", "五", "六", "七", "八", "十", "百", "千",
+        "万", "花", "鳥", "風", "月", "春", "夏", "秋", "冬",
+        "柳", "桜", "松", "楓", "雨", "露", "霜", "雪", "山",
+        "谷", "川", "海", "里", "村", "森", "竹", "草", "石",
+    )
+    
+    def write_coords(self, sq: Square) -> str:
+        return IrohaMoveWriter.IROHA_SQUARES[1+sq]
 
 
 def _disambiguate_japanese_move(
