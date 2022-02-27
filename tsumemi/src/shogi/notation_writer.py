@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 import tsumemi.src.shogi.rules as rules
 
-from tsumemi.src.shogi.basetypes import Koma, KomaType
+from tsumemi.src.shogi.basetypes import Koma, KomaType, TerminationMove
 from tsumemi.src.shogi.basetypes import KANJI_NOTATION_FROM_KTYPE, SFEN_FROM_KOMA
 
 if TYPE_CHECKING:
@@ -73,7 +73,13 @@ class AbstractMoveWriter(ABC):
         self.aggressive_disambiguation = False
         return
     
-    def write_move(self, move: Move, pos: Position) -> str:
+    def write_move(self,
+            move: Move, pos: Position, is_same: bool = False
+        ) -> str:
+        if move.is_null():
+            raise ValueError("Attempting to write notation for a NullMove")
+        if isinstance(move, TerminationMove):
+            return self.write_termination_move(move)
         res = []
         needs_promotion = rules.can_promote(move)
         ambiguous_moves = rules.get_ambiguous_moves(pos, move)
@@ -88,6 +94,9 @@ class AbstractMoveWriter(ABC):
                     res.append(self.write_disambiguation(
                         pos, move, ambiguous_moves
                     ))
+                continue
+            elif is_same and isinstance(builder, DestinationNotationBuilder):
+                res.append(self.write_destination(move.end_sq, is_same))
                 continue
             res.append(builder.build(move, self))
         return "".join(res)
@@ -105,11 +114,16 @@ class AbstractMoveWriter(ABC):
             ))
     
     @abstractmethod
+    def write_termination_move(self, move: TerminationMove) -> str:
+        raise NotImplementedError
+    
+    @abstractmethod
     def write_koma(self, koma: Koma) -> str:
         raise NotImplementedError
     
-    def write_destination(self, sq: Square) -> str:
-        return self.write_coords(sq)
+    @abstractmethod
+    def write_destination(self, sq: Square, is_same: bool = False) -> str:
+        raise NotImplementedError
     
     @abstractmethod
     def write_disambiguation(self, pos: Position, move: Move, ambiguous_moves: Iterable[Move]) -> str:
@@ -144,8 +158,14 @@ class AbstractMoveWriter(ABC):
 
 
 class WesternMoveWriter(AbstractMoveWriter):
+    def write_termination_move(self, move: TerminationMove) -> str:
+        return move.to_latin()
+    
     def write_koma(self, koma: Koma) -> str:
         return SFEN_FROM_KOMA[koma].upper()
+    
+    def write_destination(self, sq: Square, is_same: bool = False) -> str:
+        return "" if is_same else self.write_coords(sq)
     
     def write_disambiguation(self,
             pos: Position, move: Move, ambiguous_moves: Iterable[Move]
@@ -181,8 +201,14 @@ class KitaoKawasakiMoveWriter(WesternMoveWriter):
 
 
 class JapaneseMoveWriter(AbstractMoveWriter):
+    def write_termination_move(self, move: TerminationMove) -> str:
+        return move.to_ja_kif()
+    
     def write_koma(self, koma: Koma) -> str:
         return KANJI_NOTATION_FROM_KTYPE[KomaType.get(koma)]
+    
+    def write_destination(self, sq: Square, is_same: bool = False) -> str:
+        return "同" if is_same else self.write_coords(sq)
     
     def write_disambiguation(self,
             pos: Position, move: Move, ambiguous_moves: Iterable[Move]
@@ -219,6 +245,9 @@ class IrohaMoveWriter(JapaneseMoveWriter):
         "柳", "桜", "松", "楓", "雨", "露", "霜", "雪", "山",
         "谷", "川", "海", "里", "村", "森", "竹", "草", "石",
     )
+    
+    def write_destination(self, sq: Square, is_same: bool = False) -> str:
+        return self.write_coords(sq)
     
     def write_coords(self, sq: Square) -> str:
         return IrohaMoveWriter.IROHA_SQUARES[1+sq]

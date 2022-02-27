@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from typing import List
     from tsumemi.src.shogi.basetypes import Move
     from tsumemi.src.shogi.gametree import MoveNode
+    from tsumemi.src.shogi.notation_writer import AbstractMoveWriter
 
 
 class Game:
@@ -106,17 +107,29 @@ class Game:
     def get_current_sfen(self) -> str:
         return self.position.to_sfen()
     
-    def to_notation(self) -> List[str]:
-        # Return human-readable notation format for mainline
-        self.go_to_start()
+    def get_mainline_notation(self,
+            move_writer: AbstractMoveWriter
+        ) -> List[str]:
+        # Make a new Game to leave self unchanged
+        game = Game()
+        game.movetree = self.movetree
+        game.curr_node = self.movetree
+        game.go_to_start()
         res = []
-        while not self.curr_node.is_leaf():
-            self.go_next_move()
-            res.append(self.curr_node.move.to_latin())
+        while not game.curr_node.is_leaf():
+            prev_move = game.curr_node.move
+            game.go_next_move()
+            move: Move = game.curr_node.move
+            is_same_dest = (
+                (not prev_move.is_null())
+                and (move.end_sq == prev_move.end_sq)
+            )
+            res.append(move_writer.write_move(
+                move, game.position, is_same_dest
+            ))
         return res
     
     def to_notation_ja_kif(self) -> List[str]:
-        """Returns"""
         # Return human-readable KIF notation format for mainline
         self.go_to_start()
         res = []

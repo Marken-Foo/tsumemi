@@ -2,7 +2,7 @@ import unittest
 
 import itertools
 
-from tsumemi.src.shogi.basetypes import KomaType, Side, Square
+from tsumemi.src.shogi.basetypes import GameTermination, KomaType, Side, Square, TerminationMove
 from tsumemi.src.shogi.notation_writer import JapaneseMoveWriter, WesternMoveWriter
 from tsumemi.src.shogi.notation_writer import JAPANESE_MOVE_FORMAT, WESTERN_MOVE_FORMAT
 from tsumemi.src.shogi.position import Position
@@ -42,6 +42,11 @@ class TestWesternNotation(unittest.TestCase):
         move = self.position.create_drop_move(Side.SENTE, KomaType.GI, Square.b84)
         movestr = self.move_writer.write_move(move, self.position)
         self.assertEqual("S*84", movestr)
+    
+    def test_termination_move_mate(self):
+        move = TerminationMove(GameTermination.MATE)
+        movestr = self.move_writer.write_move(move, self.position)
+        self.assertEqual("MATE", movestr)
 
 
 
@@ -79,3 +84,8 @@ class TestJapaneseNotation(unittest.TestCase):
         move = self.position.create_drop_move(Side.SENTE, KomaType.GI, Square.b84)
         movestr = self.move_writer.write_move(move, self.position)
         self.assertEqual("８四銀打", movestr)
+    
+    def test_termination_move_mate(self):
+        move = TerminationMove(GameTermination.MATE)
+        movestr = self.move_writer.write_move(move, self.position)
+        self.assertEqual("詰み", movestr)

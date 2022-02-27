@@ -11,6 +11,7 @@ from tkinter import filedialog, messagebox, ttk
 from typing import TYPE_CHECKING
 
 import tsumemi.src.shogi.kif as kif
+import tsumemi.src.shogi.notation_writer as nwriter
 import tsumemi.src.tsumemi.event as evt
 import tsumemi.src.tsumemi.game_controller as gamecon
 import tsumemi.src.tsumemi.img_handlers as imghand
@@ -144,7 +145,9 @@ class RootController(evt.IObserver):
         game = kif.read_kif(filepath)
         if game is None:
             return # file unreadable, error out
-        move_string_list = game.to_notation_ja_kif() # at end of game
+        move_string_list = game.get_mainline_notation(
+            nwriter.JapaneseMoveWriter(nwriter.JAPANESE_MOVE_FORMAT)
+        )
         self.mainframe.set_solution("　".join(move_string_list))
         game.go_to_start()
         self.main_game.set_game(game)
