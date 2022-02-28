@@ -12,9 +12,8 @@ if TYPE_CHECKING:
 class MoveNode:
     """A node in a movetree. Each node contains the move leading to
     it, and the comment attached to the move, if any.
-    As part of the tree structure, the MoveNode contains a reference
-    to its parent, and a list of child nodes in order of importance
-    (the mainline is the first in the list).
+    Each node also contains a reference to its parent, and an ordered
+    list of child nodes (the mainline is first in the list).
     """
     def __init__(self, move: Move = NullMove(),
             parent: Optional[MoveNode] = None
@@ -44,14 +43,7 @@ class MoveNode:
         self.variations.append(new_node)
         return new_node
     
-    def add_comment(self, comment: str) -> None:
-        self.comment = "".join((self.comment, comment))
-        return
-    
-    def has_move(self, move: Move) -> bool:
-        """Return True iff the given move is a continuation from this
-        MoveNode.
-        """
+    def has_as_next_move(self, move: Move) -> bool:
         return any(node.move == move for node in self.variations)
     
     def get_variation_node(self, move: Move) -> MoveNode:
@@ -61,27 +53,14 @@ class MoveNode:
             if move == node.move:
                 return node
         raise ValueError(
-            "Move " + str(move) + " is not a variation after move "
-            + str(self.movenum)
+            f"Move ({str(move)}) is not a variation after move (str(self.movenum))"
         )
     
     def next(self) -> MoveNode:
-        """Return mainline child node if it exists, else return self.
-        """
-        return self.variations[0] if self.variations else self
+        return self.variations[0] if self.variations else NullMoveNode()
     
     def prev(self) -> MoveNode:
-        """Return parent node if it exists, else return self.
-        """
-        return self.parent if not self.parent.is_null() else self
-    
-    def start(self) -> MoveNode:
-        """Return the root node of self.
-        """
-        node = self
-        while not node.parent.is_null():
-            node = node.parent
-        return node
+        return self.parent
     
     def _rec_str(self, acc: List[Any],
             func: Callable[[MoveNode, List[Any]], None]
@@ -106,8 +85,7 @@ class MoveNode:
 
 
 class NullMoveNode(MoveNode):
-    """A NullMoveNode is sometimes needed, e.g. to detect the root of
-    the movetree which can have a NullMoveNode as its parent.
+    """Null object to act as sentinel.
     """
     def __init__(self, move: Move = NullMove(),
             parent: Optional[MoveNode] = None
@@ -145,10 +123,4 @@ class GameNode(MoveNode):
         acc: List[str] = []
         self._rec_str(acc, MoveNode._latin_move)
         return " ".join(acc)
-    
-    def to_epd(self, epd_delimiter: str = ";", move_delimiter: str = ","
-            ) -> str:
-        # Return EPD string (one line) containing start FEN and moves
-        acc: List[str] = []
-        self._rec_str(acc, MoveNode._str_move)
-        return epd_delimiter.join((self.start_pos, move_delimiter.join(acc)))
+

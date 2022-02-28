@@ -35,18 +35,18 @@ class Game:
         """Execute the given move and add it to the movetree if it
         doesn't already exist.
         """
+        self.position.make_move(move) # should check for exceptions
         self.curr_node = self.curr_node.add_move(move)
-        self.position.make_move(move)
         return
     
     def make_move(self, move: Move) -> bool:
         """If the move exists in the movetree, execute the move. If
         not, don't do anything.
         """
-        res = self.curr_node.has_move(move)
+        res = self.curr_node.has_as_next_move(move)
         if res:
+            self.position.make_move(move) # should check for exceptions
             self.curr_node = self.curr_node.get_variation_node(move)
-            self.position.make_move(move)
         return res
     
     def is_mainline(self, move: Move) -> bool:
@@ -55,39 +55,32 @@ class Game:
         else:
             return self.curr_node.next().move == move
     
-    def is_start(self) -> bool:
-        return self.curr_node.parent.is_null()
-    
     def is_end(self) -> bool:
         return self.curr_node.is_leaf()
     
     def get_mainline_move(self) -> Move:
         next_node = self.curr_node.next()
-        if self.curr_node == next_node:
-            return NullMove()
-        else:
-            return next_node.move
+        return next_node.move
     
     def go_next_move(self) -> bool:
         """Go one move further into the game, following the mainline.
         """
-        if self.curr_node.is_leaf():
+        next_node = self.curr_node.next()
+        if next_node.is_null():
             return False
-        else:
-            next_node = self.curr_node.next()
-            self.position.make_move(next_node.move)
-            self.curr_node = next_node
-            return True
+        self.position.make_move(next_node.move)
+        self.curr_node = next_node
+        return True
     
     def go_prev_move(self) -> None:
         """Step one move back in the game.
         """
-        if self.curr_node.prev() == self.curr_node:
+        prev_node = self.curr_node.prev()
+        if prev_node.is_null():
             return
-        else:
-            self.position.unmake_move(self.curr_node.move)
-            self.curr_node = self.curr_node.prev()
-            return
+        self.position.unmake_move(self.curr_node.move)
+        self.curr_node = prev_node
+        return
     
     def go_to_start(self) -> None:
         """Go to the start of the game.
@@ -127,19 +120,4 @@ class Game:
             res.append(move_writer.write_move(
                 move, game.position, is_same_dest
             ))
-        return res
-    
-    def to_notation_ja_kif(self) -> List[str]:
-        # Return human-readable KIF notation format for mainline
-        self.go_to_start()
-        res = []
-        prev_move: Move = NullMove()
-        while not self.curr_node.is_leaf():
-            prev_move = self.curr_node.move
-            self.go_next_move()
-            mv: Move = self.curr_node.move
-            if (not prev_move.is_null()) and (mv.end_sq == prev_move.end_sq):
-                res.append(mv.to_ja_kif(is_same=True))
-            else:
-                res.append(mv.to_ja_kif())
         return res
