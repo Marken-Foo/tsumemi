@@ -250,7 +250,7 @@ class IrohaMoveWriter(JapaneseMoveWriter):
         return self.write_coords(sq)
     
     def write_coords(self, sq: Square) -> str:
-        return IrohaMoveWriter.IROHA_SQUARES[1+sq]
+        return IrohaMoveWriter.IROHA_SQUARES[sq-1]
 
 
 def _disambiguate_japanese_move(
