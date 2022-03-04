@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from tsumemi.src.shogi.basetypes import NullMove
 from tsumemi.src.shogi.gametree import GameNode
 from tsumemi.src.shogi.position import Position
 

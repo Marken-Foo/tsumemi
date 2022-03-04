@@ -25,12 +25,12 @@ from tsumemi.src.tsumemi.main_window_view import MainWindowView
 from tsumemi.src.tsumemi.settings_window import SettingsWindow, CONFIG_PATH
 
 if TYPE_CHECKING:
-    from typing import Callable, List, Optional, Union
+    from typing import Callable, List, Optional, Union, Tuple
     PathLike = Union[str, os.PathLike]
 
 
 def _read_config_file(config: configparser.ConfigParser, filepath: PathLike
-    ) -> imghand.SkinSettings:
+    ) -> Tuple[imghand.SkinSettings, nwriter.AbstractMoveWriter]:
     """Attempts to read config file; if not found, attempts to write a
     default config file.
     """
@@ -43,10 +43,17 @@ def _read_config_file(config: configparser.ConfigParser, filepath: PathLike
             f.write("pieces = TEXT\n")
             f.write("board = BROWN\n")
             f.write("komadai = WHITE\n")
+            f.write("[notation]\n")
+            f.write("notation = JAPANESE\n")
         with open(filepath, "r") as f:
             config.read_file(f)
     
     skins = config["skins"]
+    notation = config["notation"]
+    return _read_skin(skins), _read_notation(notation)
+
+
+def _read_skin(skins: configparser.SectionProxy) -> imghand.SkinSettings:
     try:
         piece_skin = imghand.PieceSkin[skins.get("pieces")]
     except KeyError:
@@ -62,6 +69,15 @@ def _read_config_file(config: configparser.ConfigParser, filepath: PathLike
     return imghand.SkinSettings(piece_skin, board_skin, komadai_skin)
 
 
+def _read_notation(notation: configparser.SectionProxy
+    ) -> nwriter.AbstractMoveWriter:
+    try:
+        notation_writer = nwriter.MOVE_WRITER[notation.get("notation")]
+    except KeyError:
+        notation_writer = nwriter.MOVE_WRITER["JAPANESE"]
+    return notation_writer
+
+
 class RootController(evt.IObserver):
     """Root controller for the application. Manages top-level logic
     and GUI elements.
@@ -70,7 +86,9 @@ class RootController(evt.IObserver):
     def __init__(self, root: tk.Tk) -> None:
         # Program data
         self.config = configparser.ConfigParser(dict_type=dict)
-        self.skin_settings = _read_config_file(self.config, CONFIG_PATH)
+        self.skin_settings, self.move_writer = _read_config_file(
+            self.config, CONFIG_PATH
+        )
         self.main_game = gamecon.GameController(self.skin_settings)
         self.main_timer = timecon.TimerController()
         self.main_problem_list = plistcon.ProblemListController()
@@ -145,9 +163,7 @@ class RootController(evt.IObserver):
         game = kif.read_kif(filepath)
         if game is None:
             return # file unreadable, error out
-        move_string_list = game.get_mainline_notation(
-            nwriter.JapaneseMoveWriter(nwriter.JAPANESE_MOVE_FORMAT)
-        )
+        move_string_list = game.get_mainline_notation(self.move_writer)
         self.mainframe.set_solution("　".join(move_string_list))
         game.go_to_start()
         self.main_game.set_game(game)
