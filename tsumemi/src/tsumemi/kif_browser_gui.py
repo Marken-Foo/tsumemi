@@ -237,8 +237,7 @@ class RootController(evt.IObserver):
         return
     
     #=== GUI display methods
-    def apply_skin_settings(self, settings: imghand.SkinSettings
-        ) -> None:
+    def apply_skin_settings(self, settings: imghand.SkinSettings) -> None:
         # GUI callback
         self.skin_settings = settings
         self.main_game.skin_settings = settings
