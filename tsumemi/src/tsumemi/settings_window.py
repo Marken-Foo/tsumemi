@@ -5,45 +5,27 @@ import tkinter as tk
 
 from tkinter import ttk
 from typing import TYPE_CHECKING
+from PIL import Image, ImageTk
 
 import tsumemi.src.shogi.notation_writer as nwriter
 import tsumemi.src.tsumemi.img_handlers as imghand
 
+from tsumemi.src.shogi.basetypes import Koma, Square
+from tsumemi.src.shogi.position import Position
+
 if TYPE_CHECKING:
-    from typing import Dict
+    import enum
+    from typing import Any, Dict
 
 
 CONFIG_PATH = os.path.relpath(r"tsumemi/resources/config.ini")
 
 
-class NotationDropdown(ttk.Combobox):
-    MAPPING_DESC_TO_STRINGKEY: Dict[str, str] = {
-        "Iroha": "IROHA",
-        "Japanese": "JAPANESE",
-        "Kitao-Kawasaki": "KITAO-KAWASAKI",
-        "Western (numbers)": "WESTERN",
-    }
-    
-    def __init__(self, parent: tk.Widget) -> None:
-        self._svar = tk.StringVar(value="Japanese")
-        super().__init__(parent, textvariable=self._svar)
-        self["values"] = list(self.MAPPING_DESC_TO_STRINGKEY.keys())
-        self.state(["readonly"])
-        return
-    
-    def get_string_key(self) -> str:
-        return self.MAPPING_DESC_TO_STRINGKEY[self._svar.get()]
-    
-    def get_move_writer(self) -> nwriter.AbstractMoveWriter:
-        return nwriter.MOVE_WRITER[self.get_string_key()]
-
-
-class PieceDropdown(ttk.Combobox):
-    MAPPING_DESC_TO_STRINGKEY: Dict[str, str] = {
-        skin.desc: skin.name for skin in imghand.PieceSkin
-    }
-    
-    def __init__(self, parent: tk.Widget) -> None:
+class DropdownFromEnum(ttk.Combobox):
+    def __init__(self, parent: tk.Widget, src: enum.Enum) -> None:
+        self.MAPPING_DESC_TO_STRINGKEY: Dict[str, str] = {
+            entry.desc: entry.name for entry in src
+        }
         self._svar = tk.StringVar(value="")
         super().__init__(parent, textvariable=self._svar)
         self["values"] = list(self.MAPPING_DESC_TO_STRINGKEY.keys())
@@ -52,28 +34,165 @@ class PieceDropdown(ttk.Combobox):
     
     def get_string_key(self) -> str:
         return self.MAPPING_DESC_TO_STRINGKEY[self._svar.get()]
-    
+
+
+class NotationDropdown(DropdownFromEnum):
+    def get_move_writer(self) -> nwriter.MoveWriter:
+        return nwriter.MoveWriter[self.get_string_key()]
+
+
+class PieceDropdown(DropdownFromEnum):
     def get_piece_skin(self) -> imghand.PieceSkin:
         return imghand.PieceSkin[self.get_string_key()]
 
 
-class BoardDropdown(ttk.Combobox):
-    MAPPING_DESC_TO_STRINGKEY: Dict[str, str] = {
-        skin.desc: skin.name for skin in imghand.BoardSkin
-    }
-    
-    def __init__(self, parent: tk.Widget) -> None:
-        self._svar = tk.StringVar(value="")
-        super().__init__(parent, textvariable=self._svar)
-        self["values"] = list(self.MAPPING_DESC_TO_STRINGKEY.keys())
-        self.state(["readonly"])
-        return
-    
-    def get_string_key(self) -> str:
-        return self.MAPPING_DESC_TO_STRINGKEY[self._svar.get()]
-    
+class BoardDropdown(DropdownFromEnum):
     def get_board_skin(self) -> imghand.BoardSkin:
         return imghand.BoardSkin[self.get_string_key()]
+
+
+class NotationSelectionFrame(ttk.Frame):
+    def __init__(self, parent: tk.Widget, label_text: str) -> None:
+        super().__init__(parent)
+        self.lbl_name = ttk.Label(self, text=label_text)
+        self.cmb_dropdown: DropdownFromEnum = NotationDropdown(
+            self, nwriter.MoveWriter
+        )
+        self.cmb_dropdown.bind("<<ComboboxSelected>>", self.set_preview)
+        self.lbl_preview = ttk.Label(self)
+        
+        self.lbl_name.grid(row=0, column=0, sticky="W")
+        self.cmb_dropdown.grid(row=0, column=1)
+        self.lbl_preview.grid(row=0, column=2, sticky="E")
+        return
+    
+    def set_preview(self, event: tk.Event) -> None:
+        move_writer = self.cmb_dropdown.get_move_writer()
+        self.move_writer = move_writer
+        pos = Position()
+        pos.set_koma(Koma.FU, Square.from_coord(77))
+        move = pos.create_move(Square.from_coord(77), Square.from_coord(76))
+        self.lbl_preview["text"] = move_writer.move_writer.get_new_instance().write_move(move, pos)
+        return
+    
+    def get_move_writer(self) -> nwriter.AbstractMoveWriter:
+        return self.move_writer
+
+
+class BoardSkinSelectionFrame(ttk.Frame):
+    PREVIEW_WIDTH_HEIGHT = (33, 36)
+    
+    def __init__(self, parent: tk.Widget, label_text: str) -> None:
+        super().__init__(parent)
+        self.lbl_name = ttk.Label(self, text=label_text)
+        self.cmb_dropdown: DropdownFromEnum = BoardDropdown(
+            self, imghand.BoardSkin
+        )
+        self.cmb_dropdown.bind("<<ComboboxSelected>>", self.set_preview)
+        self.preview_photoimage = ImageTk.PhotoImage(
+            Image.new("RGBA", self.PREVIEW_WIDTH_HEIGHT, "#000000FF")
+        )
+        self.lbl_preview = ttk.Label(self)
+        self.lbl_preview["image"] = self.preview_photoimage
+        
+        self.lbl_name.grid(row=0, column=0, sticky="W")
+        self.cmb_dropdown.grid(row=0, column=1)
+        self.lbl_preview.grid(row=0, column=2, sticky="E")
+        return
+    
+    def set_preview(self, event: tk.Event) -> None:
+        skin = self.cmb_dropdown.get_board_skin()
+        self.skin = skin
+        filepath = skin.path
+        if filepath:
+            img = Image.open(filepath).resize(self.PREVIEW_WIDTH_HEIGHT)
+        else:
+            img = Image.new("RGB", self.PREVIEW_WIDTH_HEIGHT, skin.colour)
+        self.preview_photoimage = ImageTk.PhotoImage(img)
+        self.lbl_preview["image"] = self.preview_photoimage
+        return
+    
+    def get_skin(self) -> imghand.BoardSkin:
+        return self.skin
+
+
+class PieceSkinSelectionFrame(ttk.Frame):
+    PREVIEW_WIDTH_HEIGHT = (33, 36)
+    
+    def __init__(self, parent: tk.Widget, label_text: str) -> None:
+        super().__init__(parent)
+        self.lbl_name = ttk.Label(self, text=label_text)
+        self.cmb_dropdown: DropdownFromEnum = PieceDropdown(
+            self, imghand.PieceSkin
+        )
+        self.cmb_dropdown.bind("<<ComboboxSelected>>", self.set_preview)
+        self.preview_photoimage = ImageTk.PhotoImage(
+            Image.new("RGBA", self.PREVIEW_WIDTH_HEIGHT, "#000000FF")
+        )
+        self.lbl_preview = ttk.Label(self, font=(None, 18), compound="center")
+        self.lbl_preview["image"] = self.preview_photoimage
+        
+        self.lbl_name.grid(row=0, column=0, sticky="W")
+        self.cmb_dropdown.grid(row=0, column=1)
+        self.lbl_preview.grid(row=0, column=2, sticky="E")
+        return
+    
+    def set_preview(self, event: tk.Event) -> None:
+        skin = self.cmb_dropdown.get_piece_skin()
+        self.skin = skin
+        filepath = skin.path
+        if filepath:
+            filename = os.path.join(skin.path, "0GI.png")
+            img = Image.open(filename).resize(self.PREVIEW_WIDTH_HEIGHT)
+            self.lbl_preview["text"] = ""
+        else:
+            img = Image.new("RGB", self.PREVIEW_WIDTH_HEIGHT, "#FFFFFF")
+            self.lbl_preview["text"] = "銀"
+        self.preview_photoimage = ImageTk.PhotoImage(img)
+        self.lbl_preview["image"] = self.preview_photoimage
+        return
+    
+    def get_skin(self) -> imghand.PieceSkin:
+        return self.skin
+
+
+class OptionsFrame(ttk.Frame):
+    def __init__(self, parent: tk.Widget) -> None:
+        super().__init__(parent)
+        
+        self.frm_board_options = ttk.LabelFrame(self, text="Board appearance")
+        self.frm_board_options.grid(row=0, column=0, sticky="EW")
+        self.frm_board_skin = BoardSkinSelectionFrame(self.frm_board_options, "Board")
+        self.frm_komadai_skin = BoardSkinSelectionFrame(self.frm_board_options, label_text="Komadai")
+        self.frm_piece_skin = PieceSkinSelectionFrame(self.frm_board_options, "Piece set")
+        
+        self.frm_board_skin.grid(row=0, column=0, sticky="EW")
+        self.frm_komadai_skin.grid(row=1, column=0, sticky="EW")
+        self.frm_piece_skin.grid(row=2, column=0, sticky="EW")
+        
+        self.frm_board_skin.grid_columnconfigure(0, weight=1)
+        self.frm_komadai_skin.grid_columnconfigure(0, weight=1)
+        self.frm_piece_skin.grid_columnconfigure(0, weight=1)
+        
+        self.frm_notation_options = ttk.LabelFrame(self, text="Notation")
+        self.frm_notation_options.grid(row=1, column=0, sticky="EW")
+        self.frm_notation_choice = NotationSelectionFrame(self.frm_notation_options, "Notation system")
+        
+        self.frm_notation_choice.grid(row=0, column=0, sticky="EW")
+        self.frm_notation_choice.grid_columnconfigure(0, weight=1)
+        return
+    
+    def get_board_skin(self) -> imghand.BoardSkin:
+        return self.frm_board_skin.get_skin()
+    
+    def get_komadai_skin(self) -> imghand.BoardSkin:
+        return self.frm_komadai_skin.get_skin()
+    
+    def get_piece_skin(self) -> imghand.PieceSkin:
+        return self.frm_piece_skin.get_skin()
+    
+    def get_move_writer(self) -> nwriter.AbstractMoveWriter:
+        return self.frm_notation_choice.get_move_writer()
 
 
 class SettingsWindow(tk.Toplevel):
@@ -83,51 +202,39 @@ class SettingsWindow(tk.Toplevel):
         
         self.title("Settings")
         
-        self.notation_dropdown = NotationDropdown(self)
-        self.notation_dropdown.grid(row=0, column=1, sticky="EW")
-        
-        piece_palette = ttk.LabelFrame(self, text="Piece graphics")
-        piece_palette.grid(row=0, column=0, sticky="EW")
-        self.piece_dropdown = PieceDropdown(piece_palette)
-        self.piece_dropdown.grid(row=0, column=0)
-        
-        board_palette = ttk.LabelFrame(self, text="Board appearance")
-        board_palette.grid(row=1, column=0, sticky="EW")
-        ttk.Label(board_palette, text="Board").grid(row=0, column=0, sticky="W")
-        ttk.Label(board_palette, text="Komadai (solid colour)").grid(row=0, column=1, sticky="W")
-        self.board_dropdown = BoardDropdown(board_palette)
-        self.board_dropdown.grid(row=1, column=0, sticky="W")
-        self.komadai_dropdown = BoardDropdown(board_palette)
-        self.komadai_dropdown.grid(row=1, column=1, sticky="W")
+        self.options_frame = OptionsFrame(self)
+        self.options_frame.grid(row=0, column=0)
         
         buttons_frame = ttk.Frame(self)
-        buttons_frame.grid(row=2, column=0, sticky="EW")
+        buttons_frame.grid(row=1, column=0, sticky="EW")
         btn_okay = ttk.Button(buttons_frame, text="OK", command=self.save_and_quit)
-        btn_okay.grid(row=2, column=0)
+        btn_okay.grid(row=0, column=0)
         btn_apply = ttk.Button(buttons_frame, text="Apply", command=self.save)
-        btn_apply.grid(row=2, column=1)
+        btn_apply.grid(row=0, column=1)
         return
     
     def save(self):
-        self.controller.config["skins"] = {
-            "pieces": self.piece_dropdown.get_string_key(),
-            "board": self.board_dropdown.get_string_key(),
-            "komadai": self.komadai_dropdown.get_string_key(),
-        }
-        self.controller.move_writer = self.notation_dropdown.get_move_writer()
-        self.controller.config["notation"] = {
-            "notation": self.notation_dropdown.get_string_key()
-        }
         with open(CONFIG_PATH, "w") as f:
             self.controller.config.write(f)
         # tell the board what skins to use
-        piece_skin = self.piece_dropdown.get_piece_skin()
-        board_skin = self.board_dropdown.get_board_skin()
-        komadai_skin = self.komadai_dropdown.get_board_skin()
+        piece_skin = self.options_frame.get_piece_skin()
+        board_skin = self.options_frame.get_board_skin()
+        komadai_skin = self.options_frame.get_komadai_skin()
         skin_settings = imghand.SkinSettings(
             piece_skin, board_skin, komadai_skin
         )
+        move_writer = self.options_frame.get_move_writer()
+        self.controller.move_writer = move_writer.move_writer.get_new_instance()
         self.controller.apply_skin_settings(skin_settings)
+        
+        self.controller.config["skins"] = {
+            "pieces": piece_skin.name,
+            "board": board_skin.name,
+            "komadai": komadai_skin.name,
+        }
+        self.controller.config["notation"] = {
+            "notation": move_writer.name
+        }
         return
     
     def save_and_quit(self):

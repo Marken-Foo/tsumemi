@@ -72,10 +72,10 @@ def _read_skin(skins: configparser.SectionProxy) -> imghand.SkinSettings:
 def _read_notation(notation: configparser.SectionProxy
     ) -> nwriter.AbstractMoveWriter:
     try:
-        notation_writer = nwriter.MOVE_WRITER[notation.get("notation")]
+        notation_writer = nwriter.MoveWriter[notation.get("notation")]
     except KeyError:
-        notation_writer = nwriter.MOVE_WRITER["JAPANESE"]
-    return notation_writer
+        notation_writer = nwriter.MoveWriter["JAPANESE"]
+    return notation_writer.move_writer
 
 
 class RootController(evt.IObserver):

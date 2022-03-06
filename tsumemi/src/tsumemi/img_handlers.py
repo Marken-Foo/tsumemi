@@ -29,7 +29,7 @@ class BoardSkin(Enum):
     """Contains names, backup colours, and image paths for boards.
     """
     WHITE = ("solid white", "white", "")
-    BROWN = ("solid brown", "burlywood1", "")
+    BROWN = ("solid brown", "#ffd39b", "")
     WOOD1 = ("Wood1", "#d29a00", os.path.join(BOARD_IMAGES_PATH, r"tile_wood1.png"))
     WOOD2 = ("Wood2", "#fbcd77", os.path.join(BOARD_IMAGES_PATH, r"tile_wood2.png"))
     WOOD3 = ("Wood3", "#c98e52", os.path.join(BOARD_IMAGES_PATH, r"tile_wood3.png"))

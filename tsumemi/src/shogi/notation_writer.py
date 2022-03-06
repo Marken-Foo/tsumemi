@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from enum import Enum
 from typing import TYPE_CHECKING
 
 import tsumemi.src.shogi.rules as rules
@@ -70,6 +71,11 @@ class AbstractMoveWriter(ABC):
         self.move_format: MoveFormat = move_format
         self.aggressive_disambiguation = False
         return
+    
+    def get_new_instance(self) -> AbstractMoveWriter:
+        if self.__class__ == AbstractMoveWriter:
+            raise NotImplementedError
+        return self.__class__(self.move_format)
     
     def write_move(self,
             move: Move, pos: Position, is_same: bool = False
@@ -339,9 +345,15 @@ JAPANESE_MOVE_FORMAT: MoveFormat = (
 )
 
 
-MOVE_WRITER: Dict[str, AbstractMoveWriter] = {
-    "WESTERN": WesternMoveWriter(WESTERN_MOVE_FORMAT),
-    "JAPANESE": JapaneseMoveWriter(JAPANESE_MOVE_FORMAT),
-    "IROHA": IrohaMoveWriter(JAPANESE_MOVE_FORMAT),
-    "KITAO-KAWASAKI": KitaoKawasakiMoveWriter(WESTERN_MOVE_FORMAT),
-}
+class MoveWriter(Enum):
+    IROHA = ("Iroha", IrohaMoveWriter(JAPANESE_MOVE_FORMAT))
+    JAPANESE = ("Japanese", JapaneseMoveWriter(JAPANESE_MOVE_FORMAT))
+    KITAO_KAWASAKI = (
+        "Kitao-Kawasaki", KitaoKawasakiMoveWriter(WESTERN_MOVE_FORMAT)
+    )
+    WESTERN = ("Western (numbers)", WesternMoveWriter(WESTERN_MOVE_FORMAT))
+    
+    def __init__(self, desc: str, move_writer: AbstractMoveWriter) -> None:
+        self.desc: str = desc
+        self.move_writer: AbstractMoveWriter = move_writer
+        return
