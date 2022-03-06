@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import configparser
 import os
 import tkinter as tk
 
@@ -14,15 +15,67 @@ from tsumemi.src.shogi.basetypes import Koma, Square
 from tsumemi.src.shogi.position import Position
 
 if TYPE_CHECKING:
-    import enum
-    from typing import Any, Dict
+    from typing import Any, Dict, Tuple, Union
+    PathLike = Union[str, os.PathLike]
 
 
 CONFIG_PATH = os.path.relpath(r"tsumemi/resources/config.ini")
+CONFIGPARSER = configparser.ConfigParser(dict_type=dict)
+
+
+def read_config_file(
+    ) -> Tuple[imghand.SkinSettings, nwriter.AbstractMoveWriter]:
+    """Attempts to read config file; if not found, attempts to write a
+    default config file.
+    """
+    config = CONFIGPARSER
+    filepath = CONFIG_PATH
+    try:
+        with open(filepath, "r") as f:
+            config.read_file(f)
+    except FileNotFoundError:
+        with open(filepath, "w+") as f:
+            f.write("[skins]\n")
+            f.write("pieces = TEXT\n")
+            f.write("board = BROWN\n")
+            f.write("komadai = WHITE\n")
+            f.write("[notation]\n")
+            f.write("notation = JAPANESE\n")
+        with open(filepath, "r") as f:
+            config.read_file(f)
+    
+    skins = config["skins"]
+    notation = config["notation"]
+    return _read_skin(skins), _read_notation(notation)
+
+
+def _read_skin(skins: configparser.SectionProxy) -> imghand.SkinSettings:
+    try:
+        piece_skin = imghand.PieceSkin[skins.get("pieces")]
+    except KeyError:
+        piece_skin = imghand.PieceSkin.TEXT
+    try:
+        board_skin = imghand.BoardSkin[skins.get("board")]
+    except KeyError:
+        board_skin = imghand.BoardSkin.WHITE
+    try:
+        komadai_skin = imghand.BoardSkin[skins.get("komadai")]
+    except KeyError:
+        komadai_skin = imghand.BoardSkin.WHITE
+    return imghand.SkinSettings(piece_skin, board_skin, komadai_skin)
+
+
+def _read_notation(notation: configparser.SectionProxy
+    ) -> nwriter.AbstractMoveWriter:
+    try:
+        notation_writer = nwriter.MoveWriter[notation.get("notation")]
+    except KeyError:
+        notation_writer = nwriter.MoveWriter["JAPANESE"]
+    return notation_writer.move_writer
 
 
 class DropdownFromEnum(ttk.Combobox):
-    def __init__(self, parent: tk.Widget, src: enum.Enum) -> None:
+    def __init__(self, parent: tk.Widget, src: Any) -> None:
         self.MAPPING_DESC_TO_STRINGKEY: Dict[str, str] = {
             entry.desc: entry.name for entry in src
         }
@@ -55,9 +108,7 @@ class NotationSelectionFrame(ttk.Frame):
     def __init__(self, parent: tk.Widget, label_text: str) -> None:
         super().__init__(parent)
         self.lbl_name = ttk.Label(self, text=label_text)
-        self.cmb_dropdown: DropdownFromEnum = NotationDropdown(
-            self, nwriter.MoveWriter
-        )
+        self.cmb_dropdown = NotationDropdown(self, nwriter.MoveWriter)
         self.cmb_dropdown.bind("<<ComboboxSelected>>", self.set_preview)
         self.lbl_preview = ttk.Label(self)
         
@@ -75,7 +126,7 @@ class NotationSelectionFrame(ttk.Frame):
         self.lbl_preview["text"] = move_writer.move_writer.get_new_instance().write_move(move, pos)
         return
     
-    def get_move_writer(self) -> nwriter.AbstractMoveWriter:
+    def get_move_writer(self) -> nwriter.MoveWriter:
         return self.move_writer
 
 
@@ -85,9 +136,7 @@ class BoardSkinSelectionFrame(ttk.Frame):
     def __init__(self, parent: tk.Widget, label_text: str) -> None:
         super().__init__(parent)
         self.lbl_name = ttk.Label(self, text=label_text)
-        self.cmb_dropdown: DropdownFromEnum = BoardDropdown(
-            self, imghand.BoardSkin
-        )
+        self.cmb_dropdown = BoardDropdown(self, imghand.BoardSkin)
         self.cmb_dropdown.bind("<<ComboboxSelected>>", self.set_preview)
         self.preview_photoimage = ImageTk.PhotoImage(
             Image.new("RGBA", self.PREVIEW_WIDTH_HEIGHT, "#000000FF")
@@ -122,14 +171,12 @@ class PieceSkinSelectionFrame(ttk.Frame):
     def __init__(self, parent: tk.Widget, label_text: str) -> None:
         super().__init__(parent)
         self.lbl_name = ttk.Label(self, text=label_text)
-        self.cmb_dropdown: DropdownFromEnum = PieceDropdown(
-            self, imghand.PieceSkin
-        )
+        self.cmb_dropdown = PieceDropdown(self, imghand.PieceSkin)
         self.cmb_dropdown.bind("<<ComboboxSelected>>", self.set_preview)
         self.preview_photoimage = ImageTk.PhotoImage(
             Image.new("RGBA", self.PREVIEW_WIDTH_HEIGHT, "#000000FF")
         )
-        self.lbl_preview = ttk.Label(self, font=(None, 18), compound="center")
+        self.lbl_preview = ttk.Label(self, font=("", 18), compound="center")
         self.lbl_preview["image"] = self.preview_photoimage
         
         self.lbl_name.grid(row=0, column=0, sticky="W")
@@ -191,7 +238,7 @@ class OptionsFrame(ttk.Frame):
     def get_piece_skin(self) -> imghand.PieceSkin:
         return self.frm_piece_skin.get_skin()
     
-    def get_move_writer(self) -> nwriter.AbstractMoveWriter:
+    def get_move_writer(self) -> nwriter.MoveWriter:
         return self.frm_notation_choice.get_move_writer()
 
 
@@ -215,7 +262,8 @@ class SettingsWindow(tk.Toplevel):
     
     def save(self):
         with open(CONFIG_PATH, "w") as f:
-            self.controller.config.write(f)
+            # self.controller.config.write(f)
+            CONFIGPARSER.write(f)
         # tell the board what skins to use
         piece_skin = self.options_frame.get_piece_skin()
         board_skin = self.options_frame.get_board_skin()
@@ -227,12 +275,12 @@ class SettingsWindow(tk.Toplevel):
         self.controller.move_writer = move_writer.move_writer.get_new_instance()
         self.controller.apply_skin_settings(skin_settings)
         
-        self.controller.config["skins"] = {
+        CONFIGPARSER["skins"] = {
             "pieces": piece_skin.name,
             "board": board_skin.name,
             "komadai": komadai_skin.name,
         }
-        self.controller.config["notation"] = {
+        CONFIGPARSER["notation"] = {
             "notation": move_writer.name
         }
         return

@@ -68,9 +68,10 @@ class PieceSkin(Enum):
 class SkinSettings:
     """Contains a set of skins needed to draw a board.
     """
-    def __init__(self, piece_skin: PieceSkin = PieceSkin.TEXT,
-            board_skin: BoardSkin = BoardSkin.WHITE,
-            komadai_skin: BoardSkin = BoardSkin.WHITE
+    def __init__(self,
+            piece_skin: PieceSkin,
+            board_skin: BoardSkin,
+            komadai_skin: BoardSkin,
         ) -> None:
         self.piece_skin = piece_skin
         self.board_skin = board_skin
@@ -219,7 +220,7 @@ class KomaImgManager(ImgManager):
     """Handles storing and sizing of images for pieces.
     """
     def __init__(self,
-                measurements: BoardMeasurements, skin: PieceSkin
+            measurements: BoardMeasurements, skin: PieceSkin
         ) -> None:
         def _komadai_piece_size() -> Tuple[int, int]:
             kpc_w = measurements.komadai_piece_size

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import configparser
 import datetime
 import functools
 import logging.config
@@ -11,10 +10,8 @@ from tkinter import filedialog, messagebox, ttk
 from typing import TYPE_CHECKING
 
 import tsumemi.src.shogi.kif as kif
-import tsumemi.src.shogi.notation_writer as nwriter
 import tsumemi.src.tsumemi.event as evt
 import tsumemi.src.tsumemi.game_controller as gamecon
-import tsumemi.src.tsumemi.img_handlers as imghand
 import tsumemi.src.tsumemi.problem_list as plist
 import tsumemi.src.tsumemi.problem_list_controller as plistcon
 import tsumemi.src.tsumemi.speedrun_controller as speedcon
@@ -22,60 +19,11 @@ import tsumemi.src.tsumemi.timer as timer
 import tsumemi.src.tsumemi.timer_controller as timecon
 
 from tsumemi.src.tsumemi.main_window_view import MainWindowView
-from tsumemi.src.tsumemi.settings_window import SettingsWindow, CONFIG_PATH
+from tsumemi.src.tsumemi.settings_window import read_config_file, SettingsWindow
 
 if TYPE_CHECKING:
-    from typing import Callable, List, Optional, Union, Tuple
-    PathLike = Union[str, os.PathLike]
-
-
-def _read_config_file(config: configparser.ConfigParser, filepath: PathLike
-    ) -> Tuple[imghand.SkinSettings, nwriter.AbstractMoveWriter]:
-    """Attempts to read config file; if not found, attempts to write a
-    default config file.
-    """
-    try:
-        with open(filepath, "r") as f:
-            config.read_file(f)
-    except FileNotFoundError:
-        with open(filepath, "w+") as f:
-            f.write("[skins]\n")
-            f.write("pieces = TEXT\n")
-            f.write("board = BROWN\n")
-            f.write("komadai = WHITE\n")
-            f.write("[notation]\n")
-            f.write("notation = JAPANESE\n")
-        with open(filepath, "r") as f:
-            config.read_file(f)
-    
-    skins = config["skins"]
-    notation = config["notation"]
-    return _read_skin(skins), _read_notation(notation)
-
-
-def _read_skin(skins: configparser.SectionProxy) -> imghand.SkinSettings:
-    try:
-        piece_skin = imghand.PieceSkin[skins.get("pieces")]
-    except KeyError:
-        piece_skin = imghand.PieceSkin.TEXT
-    try:
-        board_skin = imghand.BoardSkin[skins.get("board")]
-    except KeyError:
-        board_skin = imghand.BoardSkin.WHITE
-    try:
-        komadai_skin = imghand.BoardSkin[skins.get("komadai")]
-    except KeyError:
-        komadai_skin = imghand.BoardSkin.WHITE
-    return imghand.SkinSettings(piece_skin, board_skin, komadai_skin)
-
-
-def _read_notation(notation: configparser.SectionProxy
-    ) -> nwriter.AbstractMoveWriter:
-    try:
-        notation_writer = nwriter.MoveWriter[notation.get("notation")]
-    except KeyError:
-        notation_writer = nwriter.MoveWriter["JAPANESE"]
-    return notation_writer.move_writer
+    from typing import Callable, Optional
+    import tsumemi.src.tsumemi.img_handlers as imghand
 
 
 class RootController(evt.IObserver):
@@ -85,10 +33,7 @@ class RootController(evt.IObserver):
     # eventually, refactor menu labels and dialog out into a constant namespace
     def __init__(self, root: tk.Tk) -> None:
         # Program data
-        self.config = configparser.ConfigParser(dict_type=dict)
-        self.skin_settings, self.move_writer = _read_config_file(
-            self.config, CONFIG_PATH
-        )
+        self.skin_settings, self.move_writer = read_config_file()
         self.main_game = gamecon.GameController(self.skin_settings)
         self.main_timer = timecon.TimerController()
         self.main_problem_list = plistcon.ProblemListController()
