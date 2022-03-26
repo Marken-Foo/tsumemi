@@ -34,7 +34,7 @@ class RootController(evt.IObserver):
     # eventually, refactor menu labels and dialog out into a constant namespace
     def __init__(self, root: tk.Tk) -> None:
         # Program data
-        self.settings = setcon.Settings()
+        self.settings = setcon.Settings(self)
         self.skin_settings = self.settings.skin_settings
         self.move_writer = self.settings.move_writer
         # self.skin_settings, self.move_writer = read_config_file()
@@ -299,7 +299,7 @@ class Menubar(tk.Menu):
         # Settings
         menu_settings.add_command(
             label="Settings...",
-            command=lambda: SettingsWindow(controller=self.controller),
+            command=lambda: SettingsWindow(controller=self.controller.settings),
         )
         menu_settings.add_command(
             label="About tsumemi",

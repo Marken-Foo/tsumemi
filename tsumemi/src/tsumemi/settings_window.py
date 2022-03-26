@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import configparser
 import os
 import tkinter as tk
 
@@ -15,12 +14,7 @@ from tsumemi.src.shogi.basetypes import Koma, Square
 from tsumemi.src.shogi.position import Position
 
 if TYPE_CHECKING:
-    from typing import Any, Dict, Tuple, Union
-    PathLike = Union[str, os.PathLike]
-
-
-CONFIG_PATH = os.path.relpath(r"tsumemi/resources/config.ini")
-CONFIGPARSER = configparser.ConfigParser(dict_type=dict)
+    from typing import Any, Dict
 
 
 class DropdownFromEnum(ttk.Combobox):
@@ -210,10 +204,6 @@ class SettingsWindow(tk.Toplevel):
         return
     
     def save(self):
-        with open(CONFIG_PATH, "w") as f:
-            # self.controller.config.write(f)
-            CONFIGPARSER.write(f)
-        # tell the board what skins to use
         piece_skin = self.options_frame.get_piece_skin()
         board_skin = self.options_frame.get_board_skin()
         komadai_skin = self.options_frame.get_komadai_skin()
@@ -221,17 +211,11 @@ class SettingsWindow(tk.Toplevel):
             piece_skin, board_skin, komadai_skin
         )
         move_writer = self.options_frame.get_move_writer()
-        self.controller.move_writer = move_writer.move_writer.get_new_instance()
-        self.controller.apply_skin_settings(skin_settings)
         
-        CONFIGPARSER["skins"] = {
-            "pieces": piece_skin.name,
-            "board": board_skin.name,
-            "komadai": komadai_skin.name,
-        }
-        CONFIGPARSER["notation"] = {
-            "notation": move_writer.name
-        }
+        self.controller.update_skin_settings(skin_settings)
+        self.controller.update_notation_settings(move_writer)
+        self.controller.write_current_settings_to_file()
+        self.controller.push_settings_to_controller()
         return
     
     def save_and_quit(self):

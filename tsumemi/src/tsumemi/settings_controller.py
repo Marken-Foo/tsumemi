@@ -9,12 +9,11 @@ import tsumemi.src.shogi.notation_writer as nwriter
 import tsumemi.src.tsumemi.img_handlers as imghand
 
 if TYPE_CHECKING:
-    from typing import Union
+    from typing import Any, Union
     PathLike = Union[str, os.PathLike]
 
 
 CONFIG_PATH = os.path.relpath(r"tsumemi/resources/config.ini")
-CONFIGPARSER = configparser.ConfigParser(dict_type=dict)
 
 
 def write_default_config_file(filepath: PathLike) -> None:
@@ -54,8 +53,9 @@ def _read_notation(notation: configparser.SectionProxy
 
 
 class Settings:
-    def __init__(self) -> None:
-        self.config = CONFIGPARSER
+    def __init__(self, controller: Any) -> None:
+        self.controller = controller
+        self.config = configparser.ConfigParser(dict_type=dict)
         self.skin_settings: imghand.SkinSettings
         self.move_writer: nwriter.AbstractMoveWriter
         self.read_config_file(CONFIG_PATH)
@@ -75,4 +75,34 @@ class Settings:
         
         self.skin_settings = _read_skin(skins_config)
         self.move_writer = _read_notation(notation_config)
+        return
+    
+    def write_current_settings_to_file(self,
+            filepath: PathLike = CONFIG_PATH
+        ) -> None:
+        with open(filepath, "w") as f:
+            self.config.write(f)
+        return
+    
+    def push_settings_to_controller(self) -> None:
+        self.controller.skin_settings = self.skin_settings
+        self.controller.move_writer = self.move_writer
+        self.controller.apply_skin_settings(self.skin_settings)
+        return
+    
+    def update_skin_settings(self, skin_settings: imghand.SkinSettings) -> None:
+        piece_skin, board_skin, komadai_skin = skin_settings.get()
+        self.skin_settings = skin_settings
+        self.config["skins"] = {
+            "pieces": piece_skin.name,
+            "board": board_skin.name,
+            "komadai": komadai_skin.name,
+        }
+        return
+    
+    def update_notation_settings(self, move_writer: nwriter.MoveWriter) -> None:
+        self.move_writer = move_writer.move_writer.get_new_instance()
+        self.config["notation"] = {
+            "notation": move_writer.name,
+        }
         return
