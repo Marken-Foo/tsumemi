@@ -14,12 +14,13 @@ import tsumemi.src.tsumemi.event as evt
 import tsumemi.src.tsumemi.game_controller as gamecon
 import tsumemi.src.tsumemi.problem_list as plist
 import tsumemi.src.tsumemi.problem_list_controller as plistcon
+import tsumemi.src.tsumemi.settings_controller as setcon
 import tsumemi.src.tsumemi.speedrun_controller as speedcon
 import tsumemi.src.tsumemi.timer as timer
 import tsumemi.src.tsumemi.timer_controller as timecon
 
 from tsumemi.src.tsumemi.main_window_view import MainWindowView
-from tsumemi.src.tsumemi.settings_window import read_config_file, SettingsWindow
+from tsumemi.src.tsumemi.settings_window import SettingsWindow #, read_config_file
 
 if TYPE_CHECKING:
     from typing import Callable, Optional
@@ -33,7 +34,10 @@ class RootController(evt.IObserver):
     # eventually, refactor menu labels and dialog out into a constant namespace
     def __init__(self, root: tk.Tk) -> None:
         # Program data
-        self.skin_settings, self.move_writer = read_config_file()
+        self.settings = setcon.Settings()
+        self.skin_settings = self.settings.skin_settings
+        self.move_writer = self.settings.move_writer
+        # self.skin_settings, self.move_writer = read_config_file()
         self.main_game = gamecon.GameController(self.skin_settings)
         self.main_timer = timecon.TimerController()
         self.main_problem_list = plistcon.ProblemListController()

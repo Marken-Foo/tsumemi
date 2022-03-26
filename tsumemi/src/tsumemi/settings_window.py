@@ -23,57 +23,6 @@ CONFIG_PATH = os.path.relpath(r"tsumemi/resources/config.ini")
 CONFIGPARSER = configparser.ConfigParser(dict_type=dict)
 
 
-def read_config_file(
-    ) -> Tuple[imghand.SkinSettings, nwriter.AbstractMoveWriter]:
-    """Attempts to read config file; if not found, attempts to write a
-    default config file.
-    """
-    config = CONFIGPARSER
-    filepath = CONFIG_PATH
-    try:
-        with open(filepath, "r") as f:
-            config.read_file(f)
-    except FileNotFoundError:
-        with open(filepath, "w+") as f:
-            f.write("[skins]\n")
-            f.write("pieces = TEXT\n")
-            f.write("board = BROWN\n")
-            f.write("komadai = WHITE\n")
-            f.write("[notation]\n")
-            f.write("notation = JAPANESE\n")
-        with open(filepath, "r") as f:
-            config.read_file(f)
-    
-    skins = config["skins"]
-    notation = config["notation"]
-    return _read_skin(skins), _read_notation(notation)
-
-
-def _read_skin(skins: configparser.SectionProxy) -> imghand.SkinSettings:
-    try:
-        piece_skin = imghand.PieceSkin[skins.get("pieces")]
-    except KeyError:
-        piece_skin = imghand.PieceSkin.TEXT
-    try:
-        board_skin = imghand.BoardSkin[skins.get("board")]
-    except KeyError:
-        board_skin = imghand.BoardSkin.WHITE
-    try:
-        komadai_skin = imghand.BoardSkin[skins.get("komadai")]
-    except KeyError:
-        komadai_skin = imghand.BoardSkin.WHITE
-    return imghand.SkinSettings(piece_skin, board_skin, komadai_skin)
-
-
-def _read_notation(notation: configparser.SectionProxy
-    ) -> nwriter.AbstractMoveWriter:
-    try:
-        notation_writer = nwriter.MoveWriter[notation.get("notation")]
-    except KeyError:
-        notation_writer = nwriter.MoveWriter["JAPANESE"]
-    return notation_writer.move_writer
-
-
 class DropdownFromEnum(ttk.Combobox):
     def __init__(self, parent: tk.Widget, src: Any) -> None:
         self.MAPPING_DESC_TO_STRINGKEY: Dict[str, str] = {
