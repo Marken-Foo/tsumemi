@@ -20,7 +20,7 @@ import tsumemi.src.tsumemi.timer as timer
 import tsumemi.src.tsumemi.timer_controller as timecon
 
 from tsumemi.src.tsumemi.main_window_view import MainWindowView
-from tsumemi.src.tsumemi.settings_window import SettingsWindow #, read_config_file
+from tsumemi.src.tsumemi.settings_window import SettingsWindow
 
 if TYPE_CHECKING:
     from typing import Callable, Optional
@@ -36,8 +36,7 @@ class RootController(evt.IObserver):
         # Program data
         self.settings = setcon.Settings(self)
         self.skin_settings = self.settings.skin_settings
-        self.move_writer = self.settings.move_writer
-        # self.skin_settings, self.move_writer = read_config_file()
+        self.move_writer = self.settings.notation_selection_controller.get_move_writer()
         self.main_game = gamecon.GameController(self.skin_settings)
         self.main_timer = timecon.TimerController()
         self.main_problem_list = plistcon.ProblemListController()

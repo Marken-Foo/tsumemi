@@ -5,11 +5,12 @@ import os
 
 from typing import TYPE_CHECKING
 
-import tsumemi.src.shogi.notation_writer as nwriter
 import tsumemi.src.tsumemi.img_handlers as imghand
+import tsumemi.src.tsumemi.notation_setting_choices as nchoices
 
 if TYPE_CHECKING:
-    from typing import Any, Union
+    from typing import Union
+    from tsumemi.src.tsumemi.kif_browser_gui import RootController
     PathLike = Union[str, os.PathLike]
 
 
@@ -43,21 +44,14 @@ def _read_skin(skins: configparser.SectionProxy) -> imghand.SkinSettings:
     return imghand.SkinSettings(piece_skin, board_skin, komadai_skin)
 
 
-def _read_notation(notation: configparser.SectionProxy
-    ) -> nwriter.AbstractMoveWriter:
-    try:
-        notation_writer = nwriter.MoveWriter[notation.get("notation")]
-    except KeyError:
-        notation_writer = nwriter.MoveWriter["JAPANESE"]
-    return notation_writer.move_writer
-
-
 class Settings:
-    def __init__(self, controller: Any) -> None:
+    # Controller for the settings window.
+    def __init__(self, controller: RootController) -> None:
         self.controller = controller
         self.config = configparser.ConfigParser(dict_type=dict)
         self.skin_settings: imghand.SkinSettings
-        self.move_writer: nwriter.AbstractMoveWriter
+        self.notation_selection_controller = nchoices.NotationSelectionController()
+        
         self.read_config_file(CONFIG_PATH)
         return
     
@@ -72,9 +66,12 @@ class Settings:
         
         skins_config = self.config["skins"]
         notation_config = self.config["notation"]
-        
+        try:
+            notation_config_string = notation_config.get("notation")
+        except KeyError:
+            notation_config_string = "JAPANESE"
         self.skin_settings = _read_skin(skins_config)
-        self.move_writer = _read_notation(notation_config)
+        self.notation_selection_controller.set_selection_from_config(notation_config_string)
         return
     
     def write_current_settings_to_file(self,
@@ -86,7 +83,8 @@ class Settings:
     
     def push_settings_to_controller(self) -> None:
         self.controller.skin_settings = self.skin_settings
-        self.controller.move_writer = self.move_writer
+        self.controller.move_writer = self.notation_selection_controller.get_move_writer()
+        
         self.controller.apply_skin_settings(self.skin_settings)
         return
     
@@ -100,9 +98,8 @@ class Settings:
         }
         return
     
-    def update_notation_settings(self, move_writer: nwriter.MoveWriter) -> None:
-        self.move_writer = move_writer.move_writer.get_new_instance()
+    def update_notation_settings(self) -> None:
         self.config["notation"] = {
-            "notation": move_writer.name,
+            "notation": self.notation_selection_controller.get_move_writer_config_string(),
         }
         return

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from enum import Enum
 from typing import TYPE_CHECKING
 
 import tsumemi.src.shogi.rules as rules
@@ -343,17 +342,3 @@ JAPANESE_MOVE_FORMAT: MoveFormat = (
     DisambiguationNotationBuilder(),
     PromotionNotationBuilder(),
 )
-
-
-class MoveWriter(Enum):
-    IROHA = ("Iroha", IrohaMoveWriter(JAPANESE_MOVE_FORMAT))
-    JAPANESE = ("Japanese", JapaneseMoveWriter(JAPANESE_MOVE_FORMAT))
-    KITAO_KAWASAKI = (
-        "Kitao-Kawasaki", KitaoKawasakiMoveWriter(WESTERN_MOVE_FORMAT)
-    )
-    WESTERN = ("Western (numbers)", WesternMoveWriter(WESTERN_MOVE_FORMAT))
-    
-    def __init__(self, desc: str, move_writer: AbstractMoveWriter) -> None:
-        self.desc: str = desc
-        self.move_writer: AbstractMoveWriter = move_writer
-        return

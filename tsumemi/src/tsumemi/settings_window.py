@@ -7,11 +7,9 @@ from tkinter import ttk
 from typing import TYPE_CHECKING
 from PIL import Image, ImageTk
 
-import tsumemi.src.shogi.notation_writer as nwriter
 import tsumemi.src.tsumemi.img_handlers as imghand
 
-from tsumemi.src.shogi.basetypes import Koma, Square
-from tsumemi.src.shogi.position import Position
+from tsumemi.src.tsumemi.notation_setting_choices import NotationSelectionFrame
 
 if TYPE_CHECKING:
     from typing import Any, Dict
@@ -32,11 +30,6 @@ class DropdownFromEnum(ttk.Combobox):
         return self.MAPPING_DESC_TO_STRINGKEY[self._svar.get()]
 
 
-class NotationDropdown(DropdownFromEnum):
-    def get_move_writer(self) -> nwriter.MoveWriter:
-        return nwriter.MoveWriter[self.get_string_key()]
-
-
 class PieceDropdown(DropdownFromEnum):
     def get_piece_skin(self) -> imghand.PieceSkin:
         return imghand.PieceSkin[self.get_string_key()]
@@ -45,32 +38,6 @@ class PieceDropdown(DropdownFromEnum):
 class BoardDropdown(DropdownFromEnum):
     def get_board_skin(self) -> imghand.BoardSkin:
         return imghand.BoardSkin[self.get_string_key()]
-
-
-class NotationSelectionFrame(ttk.Frame):
-    def __init__(self, parent: tk.Widget, label_text: str) -> None:
-        super().__init__(parent)
-        self.lbl_name = ttk.Label(self, text=label_text)
-        self.cmb_dropdown = NotationDropdown(self, nwriter.MoveWriter)
-        self.cmb_dropdown.bind("<<ComboboxSelected>>", self.set_preview)
-        self.lbl_preview = ttk.Label(self)
-        
-        self.lbl_name.grid(row=0, column=0, sticky="W")
-        self.cmb_dropdown.grid(row=0, column=1)
-        self.lbl_preview.grid(row=0, column=2, sticky="E")
-        return
-    
-    def set_preview(self, event: tk.Event) -> None:
-        move_writer = self.cmb_dropdown.get_move_writer()
-        self.move_writer = move_writer
-        pos = Position()
-        pos.set_koma(Koma.FU, Square.from_coord(77))
-        move = pos.create_move(Square.from_coord(77), Square.from_coord(76))
-        self.lbl_preview["text"] = move_writer.move_writer.get_new_instance().write_move(move, pos)
-        return
-    
-    def get_move_writer(self) -> nwriter.MoveWriter:
-        return self.move_writer
 
 
 class BoardSkinSelectionFrame(ttk.Frame):
@@ -166,7 +133,7 @@ class OptionsFrame(ttk.Frame):
         
         self.frm_notation_options = ttk.LabelFrame(self, text="Notation")
         self.frm_notation_options.grid(row=1, column=0, sticky="EW")
-        self.frm_notation_choice = NotationSelectionFrame(self.frm_notation_options, "Notation system")
+        self.frm_notation_choice = NotationSelectionFrame(self.frm_notation_options, parent.controller.notation_selection_controller)
         
         self.frm_notation_choice.grid(row=0, column=0, sticky="EW")
         self.frm_notation_choice.grid_columnconfigure(0, weight=1)
@@ -180,9 +147,6 @@ class OptionsFrame(ttk.Frame):
     
     def get_piece_skin(self) -> imghand.PieceSkin:
         return self.frm_piece_skin.get_skin()
-    
-    def get_move_writer(self) -> nwriter.MoveWriter:
-        return self.frm_notation_choice.get_move_writer()
 
 
 class SettingsWindow(tk.Toplevel):
@@ -210,10 +174,9 @@ class SettingsWindow(tk.Toplevel):
         skin_settings = imghand.SkinSettings(
             piece_skin, board_skin, komadai_skin
         )
-        move_writer = self.options_frame.get_move_writer()
         
         self.controller.update_skin_settings(skin_settings)
-        self.controller.update_notation_settings(move_writer)
+        self.controller.update_notation_settings()
         self.controller.write_current_settings_to_file()
         self.controller.push_settings_to_controller()
         return
