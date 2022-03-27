@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 import tsumemi.src.tsumemi.img_handlers as imghand
 import tsumemi.src.tsumemi.notation_setting_choices as nchoices
+import tsumemi.src.tsumemi.piece_setting_choices as pchoices
 
 if TYPE_CHECKING:
     from typing import Union
@@ -51,7 +52,7 @@ class Settings:
         self.config = configparser.ConfigParser(dict_type=dict)
         self.skin_settings: imghand.SkinSettings
         self.notation_controller = nchoices.NotationSelectionController()
-        
+        self.piece_skin_controller = pchoices.PieceSkinSelectionController()
         self.read_config_file(CONFIG_PATH)
         return
     
@@ -70,8 +71,13 @@ class Settings:
             notation_config_string = notation_config.get("notation")
         except KeyError:
             notation_config_string = "JAPANESE"
+        try:
+            piece_config_string = skins_config.get("pieces")
+        except KeyError:
+            piece_config_string = "TEXT"
         self.skin_settings = _read_skin(skins_config)
         self.notation_controller.select_by_config(notation_config_string)
+        self.piece_skin_controller.select_by_config(piece_config_string)
         return
     
     def write_current_settings_to_file(self,
@@ -89,13 +95,18 @@ class Settings:
     
     def update_skin_settings(self, skin_settings: imghand.SkinSettings) -> None:
         piece_skin, board_skin, komadai_skin = skin_settings.get()
+        piece_skin = self.piece_skin_controller.get_piece_skin()
         self.skin_settings = skin_settings
+        self.skin_settings.piece_skin = piece_skin
         self.config["skins"] = {
             "pieces": piece_skin.name,
             "board": board_skin.name,
             "komadai": komadai_skin.name,
         }
         return
+    
+    def update_piece_skin_settings(self) -> None:
+        self.config["skins"]["pieces"] = self.piece_skin_controller.get_config_string()
     
     def update_notation_settings(self) -> None:
         self.config["notation"] = {

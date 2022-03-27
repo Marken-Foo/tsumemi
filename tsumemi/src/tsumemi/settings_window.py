@@ -10,6 +10,7 @@ from PIL import Image, ImageTk
 import tsumemi.src.tsumemi.img_handlers as imghand
 
 from tsumemi.src.tsumemi.notation_setting_choices import NotationSelectionFrame
+from tsumemi.src.tsumemi.piece_setting_choices import PieceSkinSelectionFrame
 
 if TYPE_CHECKING:
     from typing import Any, Dict
@@ -28,11 +29,6 @@ class DropdownFromEnum(ttk.Combobox):
     
     def get_string_key(self) -> str:
         return self.MAPPING_DESC_TO_STRINGKEY[self._svar.get()]
-
-
-class PieceDropdown(DropdownFromEnum):
-    def get_piece_skin(self) -> imghand.PieceSkin:
-        return imghand.PieceSkin[self.get_string_key()]
 
 
 class BoardDropdown(DropdownFromEnum):
@@ -75,44 +71,6 @@ class BoardSkinSelectionFrame(ttk.Frame):
         return self.skin
 
 
-class PieceSkinSelectionFrame(ttk.Frame):
-    PREVIEW_WIDTH_HEIGHT = (33, 36)
-    
-    def __init__(self, parent: tk.Widget, label_text: str) -> None:
-        super().__init__(parent)
-        self.lbl_name = ttk.Label(self, text=label_text)
-        self.cmb_dropdown = PieceDropdown(self, imghand.PieceSkin)
-        self.cmb_dropdown.bind("<<ComboboxSelected>>", self.set_preview)
-        self.preview_photoimage = ImageTk.PhotoImage(
-            Image.new("RGBA", self.PREVIEW_WIDTH_HEIGHT, "#000000FF")
-        )
-        self.lbl_preview = ttk.Label(self, font=("", 18), compound="center")
-        self.lbl_preview["image"] = self.preview_photoimage
-        
-        self.lbl_name.grid(row=0, column=0, sticky="W")
-        self.cmb_dropdown.grid(row=0, column=1)
-        self.lbl_preview.grid(row=0, column=2, sticky="E")
-        return
-    
-    def set_preview(self, event: tk.Event) -> None:
-        skin = self.cmb_dropdown.get_piece_skin()
-        self.skin = skin
-        filepath = skin.path
-        if filepath:
-            filename = os.path.join(skin.path, "0GI.png")
-            img = Image.open(filename).resize(self.PREVIEW_WIDTH_HEIGHT)
-            self.lbl_preview["text"] = ""
-        else:
-            img = Image.new("RGB", self.PREVIEW_WIDTH_HEIGHT, "#FFFFFF")
-            self.lbl_preview["text"] = "銀"
-        self.preview_photoimage = ImageTk.PhotoImage(img)
-        self.lbl_preview["image"] = self.preview_photoimage
-        return
-    
-    def get_skin(self) -> imghand.PieceSkin:
-        return self.skin
-
-
 class OptionsFrame(ttk.Frame):
     def __init__(self, parent: tk.Widget) -> None:
         super().__init__(parent)
@@ -121,7 +79,7 @@ class OptionsFrame(ttk.Frame):
         self.frm_board_options.grid(row=0, column=0, sticky="EW")
         self.frm_board_skin = BoardSkinSelectionFrame(self.frm_board_options, "Board")
         self.frm_komadai_skin = BoardSkinSelectionFrame(self.frm_board_options, label_text="Komadai")
-        self.frm_piece_skin = PieceSkinSelectionFrame(self.frm_board_options, "Piece set")
+        self.frm_piece_skin = PieceSkinSelectionFrame(self.frm_board_options, parent.controller.piece_skin_controller)
         
         self.frm_board_skin.grid(row=0, column=0, sticky="EW")
         self.frm_komadai_skin.grid(row=1, column=0, sticky="EW")
@@ -144,9 +102,6 @@ class OptionsFrame(ttk.Frame):
     
     def get_komadai_skin(self) -> imghand.BoardSkin:
         return self.frm_komadai_skin.get_skin()
-    
-    def get_piece_skin(self) -> imghand.PieceSkin:
-        return self.frm_piece_skin.get_skin()
 
 
 class SettingsWindow(tk.Toplevel):
@@ -168,14 +123,14 @@ class SettingsWindow(tk.Toplevel):
         return
     
     def save(self):
-        piece_skin = self.options_frame.get_piece_skin()
         board_skin = self.options_frame.get_board_skin()
         komadai_skin = self.options_frame.get_komadai_skin()
         skin_settings = imghand.SkinSettings(
-            piece_skin, board_skin, komadai_skin
+            imghand.PieceSkin["TEXT"], board_skin, komadai_skin
         )
         
         self.controller.update_skin_settings(skin_settings)
+        self.controller.update_piece_skin_settings()
         self.controller.update_notation_settings()
         self.controller.write_current_settings_to_file()
         self.controller.push_settings_to_controller()
