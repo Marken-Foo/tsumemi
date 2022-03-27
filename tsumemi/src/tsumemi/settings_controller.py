@@ -50,7 +50,7 @@ class Settings:
         self.controller = controller
         self.config = configparser.ConfigParser(dict_type=dict)
         self.skin_settings: imghand.SkinSettings
-        self.notation_selection_controller = nchoices.NotationSelectionController()
+        self.notation_controller = nchoices.NotationSelectionController()
         
         self.read_config_file(CONFIG_PATH)
         return
@@ -71,7 +71,7 @@ class Settings:
         except KeyError:
             notation_config_string = "JAPANESE"
         self.skin_settings = _read_skin(skins_config)
-        self.notation_selection_controller.set_selection_from_config(notation_config_string)
+        self.notation_controller.select_by_config(notation_config_string)
         return
     
     def write_current_settings_to_file(self,
@@ -83,8 +83,7 @@ class Settings:
     
     def push_settings_to_controller(self) -> None:
         self.controller.skin_settings = self.skin_settings
-        self.controller.move_writer = self.notation_selection_controller.get_move_writer()
-        
+        self.controller.move_writer = self.notation_controller.get_move_writer()
         self.controller.apply_skin_settings(self.skin_settings)
         return
     
@@ -100,6 +99,6 @@ class Settings:
     
     def update_notation_settings(self) -> None:
         self.config["notation"] = {
-            "notation": self.notation_selection_controller.get_move_writer_config_string(),
+            "notation": self.notation_controller.get_config_string(),
         }
         return

@@ -36,7 +36,7 @@ class RootController(evt.IObserver):
         # Program data
         self.settings = setcon.Settings(self)
         self.skin_settings = self.settings.skin_settings
-        self.move_writer = self.settings.notation_selection_controller.get_move_writer()
+        self.move_writer = self.settings.notation_controller.get_move_writer()
         self.main_game = gamecon.GameController(self.skin_settings)
         self.main_timer = timecon.TimerController()
         self.main_problem_list = plistcon.ProblemListController()

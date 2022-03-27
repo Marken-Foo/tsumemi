@@ -53,13 +53,6 @@ NOTATION_CHOICES: List[NotationChoice] = [
 ]
 
 
-DEFAULT_NOTATION_CHOICE: NotationChoice = NotationChoice(
-    nwriter.JapaneseMoveWriter(nwriter.JAPANESE_MOVE_FORMAT),
-    "Japanese (default)",
-    "JAPANESE",
-)
-
-
 class NotationSelectionController:
     def __init__(self) -> None:
         self.model = NotationSelection()
@@ -70,70 +63,56 @@ class NotationSelectionController:
         return NotationSelectionFrame(parent=parent, controller=self)
     
     def get_move_preview(self) -> str:
-        move_writer = self.model.get_selected_move_writer()
+        move_writer = self.model.get_move_writer()
         pos = Position()
         pos.set_koma(Koma.FU, Square.from_coord(77))
         move = pos.create_move(Square.from_coord(77), Square.from_coord(76))
         return move_writer.write_move(move, pos)
     
     def get_move_writer(self) -> nwriter.AbstractMoveWriter:
-        return self.model.get_selected_move_writer()
+        return self.model.get_move_writer()
     
-    def get_move_writer_config_string(self) -> str:
-        return self.model.selected.config_string
+    def get_config_string(self) -> str:
+        return self.model.get_config_string()
     
-    def set_selection_from_config(self, config_string: str) -> None:
-        self.model.update_selection_from_config(config_string)
+    def select_by_config(self, config_string: str) -> None:
+        self.model.select_by_config(config_string)
         return
 
 
 class NotationSelection:
-    def __init__(self, choices: List[NotationChoice] = NOTATION_CHOICES
-        ) -> None:
-        self.choices: List[NotationChoice]
-        self.selected: NotationChoice
-        if choices:
-            self.choices = choices
-            self.selected = choices[0]
-        else:
-            self.choices = [DEFAULT_NOTATION_CHOICE]
-            self.selected = self.choices[0]
+    def __init__(self) -> None:
+        self.choices = NOTATION_CHOICES
+        self.selected = NOTATION_CHOICES[0]
         return
     
-    def get_current_description(self) -> str:
+    def get_description(self) -> str:
         return self.selected.description
+    
+    def get_config_string(self) -> str:
+        return self.selected.config_string
     
     def get_sorted_descriptions(self) -> List[str]:
         return sorted((choice.description for choice in self.choices))
     
-    def get_selected_move_writer(self) -> nwriter.AbstractMoveWriter:
+    def get_move_writer(self) -> nwriter.AbstractMoveWriter:
         return self.selected.get_move_writer()
     
-    def get_move_writer_from_description(self, description: str
-        ) -> nwriter.AbstractMoveWriter:
+    def select_by_description(self, description: str) -> None:
         for choice in self.choices:
             if choice.description == description:
                 self.selected = choice
-                return choice.get_move_writer()
+                return
         else: # for-else loop
             raise ValueError(f"Description '{description}' not among notation choices")
     
-    def get_move_writer_from_config(self, config_string: str
-        ) -> nwriter.AbstractMoveWriter:
+    def select_by_config(self, config_string: str) -> None:
         for choice in self.choices:
             if choice.config_string == config_string:
                 self.selected = choice
-                return choice.get_move_writer()
+                return
         else: # for-else loop
             raise ValueError(f"Config string '{config_string}' not among notation choices")
-    
-    def update_selection_from_description(self, description: str) -> None:
-        self.get_move_writer_from_description(description)
-        return
-    
-    def update_selection_from_config(self, config_string: str) -> None:
-        self.get_move_writer_from_config(config_string)
-        return
 
 
 class NotationSelectionFrame(ttk.Frame):
@@ -164,7 +143,7 @@ class NotationDropdown(ttk.Combobox):
             controller: NotationSelection,
         ) -> None:
         self.controller = controller
-        self._svar = tk.StringVar(value=controller.get_current_description())
+        self._svar = tk.StringVar(value=controller.get_description())
         super().__init__(parent, textvariable=self._svar)
         self["values"] = controller.get_sorted_descriptions()
         self.state(["readonly"])
@@ -172,5 +151,5 @@ class NotationDropdown(ttk.Combobox):
         return
     
     def update_controller(self, event: tk.Event) -> None:
-        self.controller.update_selection_from_description(self._svar.get())
+        self.controller.select_by_description(self._svar.get())
         return

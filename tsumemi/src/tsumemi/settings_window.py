@@ -133,7 +133,7 @@ class OptionsFrame(ttk.Frame):
         
         self.frm_notation_options = ttk.LabelFrame(self, text="Notation")
         self.frm_notation_options.grid(row=1, column=0, sticky="EW")
-        self.frm_notation_choice = NotationSelectionFrame(self.frm_notation_options, parent.controller.notation_selection_controller)
+        self.frm_notation_choice = NotationSelectionFrame(self.frm_notation_options, parent.controller.notation_controller)
         
         self.frm_notation_choice.grid(row=0, column=0, sticky="EW")
         self.frm_notation_choice.grid_columnconfigure(0, weight=1)
