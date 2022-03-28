@@ -20,7 +20,6 @@ import tsumemi.src.tsumemi.timer as timer
 import tsumemi.src.tsumemi.timer_controller as timecon
 
 from tsumemi.src.tsumemi.main_window_view import MainWindowView
-from tsumemi.src.tsumemi.settings_window import SettingsWindow
 
 if TYPE_CHECKING:
     from typing import Callable, Optional
@@ -67,6 +66,10 @@ class RootController(evt.IObserver):
         self.bindings = Bindings(self)
         self.bindings.bind_shortcuts(self.root, self.bindings.MASTER_SHORTCUTS)
         self.bindings.bind_shortcuts(self.root, self.bindings.FREE_SHORTCUTS)
+        return
+    
+    def open_settings_window(self) -> None:
+        self.settings.open_settings_window()
         return
     
     def open_folder(self, event: Optional[tk.Event] = None,
@@ -244,7 +247,11 @@ class Bindings:
 class Menubar(tk.Menu):
     """GUI class for the menubar at the top of the main window.
     """
-    def __init__(self, parent, controller, *args, **kwargs):
+    def __init__(self,
+            parent: tk.Tk,
+            controller: RootController,
+            *args, **kwargs
+        ) -> None:
         self.controller = controller
         super().__init__(parent, *args, **kwargs)
         
@@ -298,7 +305,8 @@ class Menubar(tk.Menu):
         # Settings
         menu_settings.add_command(
             label="Settings...",
-            command=lambda: SettingsWindow(controller=self.controller.settings),
+            command=self.controller.open_settings_window
+            # command=lambda: SettingsWindow(controller=self.controller.settings),
         )
         menu_settings.add_command(
             label="About tsumemi",

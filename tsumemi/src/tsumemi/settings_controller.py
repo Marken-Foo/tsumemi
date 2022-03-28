@@ -10,6 +10,8 @@ import tsumemi.src.tsumemi.board_setting_choices as bchoices
 import tsumemi.src.tsumemi.notation_setting_choices as nchoices
 import tsumemi.src.tsumemi.piece_setting_choices as pchoices
 
+from tsumemi.src.tsumemi.settings_window import SettingsWindow
+
 if TYPE_CHECKING:
     from typing import Union
     from tsumemi.src.tsumemi.kif_browser_gui import RootController
@@ -97,17 +99,29 @@ class Settings:
         return imghand.SkinSettings(piece_skin, board_skin, komadai_skin)
     
     def update_board_skin_settings(self) -> None:
-        self.config["skins"]["board"] = self.board_skin_controller.get_config_string()
+        self.config["skins"]["board"] = (
+            self.board_skin_controller.get_config_string()
+        )
         return
     
     def update_komadai_skin_settings(self) -> None:
-        self.config["skins"]["komadai"] = self.komadai_skin_controller.get_config_string()
+        self.config["skins"]["komadai"] = (
+            self.komadai_skin_controller.get_config_string()
+        )
         return
     
     def update_piece_skin_settings(self) -> None:
-        self.config["skins"]["pieces"] = self.piece_skin_controller.get_config_string()
+        self.config["skins"]["pieces"] = (
+            self.piece_skin_controller.get_config_string()
+        )
         return
     
     def update_notation_settings(self) -> None:
-        self.config["notation"]["notation"] = self.notation_controller.get_config_string()
+        self.config["notation"]["notation"] = (
+            self.notation_controller.get_config_string()
+        )
+        return
+    
+    def open_settings_window(self) -> None:
+        SettingsWindow(controller=self)
         return
