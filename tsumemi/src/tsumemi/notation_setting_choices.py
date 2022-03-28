@@ -44,6 +44,11 @@ NOTATION_CHOICES: List[NotationChoice] = [
 ]
 
 
+class NotationSelection(setc.Selection[nwriter.AbstractMoveWriter]):
+    pass
+
+
+
 class NotationSelectionController:
     def __init__(self) -> None:
         self.model = NotationSelection(NOTATION_CHOICES)
@@ -54,14 +59,14 @@ class NotationSelectionController:
         return NotationSelectionFrame(parent=parent, controller=self)
     
     def get_move_preview(self) -> str:
-        move_writer = self.model.get_move_writer()
+        move_writer = self.model.get_item()
         pos = Position()
         pos.set_koma(Koma.FU, Square.from_coord(77))
         move = pos.create_move(Square.from_coord(77), Square.from_coord(76))
         return move_writer.write_move(move, pos)
     
     def get_move_writer(self) -> nwriter.AbstractMoveWriter:
-        return self.model.get_move_writer()
+        return self.model.get_item()
     
     def get_config_string(self) -> str:
         return self.model.get_config_string()
@@ -71,9 +76,8 @@ class NotationSelectionController:
         return
 
 
-class NotationSelection(setc.Selection[nwriter.AbstractMoveWriter]):
-    def get_move_writer(self) -> nwriter.AbstractMoveWriter:
-        return self.selected.get_item()
+class NotationDropdown(setc.Dropdown[nwriter.AbstractMoveWriter]):
+    pass
 
 
 class NotationSelectionFrame(ttk.Frame):
@@ -100,7 +104,3 @@ class NotationSelectionFrame(ttk.Frame):
     def set_preview(self, event: Optional[tk.Event]) -> None:
         self.lbl_preview["text"] = self.controller.get_move_preview()
         return
-
-
-class NotationDropdown(setc.Dropdown[nwriter.AbstractMoveWriter]):
-    pass

@@ -23,6 +23,10 @@ PIECE_SKIN_CHOICES: List[PieceSkinChoice] = [
 ]
 
 
+class PieceSkinSelection(setc.Selection[imghand.PieceSkin]):
+    pass
+
+
 class PieceSkinSelectionController:
     def __init__(self) -> None:
         self.model = PieceSkinSelection(PIECE_SKIN_CHOICES)
@@ -33,7 +37,7 @@ class PieceSkinSelectionController:
         return PieceSkinSelectionFrame(parent=parent, controller=self)
     
     def get_piece_skin(self) -> imghand.PieceSkin:
-        return self.model.get_piece_skin()
+        return self.model.get_item()
     
     def get_config_string(self) -> str:
         return self.model.get_config_string()
@@ -43,9 +47,8 @@ class PieceSkinSelectionController:
         return
 
 
-class PieceSkinSelection(setc.Selection[imghand.PieceSkin]):
-    def get_piece_skin(self) -> imghand.PieceSkin:
-        return self.selected.get_item()
+class PieceSkinDropdown(setc.Dropdown[imghand.PieceSkin]):
+    pass
 
 
 class PieceSkinSelectionFrame(ttk.Frame):
@@ -87,7 +90,3 @@ class PieceSkinSelectionFrame(ttk.Frame):
         self.preview_photoimage = ImageTk.PhotoImage(img)
         self.lbl_preview["image"] = self.preview_photoimage
         return
-
-
-class PieceSkinDropdown(setc.Dropdown[imghand.PieceSkin]):
-    pass
