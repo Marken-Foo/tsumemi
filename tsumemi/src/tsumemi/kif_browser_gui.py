@@ -35,7 +35,7 @@ class RootController(evt.IObserver):
     def __init__(self, root: tk.Tk) -> None:
         # Program data
         self.settings = setcon.Settings(self)
-        self.skin_settings = self.settings.skin_settings
+        self.skin_settings = self.settings.get_skin_settings()
         self.move_writer = self.settings.notation_controller.get_move_writer()
         self.main_game = gamecon.GameController(self.skin_settings)
         self.main_timer = timecon.TimerController()

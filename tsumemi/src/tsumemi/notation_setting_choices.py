@@ -48,15 +48,10 @@ class NotationSelection(setc.Selection[nwriter.AbstractMoveWriter]):
     pass
 
 
-
 class NotationSelectionController:
     def __init__(self) -> None:
         self.model = NotationSelection(NOTATION_CHOICES)
         return
-    
-    def make_notation_selection_frame(self, parent: tk.Widget
-        ) -> NotationSelectionFrame:
-        return NotationSelectionFrame(parent=parent, controller=self)
     
     def get_move_preview(self) -> str:
         move_writer = self.model.get_item()

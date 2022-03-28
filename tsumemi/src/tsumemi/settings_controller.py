@@ -6,6 +6,7 @@ import os
 from typing import TYPE_CHECKING
 
 import tsumemi.src.tsumemi.img_handlers as imghand
+import tsumemi.src.tsumemi.board_setting_choices as bchoices
 import tsumemi.src.tsumemi.notation_setting_choices as nchoices
 import tsumemi.src.tsumemi.piece_setting_choices as pchoices
 
@@ -29,22 +30,6 @@ def write_default_config_file(filepath: PathLike) -> None:
     return
 
 
-def _read_skin(skins: configparser.SectionProxy) -> imghand.SkinSettings:
-    try:
-        piece_skin = imghand.PieceSkin[skins.get("pieces")]
-    except KeyError:
-        piece_skin = imghand.PieceSkin.TEXT
-    try:
-        board_skin = imghand.BoardSkin[skins.get("board")]
-    except KeyError:
-        board_skin = imghand.BoardSkin.WHITE
-    try:
-        komadai_skin = imghand.BoardSkin[skins.get("komadai")]
-    except KeyError:
-        komadai_skin = imghand.BoardSkin.WHITE
-    return imghand.SkinSettings(piece_skin, board_skin, komadai_skin)
-
-
 class Settings:
     # Controller for the settings window.
     def __init__(self, controller: RootController) -> None:
@@ -52,7 +37,9 @@ class Settings:
         self.config = configparser.ConfigParser(dict_type=dict)
         self.skin_settings: imghand.SkinSettings
         self.notation_controller = nchoices.NotationSelectionController()
+        self.board_skin_controller = bchoices.BoardSkinSelectionController()
         self.piece_skin_controller = pchoices.PieceSkinSelectionController()
+        self.komadai_skin_controller = bchoices.BoardSkinSelectionController()
         self.read_config_file(CONFIG_PATH)
         return
     
@@ -72,11 +59,20 @@ class Settings:
         except KeyError:
             notation_config_string = "JAPANESE"
         try:
+            board_config_string = skins_config.get("board")
+        except KeyError:
+            board_config_string = "WHITE"
+        try:
+            komadai_config_string = skins_config.get("komadai")
+        except KeyError:
+            komadai_config_string = "WHITE"
+        try:
             piece_config_string = skins_config.get("pieces")
         except KeyError:
             piece_config_string = "TEXT"
-        self.skin_settings = _read_skin(skins_config)
         self.notation_controller.select_by_config(notation_config_string)
+        self.board_skin_controller.select_by_config(board_config_string)
+        self.komadai_skin_controller.select_by_config(komadai_config_string)
         self.piece_skin_controller.select_by_config(piece_config_string)
         return
     
@@ -88,28 +84,30 @@ class Settings:
         return
     
     def push_settings_to_controller(self) -> None:
-        self.controller.skin_settings = self.skin_settings
+        skin_settings = self.get_skin_settings()
+        self.controller.skin_settings = skin_settings
         self.controller.move_writer = self.notation_controller.get_move_writer()
-        self.controller.apply_skin_settings(self.skin_settings)
+        self.controller.apply_skin_settings(skin_settings)
         return
     
-    def update_skin_settings(self, skin_settings: imghand.SkinSettings) -> None:
-        piece_skin, board_skin, komadai_skin = skin_settings.get()
+    def get_skin_settings(self) -> imghand.SkinSettings:
         piece_skin = self.piece_skin_controller.get_piece_skin()
-        self.skin_settings = skin_settings
-        self.skin_settings.piece_skin = piece_skin
-        self.config["skins"] = {
-            "pieces": piece_skin.name,
-            "board": board_skin.name,
-            "komadai": komadai_skin.name,
-        }
+        board_skin = self.board_skin_controller.get_board_skin()
+        komadai_skin = self.komadai_skin_controller.get_board_skin()
+        return imghand.SkinSettings(piece_skin, board_skin, komadai_skin)
+    
+    def update_board_skin_settings(self) -> None:
+        self.config["skins"]["board"] = self.board_skin_controller.get_config_string()
+        return
+    
+    def update_komadai_skin_settings(self) -> None:
+        self.config["skins"]["komadai"] = self.komadai_skin_controller.get_config_string()
         return
     
     def update_piece_skin_settings(self) -> None:
         self.config["skins"]["pieces"] = self.piece_skin_controller.get_config_string()
+        return
     
     def update_notation_settings(self) -> None:
-        self.config["notation"] = {
-            "notation": self.notation_controller.get_config_string(),
-        }
+        self.config["notation"]["notation"] = self.notation_controller.get_config_string()
         return
