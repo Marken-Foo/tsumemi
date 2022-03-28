@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import configparser
 import datetime
 import functools
 import logging.config
@@ -13,52 +12,18 @@ from typing import TYPE_CHECKING
 import tsumemi.src.shogi.kif as kif
 import tsumemi.src.tsumemi.event as evt
 import tsumemi.src.tsumemi.game_controller as gamecon
-import tsumemi.src.tsumemi.img_handlers as imghand
 import tsumemi.src.tsumemi.problem_list as plist
 import tsumemi.src.tsumemi.problem_list_controller as plistcon
+import tsumemi.src.tsumemi.settings_controller as setcon
 import tsumemi.src.tsumemi.speedrun_controller as speedcon
 import tsumemi.src.tsumemi.timer as timer
 import tsumemi.src.tsumemi.timer_controller as timecon
 
 from tsumemi.src.tsumemi.main_window_view import MainWindowView
-from tsumemi.src.tsumemi.settings_window import SettingsWindow, CONFIG_PATH
 
 if TYPE_CHECKING:
-    from typing import Callable, List, Optional, Union
-    PathLike = Union[str, os.PathLike]
-
-
-def _read_config_file(config: configparser.ConfigParser, filepath: PathLike
-    ) -> imghand.SkinSettings:
-    """Attempts to read config file; if not found, attempts to write a
-    default config file.
-    """
-    try:
-        with open(filepath, "r") as f:
-            config.read_file(f)
-    except FileNotFoundError:
-        with open(filepath, "w+") as f:
-            f.write("[skins]\n")
-            f.write("pieces = TEXT\n")
-            f.write("board = BROWN\n")
-            f.write("komadai = WHITE\n")
-        with open(filepath, "r") as f:
-            config.read_file(f)
-    
-    skins = config["skins"]
-    try:
-        piece_skin = imghand.PieceSkin[skins.get("pieces")]
-    except KeyError:
-        piece_skin = imghand.PieceSkin.TEXT
-    try:
-        board_skin = imghand.BoardSkin[skins.get("board")]
-    except KeyError:
-        board_skin = imghand.BoardSkin.WHITE
-    try:
-        komadai_skin = imghand.BoardSkin[skins.get("komadai")]
-    except KeyError:
-        komadai_skin = imghand.BoardSkin.WHITE
-    return imghand.SkinSettings(piece_skin, board_skin, komadai_skin)
+    from typing import Callable, Optional
+    import tsumemi.src.tsumemi.img_handlers as imghand
 
 
 class RootController(evt.IObserver):
@@ -68,8 +33,9 @@ class RootController(evt.IObserver):
     # eventually, refactor menu labels and dialog out into a constant namespace
     def __init__(self, root: tk.Tk) -> None:
         # Program data
-        self.config = configparser.ConfigParser(dict_type=dict)
-        self.skin_settings = _read_config_file(self.config, CONFIG_PATH)
+        self.settings = setcon.Settings(self)
+        self.skin_settings = self.settings.get_skin_settings()
+        self.move_writer = self.settings.notation_controller.get_move_writer()
         self.main_game = gamecon.GameController(self.skin_settings)
         self.main_timer = timecon.TimerController()
         self.main_problem_list = plistcon.ProblemListController()
@@ -100,6 +66,10 @@ class RootController(evt.IObserver):
         self.bindings = Bindings(self)
         self.bindings.bind_shortcuts(self.root, self.bindings.MASTER_SHORTCUTS)
         self.bindings.bind_shortcuts(self.root, self.bindings.FREE_SHORTCUTS)
+        return
+    
+    def open_settings_window(self) -> None:
+        self.settings.open_settings_window()
         return
     
     def open_folder(self, event: Optional[tk.Event] = None,
@@ -144,10 +114,19 @@ class RootController(evt.IObserver):
         game = kif.read_kif(filepath)
         if game is None:
             return # file unreadable, error out
-        move_string_list = game.to_notation_ja_kif() # at end of game
+        move_string_list = game.get_mainline_notation(self.move_writer)
         self.mainframe.set_solution("　".join(move_string_list))
         game.go_to_start()
         self.main_game.set_game(game)
+        return
+    
+    def refresh_solution_text(self) -> None:
+        game = self.main_game.game
+        move_string_list = game.get_mainline_notation(self.move_writer)
+        self.mainframe.set_solution("　".join(move_string_list))
+        # force view to update
+        self.mainframe.toggle_solution()
+        self.mainframe.toggle_solution()
         return
     
     def go_next_file(self, event: Optional[tk.Event] = None) -> bool:
@@ -218,8 +197,7 @@ class RootController(evt.IObserver):
         return
     
     #=== GUI display methods
-    def apply_skin_settings(self, settings: imghand.SkinSettings
-        ) -> None:
+    def apply_skin_settings(self, settings: imghand.SkinSettings) -> None:
         # GUI callback
         self.skin_settings = settings
         self.main_game.skin_settings = settings
@@ -278,7 +256,11 @@ class Bindings:
 class Menubar(tk.Menu):
     """GUI class for the menubar at the top of the main window.
     """
-    def __init__(self, parent, controller, *args, **kwargs):
+    def __init__(self,
+            parent: tk.Tk,
+            controller: RootController,
+            *args, **kwargs
+        ) -> None:
         self.controller = controller
         super().__init__(parent, *args, **kwargs)
         
@@ -332,7 +314,8 @@ class Menubar(tk.Menu):
         # Settings
         menu_settings.add_command(
             label="Settings...",
-            command=lambda: SettingsWindow(controller=self.controller),
+            command=self.controller.open_settings_window
+            # command=lambda: SettingsWindow(controller=self.controller.settings),
         )
         menu_settings.add_command(
             label="About tsumemi",

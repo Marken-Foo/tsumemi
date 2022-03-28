@@ -89,6 +89,18 @@ class Position:
             captured=self.get_koma(end_sq)
         )
     
+    def create_drop_move(self,
+            side: Side, ktype: KomaType, end_sq: Square
+        ) -> Move:
+        """Creates a drop Move. Move need not necessarily be legal or
+        even valid.
+        """
+        return Move(
+            start_sq=Square.HAND,
+            end_sq=end_sq,
+            koma=Koma.make(side, ktype)
+        )
+    
     def make_move(self, move: Move) -> None:
         """Makes a move on the board.
         """

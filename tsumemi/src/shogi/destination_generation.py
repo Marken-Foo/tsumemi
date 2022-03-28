@@ -15,8 +15,9 @@ if TYPE_CHECKING:
     IdxIterable = Iterable[int]
     DestIdxGenerator = Callable[..., IdxIterable]
 
+
 def _forward(side: Side) -> Dir:
-    return Dir.S if side == Side.GOTE else Dir.N
+    return Dir.N if side.is_sente() else Dir.S
 
 def steps_fu(start_idx: int, side: Side) -> Steps:
     forward = _forward(side)

@@ -1,79 +1,84 @@
-import os
+from __future__ import annotations
+
 import tkinter as tk
 
 from tkinter import ttk
+from typing import TYPE_CHECKING
 
-import tsumemi.src.tsumemi.img_handlers as imghand
+from tsumemi.src.tsumemi.board_setting_choices import BoardSkinSelectionFrame, KomadaiSkinSelectionFrame
+from tsumemi.src.tsumemi.notation_setting_choices import NotationSelectionFrame
+from tsumemi.src.tsumemi.piece_setting_choices import PieceSkinSelectionFrame
+
+if TYPE_CHECKING:
+    from tsumemi.src.tsumemi.settings_controller import Settings
 
 
-CONFIG_PATH = os.path.relpath(r"tsumemi/resources/config.ini")
+class OptionsFrame(ttk.Frame):
+    def __init__(self, parent: SettingsWindow) -> None:
+        super().__init__(parent)
+        
+        self.frm_board_options = ttk.LabelFrame(self, text="Board appearance")
+        self.frm_board_options.grid(row=0, column=0, sticky="EW")
+        self.frm_board_skin = BoardSkinSelectionFrame(
+            parent=self.frm_board_options,
+            controller=parent.controller.board_skin_controller,
+        )
+        self.frm_komadai_skin = KomadaiSkinSelectionFrame(
+            parent=self.frm_board_options,
+            controller=parent.controller.komadai_skin_controller,
+        )
+        self.frm_piece_skin = PieceSkinSelectionFrame(
+            parent=self.frm_board_options,
+            controller=parent.controller.piece_skin_controller,
+        )
+        self.frm_board_skin.grid(row=0, column=0, sticky="EW")
+        self.frm_komadai_skin.grid(row=1, column=0, sticky="EW")
+        self.frm_piece_skin.grid(row=2, column=0, sticky="EW")
+        
+        self.frm_board_skin.grid_columnconfigure(0, weight=1)
+        self.frm_komadai_skin.grid_columnconfigure(0, weight=1)
+        self.frm_piece_skin.grid_columnconfigure(0, weight=1)
+        
+        self.frm_notation_options = ttk.LabelFrame(self, text="Notation")
+        self.frm_notation_options.grid(row=1, column=0, sticky="EW")
+        self.frm_notation_choice = NotationSelectionFrame(
+            parent=self.frm_notation_options,
+            controller=parent.controller.notation_controller,
+        )
+        self.frm_notation_choice.grid(row=0, column=0, sticky="EW")
+        self.frm_notation_choice.grid_columnconfigure(0, weight=1)
+        return
 
 
 class SettingsWindow(tk.Toplevel):
-    def __init__(self, controller, *args, **kwargs):
+    def __init__(self, controller: Settings, *args, **kwargs) -> None:
         self.controller = controller
         super().__init__(*args, **kwargs)
         
         self.title("Settings")
         
-        piece_palette = ttk.LabelFrame(self, text="Piece graphics")
-        piece_palette.grid(row=0, column=0, sticky="EW")
-        self.svar_pieces = tk.StringVar(value="TEXT")
-        rdo_piece_skin = []
-        for n, skin in enumerate(imghand.PieceSkin):
-            rdo_piece_skin.append(self._add_rdo_pieceskin(piece_palette, skin))
-            rdo_piece_skin[-1].grid(row=n, column=0, sticky="W")
-        
-        # TODO: Board colour picker???
-        board_palette = ttk.LabelFrame(self, text="Board appearance")
-        board_palette.grid(row=1, column=0, sticky="EW")
-        ttk.Label(board_palette, text="Board").grid(row=0, column=0, sticky="W")
-        ttk.Label(board_palette, text="Komadai (solid colour)").grid(row=0, column=1, sticky="W")
-        self.svar_board = tk.StringVar(value="WHITE")
-        self.svar_komadai = tk.StringVar(value="WHITE")
-        rdo_board_skin = []
-        rdo_komadai_skin = []
-        for n, skin in enumerate(imghand.BoardSkin):
-            rdo_board_skin.append(self._add_rdo_boardskin(board_palette, skin))
-            rdo_board_skin[-1].grid(row=n+1, column=0, sticky="W")
-            rdo_komadai_skin.append(self._add_rdo_komadaiskin(board_palette, skin))
-            rdo_komadai_skin[-1].grid(row=n+1, column=1, sticky="W")
+        self.options_frame = OptionsFrame(self)
+        self.options_frame.grid(row=0, column=0)
         
         buttons_frame = ttk.Frame(self)
-        buttons_frame.grid(row=2, column=0, sticky="EW")
-        btn_okay = ttk.Button(buttons_frame, text="OK", command=self.save_and_quit)
-        btn_okay.grid(row=2, column=0)
-        btn_apply = ttk.Button(buttons_frame, text="Apply", command=self.save)
-        btn_apply.grid(row=2, column=1)
-        return
-    
-    def _add_rdo_boardskin(self, parent, skin):
-        return ttk.Radiobutton(parent, text=skin.desc, variable=self.svar_board, value=skin.name)
-    
-    def _add_rdo_komadaiskin(self, parent, skin):
-        return ttk.Radiobutton(parent, text=skin.desc, variable=self.svar_komadai, value=skin.name)
-    
-    def _add_rdo_pieceskin(self, parent, skin):
-        return ttk.Radiobutton(parent, text=skin.desc, variable=self.svar_pieces, value=skin.name)
-    
-    def save(self):
-        self.controller.config["skins"] = {
-            "pieces": self.svar_pieces.get(),
-            "board": self.svar_board.get(),
-            "komadai": self.svar_komadai.get()
-        }
-        with open(CONFIG_PATH, "w") as f:
-            self.controller.config.write(f)
-        # tell the board what skins to use
-        piece_skin: imghand.PieceSkin = imghand.PieceSkin[self.svar_pieces.get()]
-        board_skin: imghand.BoardSkin = imghand.BoardSkin[self.svar_board.get()]
-        komadai_skin: imghand.BoardSkin = imghand.BoardSkin[self.svar_komadai.get()]
-        skin_settings = imghand.SkinSettings(
-            piece_skin, board_skin, komadai_skin
+        buttons_frame.grid(row=1, column=0, sticky="EW")
+        btn_okay = ttk.Button(
+            buttons_frame, text="OK", command=self.save_and_quit
         )
-        self.controller.apply_skin_settings(skin_settings)
+        btn_okay.grid(row=0, column=0)
+        btn_apply = ttk.Button(buttons_frame, text="Apply", command=self.save)
+        btn_apply.grid(row=0, column=1)
         return
     
-    def save_and_quit(self):
+    def save(self) -> None:
+        self.controller.update_board_skin_settings()
+        self.controller.update_komadai_skin_settings()
+        self.controller.update_piece_skin_settings()
+        self.controller.update_notation_settings()
+        self.controller.write_current_settings_to_file()
+        self.controller.push_settings_to_controller()
+        return
+    
+    def save_and_quit(self) -> None:
         self.save()
         self.destroy()

@@ -4,12 +4,12 @@ from enum import IntEnum
 
 from typing import TYPE_CHECKING
 
+from tsumemi.src.shogi.basetypes import Koma, Side, Square
+from tsumemi.src.shogi.basetypes import HAND_TYPES, KOMA_TYPES, SFEN_FROM_KOMA
+
 if TYPE_CHECKING:
     from typing import Dict, List, Set
     from tsumemi.src.shogi.basetypes import KomaType
-
-from tsumemi.src.shogi.basetypes import Koma, Side, Square
-from tsumemi.src.shogi.basetypes import HAND_TYPES, KOMA_TYPES, SFEN_FROM_KOMA
 
 
 class Dir(IntEnum):

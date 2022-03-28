@@ -1,0 +1,47 @@
+test move
+9/9/9/9/9/9/7P1/9/9 b - 1
+27 26 = P-26
+
+test gote move
+9/9/1p7/9/9/9/9/9/9 b - 1
+83 84 = P-84
+
+test capture
+9/9/9/6n2/9/9/9/9/6L2 b - 1
+39 34 = Lx34
+
+test disambiguation
+9/9/9/5S1S1/9/5SS2/9/9/9 b - 1
+36 35 = S36-35
+
+test horizontal disambiguation
+9/9/4+P4/4+P+P3/9/9/9/9/9 b - 1
+53 43 = +P53-43
+
+test promotion
+9/9/9/9/3B5/9/9/9/9 b - 1
+65 32 + B-32+
+
+test nonpromotion
+9/9/9/9/3B5/9/9/9/9 b - 1
+65 32 = B-32=
+
+test promotion and disambiguation
+9/2R6/9/9/9/9/4R4/9/9 b - 1
+57 52 + R57-52+
+
+test nonpromotion and disambiguation
+9/2R6/9/9/9/9/4R4/9/9 b - 1
+72 52 = R72-52=
+
+test promotion as disambiguation
+9/9/7S1/9/7S1/9/9/9/9 b - 1
+23 34 + S-34+
+
+test nonpromotion as disambiguation
+9/9/7S1/9/7S1/9/9/9/9 b - 1
+23 14 = S-14=
+
+test cannot promote as disambiguation
+9/9/7S1/9/7S1/9/9/9/9 b - 1
+25 14 = S-14

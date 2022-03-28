@@ -29,7 +29,7 @@ class BoardSkin(Enum):
     """Contains names, backup colours, and image paths for boards.
     """
     WHITE = ("solid white", "white", "")
-    BROWN = ("solid brown", "burlywood1", "")
+    BROWN = ("solid brown", "#ffd39b", "")
     WOOD1 = ("Wood1", "#d29a00", os.path.join(BOARD_IMAGES_PATH, r"tile_wood1.png"))
     WOOD2 = ("Wood2", "#fbcd77", os.path.join(BOARD_IMAGES_PATH, r"tile_wood2.png"))
     WOOD3 = ("Wood3", "#c98e52", os.path.join(BOARD_IMAGES_PATH, r"tile_wood3.png"))
@@ -68,9 +68,10 @@ class PieceSkin(Enum):
 class SkinSettings:
     """Contains a set of skins needed to draw a board.
     """
-    def __init__(self, piece_skin: PieceSkin = PieceSkin.TEXT,
-            board_skin: BoardSkin = BoardSkin.WHITE,
-            komadai_skin: BoardSkin = BoardSkin.WHITE
+    def __init__(self,
+            piece_skin: PieceSkin,
+            board_skin: BoardSkin,
+            komadai_skin: BoardSkin,
         ) -> None:
         self.piece_skin = piece_skin
         self.board_skin = board_skin
@@ -219,7 +220,7 @@ class KomaImgManager(ImgManager):
     """Handles storing and sizing of images for pieces.
     """
     def __init__(self,
-                measurements: BoardMeasurements, skin: PieceSkin
+            measurements: BoardMeasurements, skin: PieceSkin
         ) -> None:
         def _komadai_piece_size() -> Tuple[int, int]:
             kpc_w = measurements.komadai_piece_size
