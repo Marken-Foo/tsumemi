@@ -120,6 +120,15 @@ class RootController(evt.IObserver):
         self.main_game.set_game(game)
         return
     
+    def refresh_solution_text(self) -> None:
+        game = self.main_game.game
+        move_string_list = game.get_mainline_notation(self.move_writer)
+        self.mainframe.set_solution("　".join(move_string_list))
+        # force view to update
+        self.mainframe.toggle_solution()
+        self.mainframe.toggle_solution()
+        return
+    
     def go_next_file(self, event: Optional[tk.Event] = None) -> bool:
         prob = self.main_problem_list.go_next_problem()
         return prob is not None

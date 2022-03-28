@@ -90,6 +90,7 @@ class Settings:
         self.controller.skin_settings = skin_settings
         self.controller.move_writer = self.notation_controller.get_move_writer()
         self.controller.apply_skin_settings(skin_settings)
+        self.controller.refresh_solution_text()
         return
     
     def get_skin_settings(self) -> imghand.SkinSettings:
