@@ -6,6 +6,7 @@ from tkinter import ttk
 from typing import TYPE_CHECKING
 
 import tsumemi.src.shogi.notation_writer as nwriter
+import tsumemi.src.tsumemi.setting_choices as setc
 
 from tsumemi.src.shogi.basetypes import Koma, Square
 from tsumemi.src.shogi.position import Position
@@ -14,19 +15,9 @@ if TYPE_CHECKING:
     from typing import List, Optional
 
 
-class NotationChoice:
-    def __init__(self,
-            move_writer: nwriter.AbstractMoveWriter,
-            description: str,
-            config_string: str,
-        ) -> None:
-        self.move_writer = move_writer
-        self.description = description
-        self.config_string = config_string # to write to config file
-        return
-    
-    def get_move_writer(self) -> nwriter.AbstractMoveWriter:
-        return self.move_writer.get_new_instance()
+class NotationChoice(setc.Choice[nwriter.AbstractMoveWriter]):
+    def get_item(self) -> nwriter.AbstractMoveWriter:
+        return self.item.get_new_instance()
 
 
 NOTATION_CHOICES: List[NotationChoice] = [
@@ -55,7 +46,7 @@ NOTATION_CHOICES: List[NotationChoice] = [
 
 class NotationSelectionController:
     def __init__(self) -> None:
-        self.model = NotationSelection()
+        self.model = NotationSelection(NOTATION_CHOICES)
         return
     
     def make_notation_selection_frame(self, parent: tk.Widget
@@ -80,39 +71,9 @@ class NotationSelectionController:
         return
 
 
-class NotationSelection:
-    def __init__(self) -> None:
-        self.choices = NOTATION_CHOICES
-        self.selected = NOTATION_CHOICES[0]
-        return
-    
-    def get_description(self) -> str:
-        return self.selected.description
-    
-    def get_config_string(self) -> str:
-        return self.selected.config_string
-    
-    def get_sorted_descriptions(self) -> List[str]:
-        return sorted((choice.description for choice in self.choices))
-    
+class NotationSelection(setc.Selection[nwriter.AbstractMoveWriter]):
     def get_move_writer(self) -> nwriter.AbstractMoveWriter:
-        return self.selected.get_move_writer()
-    
-    def select_by_description(self, description: str) -> None:
-        for choice in self.choices:
-            if choice.description == description:
-                self.selected = choice
-                return
-        else: # for-else loop
-            raise ValueError(f"Description '{description}' not among notation choices")
-    
-    def select_by_config(self, config_string: str) -> None:
-        for choice in self.choices:
-            if choice.config_string == config_string:
-                self.selected = choice
-                return
-        else: # for-else loop
-            raise ValueError(f"Config string '{config_string}' not among notation choices")
+        return self.selected.get_item()
 
 
 class NotationSelectionFrame(ttk.Frame):
@@ -141,22 +102,5 @@ class NotationSelectionFrame(ttk.Frame):
         return
 
 
-class NotationDropdown(ttk.Combobox):
-    def __init__(self,
-            parent: tk.Widget,
-            controller: NotationSelection,
-        ) -> None:
-        self.controller = controller
-        self._svar = tk.StringVar(value=controller.get_description())
-        super().__init__(parent, textvariable=self._svar)
-        self["values"] = controller.get_sorted_descriptions()
-        self.state(["readonly"])
-        # mypy doesn't recognise the "add" parameter overload to bind
-        self.bind( # type: ignore
-            "<<ComboboxSelected>>", self.update_controller, add="+"
-        )
-        return
-    
-    def update_controller(self, event: tk.Event) -> None:
-        self.controller.select_by_description(self._svar.get())
-        return
+class NotationDropdown(setc.Dropdown[nwriter.AbstractMoveWriter]):
+    pass

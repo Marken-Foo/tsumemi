@@ -3,11 +3,12 @@ from __future__ import annotations
 import tkinter as tk
 
 from tkinter import ttk
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Generic, TypeVar
 
 if TYPE_CHECKING:
-    from typing import Generic, List, Sequence, TypeVar
-    T = TypeVar('T')
+    from typing import List, Sequence
+
+T = TypeVar('T')
 
 
 class Choice(Generic[T]):
