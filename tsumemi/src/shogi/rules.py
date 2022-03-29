@@ -51,10 +51,10 @@ def is_legal(mv: Move, pos: Position) -> bool:
 def is_in_check(pos: Position, side: Side) -> bool:
     # assumes royal king(s)
     king = Koma.make(side, KomaType.OU)
-    king_pos = (
+    king_pos = [
         MailboxBoard.idx_to_sq(idx)
         for idx in pos.board.koma_sets[king]
-    )
+    ]
     if not list(king_pos):
         return False
     for ktype in KOMA_TYPES:
