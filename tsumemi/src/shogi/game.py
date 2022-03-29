@@ -84,6 +84,8 @@ class Game:
     def go_to_start(self) -> None:
         """Go to the start of the game.
         """
+        if not self.movetree.start_pos:
+            return
         self.position.from_sfen(self.movetree.start_pos)
         self.curr_node = self.movetree
         return
