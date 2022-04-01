@@ -35,3 +35,12 @@ jobs:
     - name: Test with pytest
       run: |
         pytest
+    - name: Package Application
+      uses: Alcance-Innovation-Consulting/pyinstaller-action-windows@main
+      with:
+        path: .
+        spec: tsumemi.spec
+    - uses: actions/upload-artifact@v2
+      with:
+        name: tsumemi
+        path: dist/windows
