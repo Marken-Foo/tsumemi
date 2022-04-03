@@ -225,6 +225,20 @@ class BoardCanvas(tk.Canvas):
         self.delete("promotion_prompt")
         return
     
+    def _draw_canvas_base_layer(self) -> int:
+        return self.create_rectangle(
+            0, 0, self.width, self.height, fill="#ffffff"
+        )
+    
+    def _draw_board_base_layer(self) -> int:
+        x_sq = self.measurements.x_sq
+        y_sq = self.measurements.y_sq
+        return self.create_rectangle(
+            *self._idxs_to_xy(0, 0),
+            *self._idxs_to_xy(NUM_COLS, NUM_ROWS),
+            fill="#ffffff",
+        )
+    
     def _draw_board_coordinates(self) -> None:
         coords_text_size = self.measurements.coords_text_size
         for row_idx in range(NUM_ROWS):
@@ -250,15 +264,13 @@ class BoardCanvas(tk.Canvas):
         """Draw just the shogiban, without pieces. Komadai areas not
         included.
         """
-        coords_text_size = self.measurements.coords_text_size
         # Draw board
         board_skin = self.board_img_cache.skin
         # Colour board with solid colour
-        self.board_rect = self.create_rectangle(
-            *self._idxs_to_xy(0, 0),
-            *self._idxs_to_xy(NUM_COLS, NUM_ROWS),
-            fill=board_skin.colour,
-        )
+        self._draw_canvas_base_layer()
+        self.board_rect = self._draw_board_base_layer()
+        self.itemconfig(self.board_rect, fill=board_skin.colour)
+        
         for row_idx in range(9):
             for col_idx in range(9):
                 # Create board image layer
