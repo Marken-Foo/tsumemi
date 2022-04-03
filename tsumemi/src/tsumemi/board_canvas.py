@@ -29,11 +29,77 @@ NUM_ROWS = 9
 
 
 class BoardArtist:
-    def __init__(self, canvas: BoardCanvas) -> None:
-        self.canvas = canvas
+    def __init__(self) -> None:
         return
     
-    def draw_board(self) -> None:
+    def draw_board_base_layer(self, canvas: BoardCanvas) -> int:
+        x_sq = canvas.measurements.x_sq
+        y_sq = canvas.measurements.y_sq
+        id: int = canvas.create_rectangle(
+            *canvas._idxs_to_xy(0, 0),
+            *canvas._idxs_to_xy(NUM_COLS, NUM_ROWS),
+            fill="#ffffff",
+        )
+        return id
+    
+    def draw_board_tile_layer(self, canvas: BoardCanvas) -> None:
+        for row_idx in range(NUM_ROWS):
+            for col_idx in range(NUM_COLS):
+                id = canvas.create_image(
+                    *canvas._idxs_to_xy(col_idx, row_idx),
+                    image="",
+                    anchor="nw",
+                )
+                # side effect
+                canvas.board_tiles[row_idx][col_idx] = id
+        return
+    
+    def draw_board_focus_layer(self, canvas: BoardCanvas) -> None:
+        for row_idx in range(NUM_ROWS):
+            for col_idx in range(NUM_COLS):
+                id = canvas.create_image(
+                    *canvas._idxs_to_xy(col_idx, row_idx),
+                    image=canvas.board_img_cache.get_dict()["transparent"],
+                    anchor="nw",
+                )
+                # side effect
+                canvas.board_select_tiles[row_idx][col_idx] = id
+        return
+    
+    def draw_board_coordinates(self, canvas: BoardCanvas) -> None:
+        coords_text_size = canvas.measurements.coords_text_size
+        for row_idx in range(NUM_ROWS):
+            row_num = canvas._row_idx_to_num(row_idx)
+            row_label = " " + KanjiNumber(row_num).name
+            canvas.create_text(
+                *canvas._idxs_to_xy(NUM_COLS, row_idx, centering="y"),
+                text=" " + row_label,
+                font=("", coords_text_size),
+                anchor="w",
+            )
+        for col_idx in range(9):
+            col_num = canvas._col_idx_to_num(col_idx)
+            canvas.create_text(
+                *canvas._idxs_to_xy(col_idx, 0, centering="x"),
+                text=str(col_num),
+                font=("", coords_text_size),
+                anchor="s",
+            )
+        return
+    
+    def draw_board_grid_lines(self, canvas: BoardCanvas) -> None:
+        for i in range(NUM_COLS+1):
+            canvas.create_line(
+                *canvas._idxs_to_xy(i, 0),
+                *canvas._idxs_to_xy(i, NUM_ROWS),
+                fill="black", width=1,
+            )
+        for j in range(NUM_ROWS+1):
+            canvas.create_line(
+                *canvas._idxs_to_xy(0, j),
+                *canvas._idxs_to_xy(NUM_COLS, j),
+                fill="black", width=1,
+            )
         return
 
 
@@ -240,40 +306,6 @@ class BoardCanvas(tk.Canvas):
         )
         return id
     
-    def _draw_board_base_layer(self) -> int:
-        x_sq = self.measurements.x_sq
-        y_sq = self.measurements.y_sq
-        id: int = self.create_rectangle(
-            *self._idxs_to_xy(0, 0),
-            *self._idxs_to_xy(NUM_COLS, NUM_ROWS),
-            fill="#ffffff",
-        )
-        return id
-    
-    def _draw_board_tile_layer(self) -> None:
-        for row_idx in range(NUM_ROWS):
-            for col_idx in range(NUM_COLS):
-                id = self.create_image(
-                    *self._idxs_to_xy(col_idx, row_idx),
-                    image="",
-                    anchor="nw",
-                )
-                # side effect
-                self.board_tiles[row_idx][col_idx] = id
-        return
-    
-    def _draw_board_focus_layer(self) -> None:
-        for row_idx in range(NUM_ROWS):
-            for col_idx in range(NUM_COLS):
-                id = self.create_image(
-                    *self._idxs_to_xy(col_idx, row_idx),
-                    image=self.board_img_cache.get_dict()["transparent"],
-                    anchor="nw",
-                )
-                # side effect
-                self.board_select_tiles[row_idx][col_idx] = id
-        return
-    
     def _add_board_onclick_callbacks(self) -> None:
         if self.move_input_handler is None:
             return
@@ -292,27 +324,6 @@ class BoardCanvas(tk.Canvas):
                 )
         return
     
-    def _draw_board_coordinates(self) -> None:
-        coords_text_size = self.measurements.coords_text_size
-        for row_idx in range(NUM_ROWS):
-            row_num = self._row_idx_to_num(row_idx)
-            row_label = " " + KanjiNumber(row_num).name
-            self.create_text(
-                *self._idxs_to_xy(NUM_COLS, row_idx, centering="y"),
-                text=" " + row_label,
-                font=("", coords_text_size),
-                anchor="w",
-            )
-        for col_idx in range(9):
-            col_num = self._col_idx_to_num(col_idx)
-            self.create_text(
-                *self._idxs_to_xy(col_idx, 0, centering="x"),
-                text=str(col_num),
-                font=("", coords_text_size),
-                anchor="s",
-            )
-        return
-    
     def _update_board_tile_images(self) -> None:
         if not self.board_img_cache.has_images():
             return
@@ -322,35 +333,22 @@ class BoardCanvas(tk.Canvas):
                 self.itemconfig(tile, image=board_img)
         return
     
-    def _draw_board_grid_lines(self) -> None:
-        for i in range(NUM_COLS+1):
-            self.create_line(
-                *self._idxs_to_xy(i, 0),
-                *self._idxs_to_xy(i, NUM_ROWS),
-                fill="black", width=1,
-            )
-        for j in range(NUM_ROWS+1):
-            self.create_line(
-                *self._idxs_to_xy(0, j),
-                *self._idxs_to_xy(NUM_COLS, j),
-                fill="black", width=1,
-            )
-        return
-    
     def draw_board(self):
         """Draw just the shogiban, without pieces. Komadai areas not
         included.
         """
-        board_skin = self.board_img_cache.skin
         self._draw_canvas_base_layer()
-        self.board_rect = self._draw_board_base_layer()
+        artist = BoardArtist()
+        self.board_rect = artist.draw_board_base_layer(self)
+        artist.draw_board_tile_layer(self)
+        artist.draw_board_focus_layer(self)
+        artist.draw_board_grid_lines(self)
+        artist.draw_board_coordinates(self)
+        
+        board_skin = self.board_img_cache.skin
         self.itemconfig(self.board_rect, fill=board_skin.colour)
-        self._draw_board_tile_layer()
-        self._draw_board_focus_layer()
         self._add_board_onclick_callbacks()
         self._update_board_tile_images()
-        self._draw_board_grid_lines()
-        self._draw_board_coordinates()
         return
     
     def _draw_koma_image(self,
