@@ -81,6 +81,9 @@ class BoardCanvas(tk.Canvas):
     def _row_num_to_idx(self, row_num: int) -> int:
         return NUM_ROWS - row_num if self.is_upside_down else row_num - 1
     
+    def _is_inverted(self, side: Side) -> bool:
+        return not (side.is_sente() ^ self.is_upside_down)
+    
     def set_position(self, pos: Position) -> None:
         """Set the internal position (and of any associated input
         handler) to the given Position object.
@@ -167,12 +170,8 @@ class BoardCanvas(tk.Canvas):
         col_idx = self._col_num_to_idx(col_num)
         row_idx = self._row_num_to_idx(row_num)
         is_text = not self.koma_img_cache.has_images()
-        is_north_sente = self.is_upside_down
-        side = self.position.turn
-        invert = (
-            (is_north_sente and (side == Side.SENTE))
-            or (not is_north_sente and (side == Side.GOTE))
-        )
+        invert = self._is_inverted(self.position.turn)
+        
         id_promoted = self.draw_koma(
             x_sq(col_idx+0.5), y_sq(row_idx+0.5), ktype.promote(),
             is_text=is_text, invert=invert,
@@ -466,7 +465,6 @@ class BoardCanvas(tk.Canvas):
         
         south_hand = position.hand_sente
         north_hand = position.hand_gote
-        is_north_sente = self.is_upside_down
         
         if self.is_upside_down:
             north_hand, south_hand = south_hand, north_hand
@@ -477,11 +475,7 @@ class BoardCanvas(tk.Canvas):
         is_text = not self.koma_img_cache.has_images()
         for koma, kset in position.board.koma_sets.items():
             ktype = KomaType.get(koma)
-            side = koma.side()
-            invert = (
-                (is_north_sente and (side == Side.SENTE))
-                or (not is_north_sente and (side == Side.GOTE))
-            )
+            invert = self._is_inverted(koma.side())
             for idx in kset:
                 col_num = position.board.idx_to_c(idx)
                 row_num = position.board.idx_to_r(idx)
@@ -504,14 +498,14 @@ class BoardCanvas(tk.Canvas):
             w_pad + komadai_w/2,
             y_sq(0),
             north_hand,
-            sente=is_north_sente,
+            sente=self.is_upside_down,
             align="top"
         )
         self.draw_komadai(
             x_sq(9) + 2*coords_text_size + komadai_w/2,
             y_sq(9),
             south_hand,
-            sente=not is_north_sente,
+            sente=not self.is_upside_down,
             align="bottom"
         )
         # set focus
