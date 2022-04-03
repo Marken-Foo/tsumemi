@@ -81,6 +81,14 @@ class BoardCanvas(tk.Canvas):
     def _row_num_to_idx(self, row_num: int) -> int:
         return NUM_ROWS - row_num if self.is_upside_down else row_num - 1
     
+    def _idxs_to_xy(self, col_idx: int, row_idx: int, centering=""
+        ) -> Tuple[int, int]:
+        x_sq = self.measurements.x_sq
+        y_sq = self.measurements.y_sq
+        x = x_sq(col_idx+0.5) if "x" in centering.lower() else x_sq(col_idx)
+        y = y_sq(row_idx+0.5) if "y" in centering.lower() else y_sq(row_idx)
+        return x, y
+    
     def _is_inverted(self, side: Side) -> bool:
         return not (side.is_sente() ^ self.is_upside_down)
     
@@ -158,10 +166,8 @@ class BoardCanvas(tk.Canvas):
         """Display the visual cues prompting user to choose promotion
         or non-promotion.
         """
-        x_sq = self.measurements.x_sq
-        y_sq = self.measurements.y_sq
         id_cover = self.create_image(
-            x_sq(0), y_sq(0),
+            *self._idxs_to_xy(0, 0),
             image=self.board_img_cache.get_dict("board")["semi-transparent"],
             anchor="nw",
             tags=("promotion_prompt",)
@@ -173,15 +179,17 @@ class BoardCanvas(tk.Canvas):
         invert = self._is_inverted(self.position.turn)
         
         id_promoted = self.draw_koma(
-            x_sq(col_idx+0.5), y_sq(row_idx+0.5), ktype.promote(),
+            *self._idxs_to_xy(col_idx, row_idx, centering="xy"),
+            ktype.promote(),
             is_text=is_text, invert=invert,
-            tags=("promotion_prompt",)
+            tags=("promotion_prompt",),
         )
         assert id_promoted is not None
         id_unpromoted = self.draw_koma(
-            x_sq(col_idx+0.5), y_sq(row_idx+0.5+1), ktype,
+            *self._idxs_to_xy(col_idx, row_idx+1, centering="xy"),
+            ktype,
             is_text=is_text, invert=invert,
-            tags=("promotion_prompt",)
+            tags=("promotion_prompt",),
         )
         assert id_unpromoted is not None
         callback = functools.partial(
@@ -217,27 +225,24 @@ class BoardCanvas(tk.Canvas):
         self.delete("promotion_prompt")
         return
     
-    def _draw_board_coordinates(self,
-            x_sq: Callable[[float], float],
-            y_sq: Callable[[float], float],
-        ) -> None:
+    def _draw_board_coordinates(self) -> None:
         coords_text_size = self.measurements.coords_text_size
-        for row_idx in range(9):
+        for row_idx in range(NUM_ROWS):
             row_num = self._row_idx_to_num(row_idx)
             row_label = " " + KanjiNumber(row_num).name
             self.create_text(
-                x_sq(9), y_sq(row_idx+0.5),
+                *self._idxs_to_xy(NUM_COLS, row_idx, centering="y"),
                 text=" " + row_label,
                 font=("", coords_text_size),
-                anchor="w"
+                anchor="w",
             )
         for col_idx in range(9):
             col_num = self._col_idx_to_num(col_idx)
             self.create_text(
-                x_sq(col_idx+0.5), y_sq(0),
+                *self._idxs_to_xy(col_idx, 0, centering="x"),
                 text=str(col_num),
                 font=("", coords_text_size),
-                anchor="s"
+                anchor="s",
             )
         return
     
@@ -245,30 +250,28 @@ class BoardCanvas(tk.Canvas):
         """Draw just the shogiban, without pieces. Komadai areas not
         included.
         """
-        x_sq = self.measurements.x_sq
-        y_sq = self.measurements.y_sq
         coords_text_size = self.measurements.coords_text_size
         # Draw board
         board_skin = self.board_img_cache.skin
         # Colour board with solid colour
         self.board_rect = self.create_rectangle(
-            x_sq(0), y_sq(0),
-            x_sq(9), y_sq(9),
-            fill=board_skin.colour
+            *self._idxs_to_xy(0, 0),
+            *self._idxs_to_xy(NUM_COLS, NUM_ROWS),
+            fill=board_skin.colour,
         )
         for row_idx in range(9):
             for col_idx in range(9):
                 # Create board image layer
                 id = self.create_image(
-                    x_sq(col_idx), y_sq(row_idx),
-                    image="", anchor="nw"
+                    self._idxs_to_xy(col_idx, row_idx),
+                    image="", anchor="nw",
                 )
                 self.board_tiles[row_idx][col_idx] = id
                 # Create focus highlight layer
                 id_focus = self.create_image(
-                    x_sq(col_idx), y_sq(row_idx),
+                    self._idxs_to_xy(col_idx, row_idx),
                     image=self.board_img_cache.get_dict()["transparent"],
-                    anchor="nw"
+                    anchor="nw",
                 )
                 self.board_select_tiles[row_idx][col_idx] = id_focus
                 # Add callbacks
@@ -286,12 +289,18 @@ class BoardCanvas(tk.Canvas):
                 for tile in row:
                     self.itemconfig(tile, image=board_img)
         for i in range(10):
-            self.create_line(x_sq(i), y_sq(0), x_sq(i), y_sq(9),
-                                    fill="black", width=1)
-            self.create_line(x_sq(0), y_sq(i), x_sq(9), y_sq(i),
-                                    fill="black", width=1)
+            self.create_line(
+                *self._idxs_to_xy(i, 0),
+                *self._idxs_to_xy(i, NUM_ROWS),
+                fill="black", width=1,
+            )
+            self.create_line(
+                *self._idxs_to_xy(0, i),
+                *self._idxs_to_xy(NUM_COLS, i),
+                fill="black", width=1,
+            )
         # Draw board coordinates
-        self._draw_board_coordinates(x_sq, y_sq)
+        self._draw_board_coordinates()
         return
     
     def _draw_koma_image(self,
@@ -482,7 +491,8 @@ class BoardCanvas(tk.Canvas):
                 col_idx = self._col_num_to_idx(col_num)
                 row_idx = self._row_num_to_idx(row_num)
                 id = self.draw_koma(
-                    x_sq(col_idx+0.5), y_sq(row_idx+0.5), ktype,
+                    *self._idxs_to_xy(col_idx, row_idx, centering="xy"),
+                    ktype,
                     is_text=is_text, invert=invert
                 )
                 self.koma_on_board_images[id] = (col_num, row_num)
