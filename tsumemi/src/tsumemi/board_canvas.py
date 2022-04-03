@@ -28,6 +28,15 @@ NUM_ROWS = 9
 # NUM = one-based, top right to bottom left, column-row (like JP notation)
 
 
+class BoardArtist:
+    def __init__(self, canvas: BoardCanvas) -> None:
+        self.canvas = canvas
+        return
+    
+    def draw_board(self) -> None:
+        return
+
+
 class BoardCanvas(tk.Canvas):
     """The canvas where the shogi position is drawn. Responsible for
     drawing on itself, delegating other tasks like size calculation to
@@ -59,8 +68,8 @@ class BoardCanvas(tk.Canvas):
         self.komadai_img_cache = KomadaiImgManager(self.measurements, komadai_skin)
         # Images created and stored so only their image field changes later.
         # FEN ordering. (row_idx, col_idx), zero-based
-        self.board_tiles = [[None] * NUM_COLS for i in range(NUM_ROWS)]
-        self.board_select_tiles = [[None] * NUM_COLS for i in range(NUM_ROWS)]
+        self.board_tiles = [[-1] * NUM_COLS for i in range(NUM_ROWS)]
+        self.board_select_tiles = [[-1] * NUM_COLS for i in range(NUM_ROWS)]
         # Koma image IDs and their current positions
         self.koma_on_board_images: Dict[int, Tuple[int, int]] = {}
         # Currently highlighted tile [col_num, row_num]
@@ -226,18 +235,62 @@ class BoardCanvas(tk.Canvas):
         return
     
     def _draw_canvas_base_layer(self) -> int:
-        return self.create_rectangle(
+        id: int = self.create_rectangle(
             0, 0, self.width, self.height, fill="#ffffff"
         )
+        return id
     
     def _draw_board_base_layer(self) -> int:
         x_sq = self.measurements.x_sq
         y_sq = self.measurements.y_sq
-        return self.create_rectangle(
+        id: int = self.create_rectangle(
             *self._idxs_to_xy(0, 0),
             *self._idxs_to_xy(NUM_COLS, NUM_ROWS),
             fill="#ffffff",
         )
+        return id
+    
+    def _draw_board_tile_layer(self) -> None:
+        for row_idx in range(NUM_ROWS):
+            for col_idx in range(NUM_COLS):
+                id = self.create_image(
+                    *self._idxs_to_xy(col_idx, row_idx),
+                    image="",
+                    anchor="nw",
+                )
+                # side effect
+                self.board_tiles[row_idx][col_idx] = id
+        return
+    
+    def _draw_board_focus_layer(self) -> None:
+        for row_idx in range(NUM_ROWS):
+            for col_idx in range(NUM_COLS):
+                id = self.create_image(
+                    *self._idxs_to_xy(col_idx, row_idx),
+                    image=self.board_img_cache.get_dict()["transparent"],
+                    anchor="nw",
+                )
+                # side effect
+                self.board_select_tiles[row_idx][col_idx] = id
+        return
+    
+    def _add_board_onclick_callbacks(self) -> None:
+        if self.move_input_handler is None:
+            return
+        for row_idx in range(NUM_ROWS):
+            for col_idx in range(NUM_COLS):
+                col_num = self._col_idx_to_num(col_idx)
+                row_num = self._row_idx_to_num(row_idx)
+                sq = Square.from_cr(col_num, row_num)
+                callback = functools.partial(
+                    self.move_input_handler.receive_square, sq=sq
+                )
+                self.tag_bind(
+                    self.board_select_tiles[row_idx][col_idx],
+                    "<Button-1>",
+                    callback,
+                )
+        return
     
     def _draw_board_coordinates(self) -> None:
         coords_text_size = self.measurements.coords_text_size
@@ -260,58 +313,43 @@ class BoardCanvas(tk.Canvas):
             )
         return
     
-    def draw_board(self):
-        """Draw just the shogiban, without pieces. Komadai areas not
-        included.
-        """
-        # Draw board
-        board_skin = self.board_img_cache.skin
-        # Colour board with solid colour
-        self._draw_canvas_base_layer()
-        self.board_rect = self._draw_board_base_layer()
-        self.itemconfig(self.board_rect, fill=board_skin.colour)
-        
-        for row_idx in range(9):
-            for col_idx in range(9):
-                # Create board image layer
-                id = self.create_image(
-                    self._idxs_to_xy(col_idx, row_idx),
-                    image="", anchor="nw",
-                )
-                self.board_tiles[row_idx][col_idx] = id
-                # Create focus highlight layer
-                id_focus = self.create_image(
-                    self._idxs_to_xy(col_idx, row_idx),
-                    image=self.board_img_cache.get_dict()["transparent"],
-                    anchor="nw",
-                )
-                self.board_select_tiles[row_idx][col_idx] = id_focus
-                # Add callbacks
-                if self.move_input_handler is not None:
-                    col_num = self._col_idx_to_num(col_idx)
-                    row_num = self._row_idx_to_num(row_idx)
-                    sq = Square.from_cr(col_num, row_num)
-                    callback = functools.partial(
-                        self.move_input_handler.receive_square, sq=sq
-                    )
-                    self.tag_bind(id_focus, "<Button-1>", callback)
-        if self.board_img_cache.has_images():
-            board_img = self.board_img_cache.get_dict()["board"]
-            for row in self.board_tiles:
-                for tile in row:
-                    self.itemconfig(tile, image=board_img)
-        for i in range(10):
+    def _update_board_tile_images(self) -> None:
+        if not self.board_img_cache.has_images():
+            return
+        board_img = self.board_img_cache.get_dict()["board"]
+        for row in self.board_tiles:
+            for tile in row:
+                self.itemconfig(tile, image=board_img)
+        return
+    
+    def _draw_board_grid_lines(self) -> None:
+        for i in range(NUM_COLS+1):
             self.create_line(
                 *self._idxs_to_xy(i, 0),
                 *self._idxs_to_xy(i, NUM_ROWS),
                 fill="black", width=1,
             )
+        for j in range(NUM_ROWS+1):
             self.create_line(
-                *self._idxs_to_xy(0, i),
-                *self._idxs_to_xy(NUM_COLS, i),
+                *self._idxs_to_xy(0, j),
+                *self._idxs_to_xy(NUM_COLS, j),
                 fill="black", width=1,
             )
-        # Draw board coordinates
+        return
+    
+    def draw_board(self):
+        """Draw just the shogiban, without pieces. Komadai areas not
+        included.
+        """
+        board_skin = self.board_img_cache.skin
+        self._draw_canvas_base_layer()
+        self.board_rect = self._draw_board_base_layer()
+        self.itemconfig(self.board_rect, fill=board_skin.colour)
+        self._draw_board_tile_layer()
+        self._draw_board_focus_layer()
+        self._add_board_onclick_callbacks()
+        self._update_board_tile_images()
+        self._draw_board_grid_lines()
         self._draw_board_coordinates()
         return
     
