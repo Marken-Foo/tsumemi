@@ -20,6 +20,13 @@ if TYPE_CHECKING:
 DEFAULT_CANVAS_WIDTH = 600
 DEFAULT_CANVAS_HEIGHT = 500
 
+# Shogi board dimensions in squares
+NUM_COLS = 9
+NUM_ROWS = 9
+
+# IDX = zero-based, top left to bottom right, row-column (like FEN)
+# NUM = one-based, top right to bottom left, column-row (like JP notation)
+
 
 class BoardCanvas(tk.Canvas):
     """The canvas where the shogi position is drawn. Responsible for
@@ -72,43 +79,62 @@ class BoardCanvas(tk.Canvas):
         self.draw()
         return
     
-    def set_focus(self, sq: Square, ktype: KomaType=KomaType.NONE) -> None:
-        """Put visual focus on a particular square or koma.
-        """
-        # Unhighlight already highlighted square/koma
-        if self.highlighted_sq != Square.NONE:
-            if self.highlighted_sq == Square.HAND:
-                for id in self.find_withtag("komadai"):
-                    self.itemconfig(id, image="")
-            else:
-                col, row = self.highlighted_sq.get_cr()
-                col_idx = col-1 if self.is_upside_down else 9-col
-                row_idx = 9-row if self.is_upside_down else row-1
-                old_idx = self.board_select_tiles[row_idx][col_idx]
-                self.itemconfig(old_idx,
-                    image=self.board_img_cache.get_dict()["transparent"]
-                )
-        # Highlight new square/koma
+    def _unhighlight_square(self) -> None:
+        if self.highlighted_sq == Square.NONE:
+            return
+        if self.highlighted_sq == Square.HAND:
+            for id in self.find_withtag("komadai"):
+                self.itemconfig(id, image="")
+            return
+        col, row = self.highlighted_sq.get_cr()
+        col_idx = col-1 if self.is_upside_down else 9-col
+        row_idx = 9-row if self.is_upside_down else row-1
+        old_idx = self.board_select_tiles[row_idx][col_idx]
+        self.itemconfig(old_idx,
+            image=self.board_img_cache.get_dict()["transparent"]
+        )
+        return
+    
+    def _highlight_square(self, sq: Square) -> None:
         if sq == Square.HAND:
-            # this is a kludge
-            side_str = "sente" if self.position.turn == Side.SENTE else "gote"
-            ids_a = self.find_withtag("komadai")
-            ids_b = self.find_withtag(ktype.to_csa())
-            ids_c = self.find_withtag(side_str)
-            item = [x for x in ids_a if (x in ids_b) and (x in ids_c)]
-            if item:
-                self.itemconfig(item[0],
-                    image=self.komadai_img_cache.get_dict()["highlight"]
-                )
-        elif sq != Square.NONE:
-            col_num, row_num = sq.get_cr()
-            col_idx = col_num-1 if self.is_upside_down else 9-col_num
-            row_idx = 9-row_num if self.is_upside_down else row_num-1
-            img_idx = self.board_select_tiles[row_idx][col_idx]
-            self.itemconfig(img_idx,
-                image=self.board_img_cache.get_dict()["highlight"]
-            )
+            return
+        if sq == Square.NONE:
+            self.highlighted_sq = sq
+            return
+        col_num, row_num = sq.get_cr()
+        col_idx = col_num-1 if self.is_upside_down else 9-col_num
+        row_idx = 9-row_num if self.is_upside_down else row_num-1
+        img_idx = self.board_select_tiles[row_idx][col_idx]
+        self.itemconfig(img_idx,
+            image=self.board_img_cache.get_dict()["highlight"]
+        )
         self.highlighted_sq = sq
+        return
+    
+    def _highlight_hand_koma(self, ktype: KomaType) -> None:
+        if ktype == KomaType.NONE:
+            return
+        side_str = "sente" if self.position.turn == Side.SENTE else "gote"
+        ids_komadai = self.find_withtag("komadai")
+        ids_ktype_csa = self.find_withtag(ktype.to_csa())
+        ids_side = self.find_withtag(side_str)
+        item = [
+            id for id in ids_komadai
+            if (id in ids_ktype_csa) and (id in ids_side)
+        ]
+        if item:
+            self.itemconfig(item[0],
+                image=self.komadai_img_cache.get_dict()["highlight"]
+            )
+        self.highlighted_sq = Square.HAND
+        return
+    
+    def set_focus(self, sq: Square, ktype: KomaType=KomaType.NONE) -> None:
+        self._unhighlight_square()
+        if sq == Square.HAND:
+            self._highlight_hand_koma(ktype)
+        else:
+            self._highlight_square(sq)
         return
     
     def prompt_promotion(self, sq: Square, ktype: KomaType) -> None:
@@ -160,9 +186,9 @@ class BoardCanvas(tk.Canvas):
         return
     
     def _prompt_promotion_callback(self, event,
-                sq: Square, ktype: KomaType,
-                is_promotion: Optional[bool]
-            ) -> None:
+            sq: Square, ktype: KomaType,
+            is_promotion: Optional[bool]
+        ) -> None:
         """Callback for promotion prompt. Clears the visual cues and
         passes the selected choice to underlying adapter. Use None
         for is_promotion to indicate cancellation of the move.
@@ -176,6 +202,30 @@ class BoardCanvas(tk.Canvas):
     
     def clear_promotion_prompts(self) -> None:
         self.delete("promotion_prompt")
+        return
+    
+    def _draw_board_coordinates(self,
+            x_sq: Callable[[float], float],
+            y_sq: Callable[[float], float],
+        ) -> None:
+        coords_text_size = self.measurements.coords_text_size
+        for row_idx in range(9):
+            row_num = 9-row_idx if self.is_upside_down else row_idx+1
+            row_label = " " + KanjiNumber(row_num).name
+            self.create_text(
+                x_sq(9), y_sq(row_idx+0.5),
+                text=" " + row_label,
+                font=("", coords_text_size),
+                anchor="w"
+            )
+        for col_idx in range(9):
+            col_num = col_idx+1 if self.is_upside_down else 9-col_idx
+            self.create_text(
+                x_sq(col_idx+0.5), y_sq(0),
+                text=str(col_num),
+                font=("", coords_text_size),
+                anchor="s"
+            )
         return
     
     def draw_board(self):
@@ -228,24 +278,49 @@ class BoardCanvas(tk.Canvas):
             self.create_line(x_sq(0), y_sq(i), x_sq(9), y_sq(i),
                                     fill="black", width=1)
         # Draw board coordinates
-        for row_idx in range(9):
-            row_num = 9-row_idx if self.is_upside_down else row_idx+1
-            row_label = " " + KanjiNumber(row_num).name
-            self.create_text(
-                x_sq(9), y_sq(row_idx+0.5),
-                text=" " + row_label,
-                font=("", coords_text_size),
-                anchor="w"
-            )
-        for col_idx in range(9):
-            col_num = col_idx+1 if self.is_upside_down else 9-col_idx
-            self.create_text(
-                x_sq(col_idx+0.5), y_sq(0),
-                text=str(col_num),
-                font=("", coords_text_size),
-                anchor="s"
-            )
+        self._draw_board_coordinates(x_sq, y_sq)
         return
+    
+    def _draw_koma_image(self,
+            x: int, y: int, ktype: KomaType,
+            komadai: bool = False, invert: bool = False,
+            anchor: str = "center",
+            tags: Tuple[str] = ("",)
+        ) -> Optional[int]:
+        id: int
+        if ktype == KomaType.NONE:
+            return None
+        piece_dict = self.koma_img_cache.get_dict(
+            invert=invert, komadai=komadai
+        )
+        img = piece_dict[ktype]
+        id = self.create_image(
+            x, y, image=img,
+            anchor=anchor, tags=tags
+        )
+        return id
+    
+    def _draw_koma_text(self,
+            x: int, y: int, ktype: KomaType,
+            komadai: bool = False, invert: bool = False,
+            anchor: str = "center",
+            tags: Tuple[str] = ("",)
+        ) -> Optional[int]:
+        id: int
+        if ktype == KomaType.NONE:
+            return None
+        text_size = (
+            self.measurements.komadai_text_size
+            if komadai
+            else self.measurements.sq_text_size
+        )
+        id = self.create_text(
+            x, y, text=str(KANJI_FROM_KTYPE[ktype]),
+            font=("", text_size),
+            angle=180 if invert else 0,
+            anchor=anchor, tags=tags
+        )
+        return id
     
     def draw_koma(self,
             x: int, y: int, ktype: KomaType,
@@ -257,31 +332,14 @@ class BoardCanvas(tk.Canvas):
         is True; *anchor* determines how the image or text is
         positioned with respect to the point (x,y).
         """
-        id: int
-        if ktype == KomaType.NONE:
-            return None
         if is_text:
-            text_size = (
-                self.measurements.komadai_text_size
-                if komadai
-                else self.measurements.sq_text_size
-            )
-            id = self.create_text(
-                x, y, text=str(KANJI_FROM_KTYPE[ktype]),
-                font=("", text_size),
-                angle=180 if invert else 0,
-                anchor=anchor, tags=tags
+            return self._draw_koma_text(
+                x, y, ktype, komadai, invert, anchor, tags
             )
         else:
-            piece_dict = self.koma_img_cache.get_dict(
-                invert=invert, komadai=komadai
+            return self._draw_koma_image(
+                x, y, ktype, komadai, invert, anchor, tags
             )
-            img = piece_dict[ktype]
-            id = self.create_image(
-                x, y, image=img,
-                anchor=anchor, tags=tags
-            )
-        return id
     
     def draw_komadai(self, x, y, hand, sente=True, align="top"):
         """Draw komadai with pieces given by hand argument, anchored
