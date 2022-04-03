@@ -59,8 +59,8 @@ class BoardCanvas(tk.Canvas):
         self.komadai_img_cache = KomadaiImgManager(self.measurements, komadai_skin)
         # Images created and stored so only their image field changes later.
         # FEN ordering. (row_idx, col_idx), zero-based
-        self.board_tiles = [[None] * 9 for i in range(9)]
-        self.board_select_tiles = [[None] * 9 for i in range(9)]
+        self.board_tiles = [[None] * NUM_COLS for i in range(NUM_ROWS)]
+        self.board_select_tiles = [[None] * NUM_COLS for i in range(NUM_ROWS)]
         # Koma image IDs and their current positions
         self.koma_on_board_images: Dict[int, Tuple[int, int]] = {}
         # Currently highlighted tile [col_num, row_num]
@@ -68,6 +68,18 @@ class BoardCanvas(tk.Canvas):
         self.highlighted_sq = Square.NONE
         self.highlighted_ktype = KomaType.NONE
         return
+    
+    def _col_idx_to_num(self, col_idx: int) -> int:
+        return col_idx + 1 if self.is_upside_down else NUM_COLS - col_idx
+    
+    def _row_idx_to_num(self, row_idx: int) -> int:
+        return NUM_ROWS - row_idx if self.is_upside_down else row_idx + 1
+    
+    def _col_num_to_idx(self, col_num: int) -> int:
+        return col_num - 1 if self.is_upside_down else NUM_COLS - col_num
+    
+    def _row_num_to_idx(self, row_num: int) -> int:
+        return NUM_ROWS - row_num if self.is_upside_down else row_num - 1
     
     def set_position(self, pos: Position) -> None:
         """Set the internal position (and of any associated input
@@ -86,11 +98,12 @@ class BoardCanvas(tk.Canvas):
             for id in self.find_withtag("komadai"):
                 self.itemconfig(id, image="")
             return
-        col, row = self.highlighted_sq.get_cr()
-        col_idx = col-1 if self.is_upside_down else 9-col
-        row_idx = 9-row if self.is_upside_down else row-1
-        old_idx = self.board_select_tiles[row_idx][col_idx]
-        self.itemconfig(old_idx,
+        col_num, row_num = self.highlighted_sq.get_cr()
+        col_idx = self._col_num_to_idx(col_num)
+        row_idx = self._row_num_to_idx(row_num)
+        img_idx = self.board_select_tiles[row_idx][col_idx]
+        self.itemconfig(
+            img_idx,
             image=self.board_img_cache.get_dict()["transparent"]
         )
         return
@@ -102,10 +115,11 @@ class BoardCanvas(tk.Canvas):
             self.highlighted_sq = sq
             return
         col_num, row_num = sq.get_cr()
-        col_idx = col_num-1 if self.is_upside_down else 9-col_num
-        row_idx = 9-row_num if self.is_upside_down else row_num-1
+        col_idx = self._col_num_to_idx(col_num)
+        row_idx = self._row_num_to_idx(row_num)
         img_idx = self.board_select_tiles[row_idx][col_idx]
-        self.itemconfig(img_idx,
+        self.itemconfig(
+            img_idx,
             image=self.board_img_cache.get_dict()["highlight"]
         )
         self.highlighted_sq = sq
@@ -150,8 +164,8 @@ class BoardCanvas(tk.Canvas):
             tags=("promotion_prompt",)
         )
         col_num, row_num = sq.get_cr()
-        col_idx = col_num-1 if self.is_upside_down else 9-col_num
-        row_idx = 9-row_num if self.is_upside_down else row_num-1
+        col_idx = self._col_num_to_idx(col_num)
+        row_idx = self._row_num_to_idx(row_num)
         is_text = not self.koma_img_cache.has_images()
         is_north_sente = self.is_upside_down
         side = self.position.turn
@@ -210,7 +224,7 @@ class BoardCanvas(tk.Canvas):
         ) -> None:
         coords_text_size = self.measurements.coords_text_size
         for row_idx in range(9):
-            row_num = 9-row_idx if self.is_upside_down else row_idx+1
+            row_num = self._row_idx_to_num(row_idx)
             row_label = " " + KanjiNumber(row_num).name
             self.create_text(
                 x_sq(9), y_sq(row_idx+0.5),
@@ -219,7 +233,7 @@ class BoardCanvas(tk.Canvas):
                 anchor="w"
             )
         for col_idx in range(9):
-            col_num = col_idx+1 if self.is_upside_down else 9-col_idx
+            col_num = self._col_idx_to_num(col_idx)
             self.create_text(
                 x_sq(col_idx+0.5), y_sq(0),
                 text=str(col_num),
@@ -260,8 +274,8 @@ class BoardCanvas(tk.Canvas):
                 self.board_select_tiles[row_idx][col_idx] = id_focus
                 # Add callbacks
                 if self.move_input_handler is not None:
-                    col_num = col_idx+1 if self.is_upside_down else 9-col_idx
-                    row_num = 9-row_idx if self.is_upside_down else row_idx+1
+                    col_num = self._col_idx_to_num(col_idx)
+                    row_num = self._row_idx_to_num(row_idx)
                     sq = Square.from_cr(col_num, row_num)
                     callback = functools.partial(
                         self.move_input_handler.receive_square, sq=sq
@@ -471,10 +485,10 @@ class BoardCanvas(tk.Canvas):
             for idx in kset:
                 col_num = position.board.idx_to_c(idx)
                 row_num = position.board.idx_to_r(idx)
-                x = col_num-1 if self.is_upside_down else 9-col_num
-                y = 9-row_num if self.is_upside_down else row_num-1
+                col_idx = self._col_num_to_idx(col_num)
+                row_idx = self._row_num_to_idx(row_num)
                 id = self.draw_koma(
-                    x_sq(x+0.5), y_sq(y+0.5), ktype,
+                    x_sq(col_idx+0.5), y_sq(row_idx+0.5), ktype,
                     is_text=is_text, invert=invert
                 )
                 self.koma_on_board_images[id] = (col_num, row_num)
