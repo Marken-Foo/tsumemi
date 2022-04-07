@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import functools
+import itertools
 import tkinter as tk
 
 from typing import TYPE_CHECKING
@@ -103,6 +104,157 @@ class BoardArtist:
         return
 
 
+class KomaArtist:
+    pass
+
+
+class KomadaiArtist:
+    def __init__(self,
+            x_anchor: int,
+            y_anchor: int,
+            canvas: BoardCanvas,
+            hand: HandRepresentation,
+            is_sente: bool,
+            align="top",
+        ) -> None:
+        self.is_sente = is_sente
+        self.is_text = not canvas.koma_img_cache.has_images()
+        self.text_size = canvas.measurements.komadai_text_size
+        # Actual size of each character in px is about 1.5*text_size
+        char_height = 1.5 * self.text_size
+        self.piece_size = canvas.measurements.komadai_piece_size
+        self.symbol_size = (
+            self.text_size * 3/2 if self.is_text
+            else self.piece_size
+        )
+        self.pad = (
+            self.text_size / 8 if self.is_text
+            else self.piece_size / 8
+        )
+        self.mochigoma_heading_size = 4 * char_height # "▲\n持\n駒\n"
+        
+        self.hand_counts = {}
+        for ktype in HAND_TYPES:
+            count = hand.get_komatype_count(ktype)
+            if count > 0:
+                self.hand_counts[ktype] = count
+        
+        self.width: int = 2 * self.piece_size
+        self.height: int = self.mochigoma_heading_size + (
+            2 * char_height if not self.hand_counts
+            else len(self.hand_counts)*(self.symbol_size + self.pad) - self.pad
+        )
+        self.x_anchor: int = x_anchor
+        self.y_anchor: int = y_anchor - self.height if align == "bottom" else y_anchor
+        return
+    
+    def draw_all_komadai_koma(self, canvas: BoardCanvas) -> None:
+        if not self.hand_counts:
+            self.draw_komadai_text_nashi(canvas)
+            return
+        for n, (ktype, count) in enumerate(self.hand_counts.items()):
+            y_offset = (
+                self.mochigoma_heading_size
+                + n*(self.symbol_size+self.pad)
+                + self.symbol_size/2 # for the anchor="center"
+            )
+            self.draw_komadai_koma_group(canvas, y_offset, ktype, count)
+        return
+    
+    def draw_komadai_base(self, canvas: BoardCanvas) -> int:
+        id: int = canvas.create_rectangle(
+            self.x_anchor-(self.width/2), self.y_anchor,
+            self.x_anchor+(self.width/2), self.y_anchor+self.height,
+            fill="#ffffff",
+            outline="",
+            tags=("komadai-solid",)
+        )
+        return id
+    
+    def draw_komadai_header_text(self, canvas: BoardCanvas) -> int:
+        header_text = "▲\n持\n駒" if self.is_sente else "△\n持\n駒"
+        id: int = canvas.create_text(
+            self.x_anchor, self.y_anchor,
+            text=header_text,
+            font=("", self.text_size),
+            anchor="n"
+        )
+        return id
+    
+    def draw_komadai_text_nashi(self, canvas: BoardCanvas) -> int:
+        id: int = canvas.create_text(
+            self.x_anchor, self.y_anchor+self.mochigoma_heading_size,
+            text="な\nし",
+            font=("", self.text_size),
+            anchor="n"
+        )
+        return id
+    
+    def draw_komadai_koma_group(self,
+            canvas: BoardCanvas,
+            y_offset: float,
+            ktype: KomaType,
+            count: int,
+        ) -> int:
+        # returns the id of the koma drawing
+        self._draw_komadai_focus_tile(canvas, y_offset, ktype)
+        id: int = self._draw_komadai_koma(canvas, y_offset, ktype)
+        self._draw_komadai_koma_count(canvas, y_offset, count)
+        return id
+    
+    def _draw_komadai_focus_tile(self,
+            canvas: BoardCanvas,
+            y_offset: float,
+            ktype: KomaType,
+        ) -> int:
+        id: int = canvas.create_image(
+            self.x_anchor-(self.width/5),
+            self.y_anchor+y_offset,
+            image="",
+            anchor="center",
+            tags=(
+                "komadai_focus",
+                ktype.to_csa(),
+                "sente" if self.is_sente else "gote"
+            ),
+        )
+        return id
+    
+    def _draw_komadai_koma(self,
+            canvas: BoardCanvas,
+            y_offset: float,
+            ktype: KomaType,
+        ) -> int:
+        id: int = canvas.draw_koma(
+            self.x_anchor-(self.width/5),
+            self.y_anchor+y_offset,
+            ktype=ktype,
+            komadai=True,
+            is_text=self.is_text,
+            anchor="center",
+            tags=(
+                "komadai_koma",
+                ktype.to_csa(),
+                "sente" if self.is_sente else "gote"
+            ),
+        )
+        return id
+    
+    def _draw_komadai_koma_count(self,
+            canvas: BoardCanvas,
+            y_offset: float,
+            count: int,
+        ) -> int:
+        id: int = canvas.create_text(
+            self.x_anchor+0.5*self.piece_size,
+            self.y_anchor+y_offset,
+            text=str(count),
+            font=("", self.text_size),
+            anchor="center"
+        )
+        return id
+
+
 class BoardCanvas(tk.Canvas):
     """The canvas where the shogi position is drawn. Responsible for
     drawing on itself, delegating other tasks like size calculation to
@@ -181,7 +333,7 @@ class BoardCanvas(tk.Canvas):
         if self.highlighted_sq == Square.NONE:
             return
         if self.highlighted_sq == Square.HAND:
-            for id in self.find_withtag("komadai"):
+            for id in self.find_withtag("komadai_focus"):
                 self.itemconfig(id, image="")
             return
         col_num, row_num = self.highlighted_sq.get_cr()
@@ -215,13 +367,9 @@ class BoardCanvas(tk.Canvas):
         if ktype == KomaType.NONE:
             return
         side_str = "sente" if self.position.turn == Side.SENTE else "gote"
-        ids_komadai = self.find_withtag("komadai")
-        ids_ktype_csa = self.find_withtag(ktype.to_csa())
-        ids_side = self.find_withtag(side_str)
-        item = [
-            id for id in ids_komadai
-            if (id in ids_ktype_csa) and (id in ids_side)
-        ]
+        item = self.find_withtag(
+            f"komadai_focus&&{ktype.to_csa()}&&{side_str}"
+        )
         if item:
             self.itemconfig(item[0],
                 image=self.komadai_img_cache.get_dict()["highlight"]
@@ -411,102 +559,22 @@ class BoardCanvas(tk.Canvas):
                 x, y, ktype, komadai, invert, anchor, tags
             )
     
-    def _draw_komadai_base(self,
-            x_anchor: float, y_anchor: float,
-            width: float, height: float,
-        ) -> int:
-        id: int = self.create_rectangle(
-            x_anchor-(width/2), y_anchor,
-            x_anchor+(width/2), y_anchor+height,
-            fill="#ffffff",
-            outline="",
-            tags=("komadai-solid",)
-        )
-        return id
-    
-    def _draw_komadai_header_text(self,
-            x_anchor: float, y_anchor: float,
-            is_sente: bool,
-        ) -> int:
-        header_text = "▲\n持\n駒" if is_sente else "△\n持\n駒"
-        id: int = self.create_text(
-            x_anchor, y_anchor,
-            text=header_text,
-            font=("", self.measurements.komadai_text_size),
-            anchor="n"
-        )
-        return id
-    
-    def _draw_komadai_text_nashi(self,
-            x_anchor: float, y_anchor: float,
-            mochigoma_heading_size: float
-        ) -> int:
-        id: int = self.create_text(
-            x_anchor, y_anchor+mochigoma_heading_size,
-            text="な\nし",
-            font=("", self.measurements.komadai_text_size),
-            anchor="n"
-        )
-        return id
-    
-    def _draw_komadai_focus_tile(self,
-            x_anchor: float, y_anchor: float,
-            y_offset: float,
-            width: float,
-            ktype: KomaType,
-            is_sente: bool,
-        ) -> int:
-        id: int = self.create_image(
-            x_anchor-(width/5),
-            y_anchor+y_offset,
-            image="",
-            anchor="center",
-            tags=("komadai", ktype.to_csa(), "sente" if is_sente else "gote"),
-        )
-        return id
-    
-    def _draw_komadai_koma(self,
-            x_anchor: float, y_anchor: float,
-            y_offset: float,
-            width: float,
-            ktype: KomaType,
-            is_text: bool,
-        ) -> int:
-        id: int = self.draw_koma(
-            x_anchor-(width/5),
-            y_anchor+y_offset,
-            ktype=ktype,
-            komadai=True,
-            is_text=is_text,
-            anchor="center",
-        )
-        return id
-    
-    def _draw_komadai_koma_count(self,
-            x_anchor: float, y_anchor: float,
-            y_offset: float,
-            count: int,
-        ) -> int:
-        id: int = self.create_text(
-            x_anchor+0.5*self.measurements.komadai_piece_size,
-            y_anchor+y_offset,
-            text=str(count),
-            font=("", self.measurements.komadai_text_size),
-            anchor="center"
-        )
-        return id
-    
-    def _add_komadai_koma_onclick_callback(self,
-            object_id: int, ktype: KomaType, is_sente: bool,
-        ) -> None:
+    def _add_all_komadai_koma_onclick_callbacks(self) -> None:
         if self.move_input_handler is None:
             return
-        callback = functools.partial(
-            self.move_input_handler.receive_square,
-            sq=Square.HAND, hand_ktype=ktype,
-            hand_side = Side.SENTE if is_sente else Side.GOTE
-        )
-        self.tag_bind(object_id, "<Button-1>", callback)
+        for side in (Side.SENTE, Side.GOTE):
+            side_str = "sente" if side.is_sente() else "gote"
+            for ktype in HAND_TYPES:
+                callback = functools.partial(
+                    self.move_input_handler.receive_square,
+                    sq=Square.HAND, hand_ktype=ktype,
+                    hand_side=side,
+                )
+                ids = self.find_withtag(
+                    f"komadai_koma&&{ktype.to_csa()}&&{side_str}"
+                )
+                for id in ids:
+                    self.tag_bind(id, "<Button-1>", callback)
         return
     
     def draw_komadai(self, x, y, hand, sente=True, align="top"):
@@ -514,63 +582,13 @@ class BoardCanvas(tk.Canvas):
         at canvas position (x,y). "Anchoring" north or south achieved
         with align="top" or "bottom".
         """
-        is_text = not self.koma_img_cache.has_images()
-        # Komadai measurements.
-        # Actual size of each character in px is about 1.5*text_size
-        komadai_text_size = self.measurements.komadai_text_size
-        komadai_char_height = 1.5 * komadai_text_size
-        komadai_piece_size = self.measurements.komadai_piece_size
-        symbol_size = komadai_text_size*3/2 if is_text else komadai_piece_size
-        pad = (komadai_text_size / 8 if is_text else komadai_piece_size / 8)
-        mochigoma_heading_size = 4 * komadai_char_height # "▲\n持\n駒\n"
-        
-        c_hand = {
-            ktype: count
-            for (ktype, count) in hand.mochigoma_dict.items()
-            if count > 0
-        }
-        num_piece_types = len(c_hand)
-        k_width = 2 * komadai_piece_size
-        k_height = (
-            mochigoma_heading_size + 2*komadai_char_height
-            if num_piece_types == 0
-            else mochigoma_heading_size
-                + num_piece_types*(symbol_size+pad)
-                - pad
-        )
-        if align == "bottom":
-            # Adjust the "anchor" point
-            y = y - k_height
-        
+        artist = KomadaiArtist(x, y, self, hand, sente, align)
         # Draw the komadai base
-        komadai_base = self._draw_komadai_base(x, y, k_width, k_height)
+        komadai_base = artist.draw_komadai_base(self)
         self.itemconfig(komadai_base, fill=self.komadai_img_cache.skin.colour)
-        self._draw_komadai_header_text(x, y, sente)
-        
-        if num_piece_types == 0:
-            # Hand is empty, write なし
-            self._draw_komadai_text_nashi(x, y, mochigoma_heading_size)
-            return
-        else:
-            # Hand is not empty
-            for n, (ktype, count) in enumerate(c_hand.items()):
-                if count == 0:
-                    continue
-                y_offset = (
-                    mochigoma_heading_size
-                    + n*(symbol_size+pad)
-                    + symbol_size/2 # for the anchor="center"
-                )
-                self._draw_komadai_focus_tile(
-                    x, y, y_offset, k_width, ktype, sente
-                )
-                id = self._draw_komadai_koma(
-                    x, y, y_offset, k_width, ktype, is_text
-                )
-                self._add_komadai_koma_onclick_callback(id, ktype, sente)
-                self._draw_komadai_koma_count(
-                    x, y, y_offset, count
-                )
+        artist.draw_komadai_header_text(self)
+        artist.draw_all_komadai_koma(self)
+        self._add_all_komadai_koma_onclick_callbacks()
         return
     
     def draw(self):
@@ -649,7 +667,6 @@ class BoardCanvas(tk.Canvas):
         self.itemconfig("komadai-solid", fill=skin.colour)
         self.komadai_img_cache.load(skin)
         return
-    
     
     def on_resize(self, event: tk.Event) -> None:
         # Callback for when the canvas itself is resized
