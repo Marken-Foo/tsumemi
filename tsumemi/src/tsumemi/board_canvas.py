@@ -34,7 +34,7 @@ NUM_ROWS = 9
 class BoardArtist:
     def __init__(self) -> None:
         return
-    
+
     def draw_board_base_layer(self, canvas: BoardCanvas) -> int:
         id: int = canvas.create_rectangle(
             *canvas._idxs_to_xy(0, 0),
@@ -42,7 +42,7 @@ class BoardArtist:
             fill="#ffffff",
         )
         return id
-    
+
     def draw_board_tile_layer(self, canvas: BoardCanvas) -> None:
         for row_idx in range(NUM_ROWS):
             for col_idx in range(NUM_COLS):
@@ -54,7 +54,7 @@ class BoardArtist:
                 # side effect
                 canvas.board_tiles[row_idx][col_idx] = id
         return
-    
+
     def draw_board_focus_layer(self, canvas: BoardCanvas) -> None:
         for row_idx in range(NUM_ROWS):
             for col_idx in range(NUM_COLS):
@@ -66,7 +66,7 @@ class BoardArtist:
                 # side effect
                 canvas.board_select_tiles[row_idx][col_idx] = id
         return
-    
+
     def draw_board_coordinates(self, canvas: BoardCanvas) -> None:
         coords_text_size = canvas.measurements.coords_text_size
         for row_idx in range(NUM_ROWS):
@@ -87,7 +87,7 @@ class BoardArtist:
                 anchor="s",
             )
         return
-    
+
     def draw_board_grid_lines(self, canvas: BoardCanvas) -> None:
         for i in range(NUM_COLS+1):
             canvas.create_line(
@@ -209,19 +209,19 @@ class BoardCanvas(tk.Canvas):
         self.highlighted_sq = Square.NONE
         self.highlighted_ktype = KomaType.NONE
         return
-    
+
     def _col_idx_to_num(self, col_idx: int) -> int:
         return col_idx + 1 if self.is_upside_down else NUM_COLS - col_idx
-    
+
     def _row_idx_to_num(self, row_idx: int) -> int:
         return NUM_ROWS - row_idx if self.is_upside_down else row_idx + 1
-    
+
     def _col_num_to_idx(self, col_num: int) -> int:
         return col_num - 1 if self.is_upside_down else NUM_COLS - col_num
-    
+
     def _row_num_to_idx(self, row_num: int) -> int:
         return NUM_ROWS - row_num if self.is_upside_down else row_num - 1
-    
+
     def _idxs_to_xy(self, col_idx: int, row_idx: int, centering=""
         ) -> Tuple[int, int]:
         x_sq = self.measurements.x_sq
@@ -229,7 +229,7 @@ class BoardCanvas(tk.Canvas):
         x = x_sq(col_idx+0.5) if "x" in centering.lower() else x_sq(col_idx)
         y = y_sq(row_idx+0.5) if "y" in centering.lower() else y_sq(row_idx)
         return x, y
-    
+
     def make_koma_artist(self, invert: bool, komadai: bool
         ) -> AbstractKomaArtist:
         if self.is_text():
@@ -242,7 +242,7 @@ class BoardCanvas(tk.Canvas):
 
     def _is_inverted(self, side: Side) -> bool:
         return not (side.is_sente() ^ self.is_upside_down)
-    
+
     def is_text(self) -> bool:
         return not self.koma_img_cache.has_images()
 
@@ -255,7 +255,7 @@ class BoardCanvas(tk.Canvas):
             self.move_input_handler.position = pos
         self.draw()
         return
-    
+
     def _unhighlight_square(self) -> None:
         if self.highlighted_sq == Square.NONE:
             return
@@ -272,7 +272,7 @@ class BoardCanvas(tk.Canvas):
             image=self.board_img_cache.get_dict()["transparent"]
         )
         return
-    
+
     def _highlight_square(self, sq: Square) -> None:
         if sq == Square.HAND:
             return
@@ -289,7 +289,7 @@ class BoardCanvas(tk.Canvas):
         )
         self.highlighted_sq = sq
         return
-    
+
     def _highlight_hand_koma(self, ktype: KomaType) -> None:
         if ktype == KomaType.NONE:
             return
@@ -303,7 +303,7 @@ class BoardCanvas(tk.Canvas):
             )
         self.highlighted_sq = Square.HAND
         return
-    
+
     def set_focus(self, sq: Square, ktype: KomaType=KomaType.NONE) -> None:
         self._unhighlight_square()
         if sq == Square.HAND:
@@ -311,7 +311,7 @@ class BoardCanvas(tk.Canvas):
         else:
             self._highlight_square(sq)
         return
-    
+
     def prompt_promotion(self, sq: Square, ktype: KomaType) -> None:
         """Display the visual cues prompting user to choose promotion
         or non-promotion.
@@ -326,7 +326,7 @@ class BoardCanvas(tk.Canvas):
         col_idx = self._col_num_to_idx(col_num)
         row_idx = self._row_num_to_idx(row_num)
         invert = self._is_inverted(self.position.turn)
-        
+
         id_promoted = self.draw_koma(
             *self._idxs_to_xy(col_idx, row_idx, centering="xy"),
             ktype.promote(),
@@ -354,7 +354,7 @@ class BoardCanvas(tk.Canvas):
             functools.partial(callback, is_promotion=None)
         )
         return
-    
+
     def _prompt_promotion_callback(self, event,
             sq: Square, ktype: KomaType,
             is_promotion: Optional[bool]
@@ -369,17 +369,17 @@ class BoardCanvas(tk.Canvas):
             )
             self.clear_promotion_prompts()
         return
-    
+
     def clear_promotion_prompts(self) -> None:
         self.delete("promotion_prompt")
         return
-    
+
     def _draw_canvas_base_layer(self) -> int:
         id: int = self.create_rectangle(
             0, 0, self.width, self.height, fill="#ffffff"
         )
         return id
-    
+
     def _add_board_onclick_callbacks(self) -> None:
         if self.move_input_handler is None:
             return
@@ -397,7 +397,7 @@ class BoardCanvas(tk.Canvas):
                     callback,
                 )
         return
-    
+
     def _update_board_tile_images(self) -> None:
         if not self.board_img_cache.has_images():
             return
@@ -406,7 +406,7 @@ class BoardCanvas(tk.Canvas):
             for tile in row:
                 self.itemconfig(tile, image=board_img)
         return
-    
+
     def draw_board(self):
         """Draw just the shogiban, without pieces. Komadai areas not
         included.
@@ -418,20 +418,20 @@ class BoardCanvas(tk.Canvas):
         artist.draw_board_focus_layer(self)
         artist.draw_board_grid_lines(self)
         artist.draw_board_coordinates(self)
-        
+
         board_skin = self.board_img_cache.skin
         self.itemconfig(self.board_rect, fill=board_skin.colour)
         self._add_board_onclick_callbacks()
         self._update_board_tile_images()
         return
-    
+
     def draw_koma(self,
             x: int, y: int, ktype: KomaType,
             invert: bool = False,
             anchor: str = "center",
             tags: Tuple[str] = ("",),
         ) -> Optional[int]:
-        """Draw koma at specified location. *anchor* determines how the image 
+        """Draw koma at specified location. *anchor* determines how the image
         or text is positioned with respect to the point (x,y).
         """
         artist = self.make_koma_artist(invert, False)
@@ -454,7 +454,7 @@ class BoardCanvas(tk.Canvas):
                 for id in ids:
                     self.tag_bind(id, "<Button-1>", callback)
         return
-    
+
     def draw_komadai(self, x, y, hand, sente=True, align="top"):
         """Draw komadai with pieces given by hand argument, anchored
         at canvas position (x,y). "Anchoring" north or south achieved
@@ -468,7 +468,7 @@ class BoardCanvas(tk.Canvas):
         artist.draw_all_komadai_koma(self)
         self._add_all_komadai_koma_onclick_callbacks()
         return
-    
+
     def draw(self):
         """Draw complete board with komadai and pieces.
         """
@@ -480,13 +480,13 @@ class BoardCanvas(tk.Canvas):
         w_pad = self.measurements.w_pad
         x_sq = self.measurements.x_sq
         y_sq = self.measurements.y_sq
-        
+
         south_hand = position.hand_sente
         north_hand = position.hand_gote
-        
+
         if self.is_upside_down:
             north_hand, south_hand = south_hand, north_hand
-        
+
         # Draw board
         self.draw_board()
         # Draw board pieces
@@ -510,7 +510,7 @@ class BoardCanvas(tk.Canvas):
                         self.move_input_handler.receive_square, sq=sq
                     )
                     self.tag_bind(id, "<Button-1>", callback)
-        
+
         # Draw komadai
         self.draw_komadai(
             w_pad + komadai_w/2,
@@ -529,22 +529,22 @@ class BoardCanvas(tk.Canvas):
         # set focus
         self.set_focus(self.highlighted_sq)
         return
-    
+
     def apply_piece_skin(self, skin: PieceSkin) -> None:
         self.koma_img_cache.load(skin)
         return
-    
+
     def apply_board_skin(self, skin: BoardSkin) -> None:
         self.itemconfig(self.board_rect, fill=skin.colour)
         self.board_img_cache.load(skin)
         return
-    
+
     def apply_komadai_skin(self, skin: BoardSkin) -> None:
         # Can only figure out how to apply solid colours for now
         self.itemconfig("komadai-solid", fill=skin.colour)
         self.komadai_img_cache.load(skin)
         return
-    
+
     def on_resize(self, event: tk.Event) -> None:
         # Callback for when the canvas itself is resized
         self.width = event.width
@@ -556,7 +556,7 @@ class BoardCanvas(tk.Canvas):
         # Redraw board after setting new dimensions
         self.draw()
         return
-    
+
     def flip_board(self, want_upside_down: bool) -> None:
         # For upside-down mode
         if self.is_upside_down != want_upside_down:
