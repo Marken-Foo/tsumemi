@@ -33,6 +33,11 @@ NUM_ROWS = 9
 
 class BoardArtist:
     def __init__(self) -> None:
+        # Stored canvas item ids for later alteration.
+        # FEN ordering. (row_idx, col_idx), zero-based
+        self.board_rect = -1
+        self.board_tiles = [[-1] * NUM_COLS for i in range(NUM_ROWS)]
+        self.board_select_tiles = [[-1] * NUM_COLS for i in range(NUM_ROWS)]
         return
 
     def draw_board_base_layer(self, canvas: BoardCanvas) -> int:
@@ -41,6 +46,7 @@ class BoardArtist:
             *canvas.idxs_to_xy(NUM_COLS, NUM_ROWS),
             fill="#ffffff",
         )
+        self.board_rect = id_
         return id_
 
     def draw_board_tile_layer(self, canvas: BoardCanvas) -> None:
@@ -51,8 +57,7 @@ class BoardArtist:
                     image="",
                     anchor="nw",
                 )
-                # side effect
-                canvas.board_tiles[row_idx][col_idx] = id_
+                self.board_tiles[row_idx][col_idx] = id_
         return
 
     def draw_board_focus_layer(self, canvas: BoardCanvas) -> None:
@@ -63,8 +68,7 @@ class BoardArtist:
                     image=canvas.board_img_cache.get_dict()["transparent"],
                     anchor="nw",
                 )
-                # side effect
-                canvas.board_select_tiles[row_idx][col_idx] = id_
+                self.board_select_tiles[row_idx][col_idx] = id_
         return
 
     def draw_board_coordinates(self, canvas: BoardCanvas) -> None:
@@ -133,11 +137,7 @@ class BoardCanvas(tk.Canvas):
         self.koma_img_cache = KomaImgManager(self.measurements, piece_skin)
         self.board_img_cache = BoardImgManager(self.measurements, board_skin)
         self.komadai_img_cache = KomadaiImgManager(self.measurements, komadai_skin)
-        # Images created and stored so only their image field changes later.
-        # FEN ordering. (row_idx, col_idx), zero-based
-        self.board_rect = -1
-        self.board_tiles = [[-1] * NUM_COLS for i in range(NUM_ROWS)]
-        self.board_select_tiles = [[-1] * NUM_COLS for i in range(NUM_ROWS)]
+        self.board_artist = BoardArtist()
         # Currently highlighted tile [col_num, row_num]
         # Hand pieces would be [0, KomaType]
         self.highlighted_sq = Square.NONE
@@ -204,7 +204,7 @@ class BoardCanvas(tk.Canvas):
                 self.itemconfig(id_, image="")
             return
         col_idx, row_idx = self._sq_to_idxs(self.highlighted_sq)
-        img_idx = self.board_select_tiles[row_idx][col_idx]
+        img_idx = self.board_artist.board_select_tiles[row_idx][col_idx]
         self.itemconfig(
             img_idx,
             image=self.board_img_cache.get_dict()["transparent"]
@@ -218,7 +218,7 @@ class BoardCanvas(tk.Canvas):
             self.highlighted_sq = sq
             return
         col_idx, row_idx = self._sq_to_idxs(sq)
-        img_idx = self.board_select_tiles[row_idx][col_idx]
+        img_idx = self.board_artist.board_select_tiles[row_idx][col_idx]
         self.itemconfig(
             img_idx,
             image=self.board_img_cache.get_dict()["highlight"]
@@ -326,7 +326,7 @@ class BoardCanvas(tk.Canvas):
                     self.move_input_handler.receive_square, sq=sq
                 )
                 self.tag_bind(
-                    self.board_select_tiles[row_idx][col_idx],
+                    self.board_artist.board_select_tiles[row_idx][col_idx],
                     "<Button-1>",
                     callback,
                 )
@@ -336,7 +336,7 @@ class BoardCanvas(tk.Canvas):
         if not self.board_img_cache.has_images():
             return
         board_img = self.board_img_cache.get_dict()["board"]
-        for row in self.board_tiles:
+        for row in self.board_artist.board_tiles:
             for tile in row:
                 self.itemconfig(tile, image=board_img)
         return
@@ -346,15 +346,15 @@ class BoardCanvas(tk.Canvas):
         included.
         """
         self._draw_canvas_base_layer()
-        artist = BoardArtist()
-        self.board_rect = artist.draw_board_base_layer(self)
+        artist = self.board_artist
+        artist.draw_board_base_layer(self)
         artist.draw_board_tile_layer(self)
         artist.draw_board_focus_layer(self)
         artist.draw_board_grid_lines(self)
         artist.draw_board_coordinates(self)
 
         board_skin = self.board_img_cache.skin
-        self.itemconfig(self.board_rect, fill=board_skin.colour)
+        self.itemconfig(self.board_artist.board_rect, fill=board_skin.colour)
         self._add_board_onclick_callbacks()
         self._update_board_tile_images()
         return
@@ -463,7 +463,7 @@ class BoardCanvas(tk.Canvas):
         return
 
     def apply_board_skin(self, skin: BoardSkin) -> None:
-        self.itemconfig(self.board_rect, fill=skin.colour)
+        self.itemconfig(self.board_artist.board_rect, fill=skin.colour)
         self.board_img_cache.load(skin)
         return
 
