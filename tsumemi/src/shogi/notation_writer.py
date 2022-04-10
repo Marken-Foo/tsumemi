@@ -59,7 +59,7 @@ class DestinationNotationBuilder(MoveNotationBuilder):
 class PromotionNotationBuilder(MoveNotationBuilder):
     def build(self, move: Move, pos: Position, move_writer: AbstractMoveWriter
         ) -> str:
-        if rules.can_promote(move):
+        if rules.can_be_promotion(move):
             return move_writer.write_promotion(move.is_promotion)
         else:
             return ""
@@ -101,9 +101,9 @@ class AbstractMoveWriter(ABC):
         if self.aggressive_disambiguation:
             return bool(list(ambiguous_moves))
         else:
-            needs_promotion = rules.can_promote(move)
+            needs_promotion = rules.can_be_promotion(move)
             return any((
-                rules.can_promote(amb_move) == needs_promotion
+                rules.can_be_promotion(amb_move) == needs_promotion
                 for amb_move in ambiguous_moves
             ))
     
@@ -269,7 +269,7 @@ def _disambiguate_japanese_move(
     origin_squares = set((
         amb_move.start_sq for amb_move in ambiguous_moves
         if (aggressive_disambiguation)
-        or rules.can_promote(amb_move) == rules.can_promote(move)
+        or rules.can_be_promotion(amb_move) == rules.can_be_promotion(move)
     ))
     general_pieces = set((
         KomaType.GI, KomaType.KI, KomaType.TO,

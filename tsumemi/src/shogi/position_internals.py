@@ -69,30 +69,6 @@ class MailboxBoard:
     def idx_to_r(idx: int) -> int:
         return (idx-1) % 13
 
-    @staticmethod
-    def is_sq_in_promotion_zone(sq: Square, side: Side) -> bool:
-        _, row = sq.get_cr()
-        if side == Side.SENTE:
-            return True if row in (1, 2, 3) else False
-        else:
-            return True if row in (7, 8, 9) else False
-
-    @staticmethod
-    def is_sq_in_last_two_rows(sq: Square, side: Side) -> bool:
-        _, row = sq.get_cr()
-        if side == Side.SENTE:
-            return True if row in (1, 2) else False
-        else:
-            return True if row in (8, 9) else False
-
-    @staticmethod
-    def is_sq_in_last_row(sq: Square, side: Side) -> bool:
-        _, row = sq.get_cr()
-        if side == Side.SENTE:
-            return True if row == 1 else False
-        else:
-            return True if row == 9 else False
-
     def to_sfen(self) -> str:
         board = []
         for row_num in range(1, 10):

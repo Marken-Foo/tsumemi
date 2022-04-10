@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import functools
 
-import tsumemi.src.shogi.destination_generation as destgen
-
 from typing import TYPE_CHECKING
+
+import tsumemi.src.shogi.destination_generation as destgen
 
 from tsumemi.src.shogi.basetypes import Koma, KomaType, Move, NullMove
 from tsumemi.src.shogi.basetypes import HAND_TYPES, KOMA_TYPES
@@ -19,13 +19,13 @@ if TYPE_CHECKING:
     PromConstr = Callable[[Side, Square, Square], PromConstrTuple]
 
 
-def can_promote(move: Move) -> bool:
+def can_be_promotion(move: Move) -> bool:
     ktype = KomaType.get(move.koma)
     _, promotion_constrainer = MOVEGEN_FUNCTIONS[ktype]
     komatype_can_promote = (promotion_constrainer == constrain_unpromotable)
     return not move.is_drop and not komatype_can_promote and (
-        MailboxBoard.is_sq_in_promotion_zone(move.end_sq, move.side)
-        or MailboxBoard.is_sq_in_promotion_zone(move.start_sq, move.side)
+        move.end_sq.is_in_promotion_zone(move.side)
+        or move.start_sq.is_in_promotion_zone(move.side)
     )
 
 def get_ambiguous_moves(pos: Position, move: Move) -> List[Move]:
@@ -170,10 +170,10 @@ def _is_drop_nifu(board: MailboxBoard, side: Side, end_sq: Square) -> bool:
     return False
 
 def _is_drop_illegal_ky(side: Side, end_sq: Square) -> bool:
-    return MailboxBoard.is_sq_in_last_row(end_sq, side)
+    return end_sq.is_in_last_row(side)
 
 def _is_drop_illegal_ke(side: Side, end_sq: Square) -> bool:
-    return MailboxBoard.is_sq_in_last_two_rows(end_sq, side)
+    return end_sq.is_in_last_two_rows(side)
 
 def generate_valid_moves(
         pos: Position, side: Side, ktype: KomaType
@@ -213,8 +213,8 @@ def _idxs_to_squares(idxs: Iterable[int]) -> Iterable[Square]:
 def constrain_promotions_ky(
         side: Side, start_sq: Square, end_sq: Square
     ) -> PromConstrTuple:
-    must_promote = MailboxBoard.is_sq_in_last_row(end_sq, side)
-    can_promote = MailboxBoard.is_sq_in_promotion_zone(end_sq, side)
+    must_promote = end_sq.is_in_last_row(side)
+    can_promote = end_sq.is_in_promotion_zone(side)
     if must_promote:
         return (True,)
     elif can_promote:
@@ -225,8 +225,8 @@ def constrain_promotions_ky(
 def constrain_promotions_ke(
         side: Side, start_sq: Square, end_sq: Square
     ) -> PromConstrTuple:
-    must_promote = MailboxBoard.is_sq_in_last_two_rows(end_sq, side)
-    can_promote = MailboxBoard.is_sq_in_promotion_zone(end_sq, side)
+    must_promote = end_sq.is_in_last_two_rows(side)
+    can_promote = end_sq.is_in_promotion_zone(side)
     if must_promote:
         return (True,)
     elif can_promote:
@@ -242,8 +242,8 @@ def constrain_promotable(
     promotion zone.
     """
     can_promote = (
-        MailboxBoard.is_sq_in_promotion_zone(start_sq, side)
-        or MailboxBoard.is_sq_in_promotion_zone(end_sq, side)
+        start_sq.is_in_promotion_zone(side)
+        or end_sq.is_in_promotion_zone(side)
     )
     if can_promote:
         return (True, False)
