@@ -138,8 +138,6 @@ class BoardCanvas(tk.Canvas):
         self.board_rect = -1
         self.board_tiles = [[-1] * NUM_COLS for i in range(NUM_ROWS)]
         self.board_select_tiles = [[-1] * NUM_COLS for i in range(NUM_ROWS)]
-        # Koma image IDs and their current positions
-        self.koma_on_board_images: Dict[int, Tuple[int, int]] = {}
         # Currently highlighted tile [col_num, row_num]
         # Hand pieces would be [0, KomaType]
         self.highlighted_sq = Square.NONE
@@ -417,31 +415,27 @@ class BoardCanvas(tk.Canvas):
         x_sq = self.measurements.x_sq
         y_sq = self.measurements.y_sq
 
-        south_hand = position.hand_sente
-        north_hand = position.hand_gote
-
-        if self.is_upside_down:
-            north_hand, south_hand = south_hand, north_hand
+        north_side = (
+            Side.SENTE if self._is_inverted(Side.SENTE) else Side.GOTE
+        )
+        south_side = north_side.switch()
+        north_hand = position.get_hand_of_side(north_side)
+        south_hand = position.get_hand_of_side(south_side)
 
         # Draw board
         self.draw_board()
         # Draw board pieces
-        for koma, kset in position.board.koma_sets.items():
-            ktype = KomaType.get(koma)
-            invert = self._is_inverted(koma.side())
-            for idx in kset:
-                col_num = position.board.idx_to_c(idx)
-                row_num = position.board.idx_to_r(idx)
+        for koma, sqset in position.get_koma_sets().items():
+            for sq in sqset:
+                col_num, row_num = sq.get_cr()
                 col_idx = self._col_num_to_idx(col_num)
                 row_idx = self._row_num_to_idx(row_num)
                 id_ = self.draw_koma(
                     *self.idxs_to_xy(col_idx, row_idx, centering="xy"),
-                    ktype,
-                    invert=invert,
+                    ktype=KomaType.get(koma),
+                    invert=self._is_inverted(koma.side()),
                 )
-                self.koma_on_board_images[id_] = (col_num, row_num)
                 if self.move_input_handler is not None:
-                    sq = Square.from_cr(col_num, row_num)
                     callback = functools.partial(
                         self.move_input_handler.receive_square, sq=sq
                     )
@@ -452,14 +446,14 @@ class BoardCanvas(tk.Canvas):
             w_pad + komadai_w/2,
             y_sq(0),
             north_hand,
-            sente=self.is_upside_down,
+            sente=north_side.is_sente(),
             align="top"
         )
         self.draw_komadai(
             x_sq(9) + 2*coords_text_size + komadai_w/2,
             y_sq(9),
             south_hand,
-            sente=not self.is_upside_down,
+            sente=south_side.is_sente(),
             align="bottom"
         )
         # set focus

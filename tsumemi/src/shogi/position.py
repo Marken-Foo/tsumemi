@@ -2,9 +2,14 @@ from __future__ import annotations
 
 import re
 
+from typing import TYPE_CHECKING
+
 from tsumemi.src.shogi.basetypes import Koma, KomaType, Move, Side, Square
 from tsumemi.src.shogi.basetypes import KOMA_FROM_SFEN
 from tsumemi.src.shogi.position_internals import HandRepresentation, MailboxBoard
+
+if TYPE_CHECKING:
+    from typing import Dict, Set
 
 
 class Position:
@@ -70,6 +75,9 @@ class Position:
 
     def get_koma(self, sq: Square) -> Koma:
         return self.board.get_koma(sq)
+
+    def get_koma_sets(self) -> Dict[Koma, Set[Square]]:
+        return self.board.get_koma_sets()
 
     def create_move(self,
             start_sq: Square,

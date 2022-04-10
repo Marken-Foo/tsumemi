@@ -137,6 +137,12 @@ class MailboxBoard:
     def get_koma(self, sq: Square) -> Koma:
         return self.mailbox[self.sq_to_idx(sq)]
 
+    def get_koma_sets(self) -> Dict[Koma, Set[Square]]:
+        return {
+            koma: map(MailboxBoard.idx_to_sq, idxset)
+            for koma, idxset in self.koma_sets.items()
+        }
+
 
 class HandRepresentation:
     def __init__(self) -> None:
