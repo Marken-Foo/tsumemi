@@ -36,52 +36,52 @@ class BoardArtist:
         return
 
     def draw_board_base_layer(self, canvas: BoardCanvas) -> int:
-        id: int = canvas.create_rectangle(
-            *canvas._idxs_to_xy(0, 0),
-            *canvas._idxs_to_xy(NUM_COLS, NUM_ROWS),
+        id_: int = canvas.create_rectangle(
+            *canvas.idxs_to_xy(0, 0),
+            *canvas.idxs_to_xy(NUM_COLS, NUM_ROWS),
             fill="#ffffff",
         )
-        return id
+        return id_
 
     def draw_board_tile_layer(self, canvas: BoardCanvas) -> None:
         for row_idx in range(NUM_ROWS):
             for col_idx in range(NUM_COLS):
-                id = canvas.create_image(
-                    *canvas._idxs_to_xy(col_idx, row_idx),
+                id_ = canvas.create_image(
+                    *canvas.idxs_to_xy(col_idx, row_idx),
                     image="",
                     anchor="nw",
                 )
                 # side effect
-                canvas.board_tiles[row_idx][col_idx] = id
+                canvas.board_tiles[row_idx][col_idx] = id_
         return
 
     def draw_board_focus_layer(self, canvas: BoardCanvas) -> None:
         for row_idx in range(NUM_ROWS):
             for col_idx in range(NUM_COLS):
-                id = canvas.create_image(
-                    *canvas._idxs_to_xy(col_idx, row_idx),
+                id_ = canvas.create_image(
+                    *canvas.idxs_to_xy(col_idx, row_idx),
                     image=canvas.board_img_cache.get_dict()["transparent"],
                     anchor="nw",
                 )
                 # side effect
-                canvas.board_select_tiles[row_idx][col_idx] = id
+                canvas.board_select_tiles[row_idx][col_idx] = id_
         return
 
     def draw_board_coordinates(self, canvas: BoardCanvas) -> None:
         coords_text_size = canvas.measurements.coords_text_size
         for row_idx in range(NUM_ROWS):
-            row_num = canvas._row_idx_to_num(row_idx)
+            row_num = canvas.row_idx_to_num(row_idx)
             row_label = " " + KanjiNumber(row_num).name
             canvas.create_text(
-                *canvas._idxs_to_xy(NUM_COLS, row_idx, centering="y"),
+                *canvas.idxs_to_xy(NUM_COLS, row_idx, centering="y"),
                 text=" " + row_label,
                 font=("", coords_text_size),
                 anchor="w",
             )
         for col_idx in range(9):
-            col_num = canvas._col_idx_to_num(col_idx)
+            col_num = canvas.col_idx_to_num(col_idx)
             canvas.create_text(
-                *canvas._idxs_to_xy(col_idx, 0, centering="x"),
+                *canvas.idxs_to_xy(col_idx, 0, centering="x"),
                 text=str(col_num),
                 font=("", coords_text_size),
                 anchor="s",
@@ -91,14 +91,14 @@ class BoardArtist:
     def draw_board_grid_lines(self, canvas: BoardCanvas) -> None:
         for i in range(NUM_COLS+1):
             canvas.create_line(
-                *canvas._idxs_to_xy(i, 0),
-                *canvas._idxs_to_xy(i, NUM_ROWS),
+                *canvas.idxs_to_xy(i, 0),
+                *canvas.idxs_to_xy(i, NUM_ROWS),
                 fill="black", width=1,
             )
         for j in range(NUM_ROWS+1):
             canvas.create_line(
-                *canvas._idxs_to_xy(0, j),
-                *canvas._idxs_to_xy(NUM_COLS, j),
+                *canvas.idxs_to_xy(0, j),
+                *canvas.idxs_to_xy(NUM_COLS, j),
                 fill="black", width=1,
             )
         return
@@ -197,9 +197,9 @@ class BoardCanvas(tk.Canvas):
         self.koma_img_cache = KomaImgManager(self.measurements, piece_skin)
         self.board_img_cache = BoardImgManager(self.measurements, board_skin)
         self.komadai_img_cache = KomadaiImgManager(self.measurements, komadai_skin)
-
         # Images created and stored so only their image field changes later.
         # FEN ordering. (row_idx, col_idx), zero-based
+        self.board_rect = -1
         self.board_tiles = [[-1] * NUM_COLS for i in range(NUM_ROWS)]
         self.board_select_tiles = [[-1] * NUM_COLS for i in range(NUM_ROWS)]
         # Koma image IDs and their current positions
@@ -210,10 +210,10 @@ class BoardCanvas(tk.Canvas):
         self.highlighted_ktype = KomaType.NONE
         return
 
-    def _col_idx_to_num(self, col_idx: int) -> int:
+    def col_idx_to_num(self, col_idx: int) -> int:
         return col_idx + 1 if self.is_upside_down else NUM_COLS - col_idx
 
-    def _row_idx_to_num(self, row_idx: int) -> int:
+    def row_idx_to_num(self, row_idx: int) -> int:
         return NUM_ROWS - row_idx if self.is_upside_down else row_idx + 1
 
     def _col_num_to_idx(self, col_num: int) -> int:
@@ -222,7 +222,7 @@ class BoardCanvas(tk.Canvas):
     def _row_num_to_idx(self, row_num: int) -> int:
         return NUM_ROWS - row_num if self.is_upside_down else row_num - 1
 
-    def _idxs_to_xy(self, col_idx: int, row_idx: int, centering=""
+    def idxs_to_xy(self, col_idx: int, row_idx: int, centering=""
         ) -> Tuple[int, int]:
         x_sq = self.measurements.x_sq
         y_sq = self.measurements.y_sq
@@ -260,8 +260,8 @@ class BoardCanvas(tk.Canvas):
         if self.highlighted_sq == Square.NONE:
             return
         if self.highlighted_sq == Square.HAND:
-            for id in self.find_withtag("komadai_focus"):
-                self.itemconfig(id, image="")
+            for id_ in self.find_withtag("komadai_focus"):
+                self.itemconfig(id_, image="")
             return
         col_num, row_num = self.highlighted_sq.get_cr()
         col_idx = self._col_num_to_idx(col_num)
@@ -317,7 +317,7 @@ class BoardCanvas(tk.Canvas):
         or non-promotion.
         """
         id_cover = self.create_image(
-            *self._idxs_to_xy(0, 0),
+            *self.idxs_to_xy(0, 0),
             image=self.board_img_cache.get_dict("board")["semi-transparent"],
             anchor="nw",
             tags=("promotion_prompt",)
@@ -328,14 +328,14 @@ class BoardCanvas(tk.Canvas):
         invert = self._is_inverted(self.position.turn)
 
         id_promoted = self.draw_koma(
-            *self._idxs_to_xy(col_idx, row_idx, centering="xy"),
+            *self.idxs_to_xy(col_idx, row_idx, centering="xy"),
             ktype.promote(),
             invert=invert,
             tags=("promotion_prompt",),
         )
         assert id_promoted is not None
         id_unpromoted = self.draw_koma(
-            *self._idxs_to_xy(col_idx, row_idx+1, centering="xy"),
+            *self.idxs_to_xy(col_idx, row_idx+1, centering="xy"),
             ktype,
             invert=invert,
             tags=("promotion_prompt",),
@@ -355,7 +355,7 @@ class BoardCanvas(tk.Canvas):
         )
         return
 
-    def _prompt_promotion_callback(self, event,
+    def _prompt_promotion_callback(self, event: tk.Event,
             sq: Square, ktype: KomaType,
             is_promotion: Optional[bool]
         ) -> None:
@@ -375,18 +375,18 @@ class BoardCanvas(tk.Canvas):
         return
 
     def _draw_canvas_base_layer(self) -> int:
-        id: int = self.create_rectangle(
+        id_: int = self.create_rectangle(
             0, 0, self.width, self.height, fill="#ffffff"
         )
-        return id
+        return id_
 
     def _add_board_onclick_callbacks(self) -> None:
         if self.move_input_handler is None:
             return
         for row_idx in range(NUM_ROWS):
             for col_idx in range(NUM_COLS):
-                col_num = self._col_idx_to_num(col_idx)
-                row_num = self._row_idx_to_num(row_idx)
+                col_num = self.col_idx_to_num(col_idx)
+                row_num = self.row_idx_to_num(row_idx)
                 sq = Square.from_cr(col_num, row_num)
                 callback = functools.partial(
                     self.move_input_handler.receive_square, sq=sq
@@ -451,8 +451,8 @@ class BoardCanvas(tk.Canvas):
                 ids = self.find_withtag(
                     f"komadai_koma&&{ktype.to_csa()}&&{side_str}"
                 )
-                for id in ids:
-                    self.tag_bind(id, "<Button-1>", callback)
+                for id_ in ids:
+                    self.tag_bind(id_, "<Button-1>", callback)
         return
 
     def draw_komadai(self, x, y, hand, sente=True, align="top"):
@@ -498,18 +498,18 @@ class BoardCanvas(tk.Canvas):
                 row_num = position.board.idx_to_r(idx)
                 col_idx = self._col_num_to_idx(col_num)
                 row_idx = self._row_num_to_idx(row_num)
-                id = self.draw_koma(
-                    *self._idxs_to_xy(col_idx, row_idx, centering="xy"),
+                id_ = self.draw_koma(
+                    *self.idxs_to_xy(col_idx, row_idx, centering="xy"),
                     ktype,
                     invert=invert,
                 )
-                self.koma_on_board_images[id] = (col_num, row_num)
+                self.koma_on_board_images[id_] = (col_num, row_num)
                 if self.move_input_handler is not None:
                     sq = Square.from_cr(col_num, row_num)
                     callback = functools.partial(
                         self.move_input_handler.receive_square, sq=sq
                     )
-                    self.tag_bind(id, "<Button-1>", callback)
+                    self.tag_bind(id_, "<Button-1>", callback)
 
         # Draw komadai
         self.draw_komadai(
