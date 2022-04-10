@@ -107,6 +107,24 @@ class BoardArtist:
             )
         return
 
+    def unhighlight_square(self,
+            canvas: BoardCanvas, row_idx: int, col_idx: int
+        ) -> None:
+        img_idx = self.board_select_tiles[row_idx][col_idx]
+        canvas.itemconfig(
+            img_idx, image=canvas.board_img_cache.get_dict()["transparent"]
+        )
+        return
+
+    def highlight_square(self,
+            canvas: BoardCanvas, row_idx: int, col_idx: int
+        ) -> None:
+        img_idx = self.board_select_tiles[row_idx][col_idx]
+        canvas.itemconfig(
+            img_idx, image=canvas.board_img_cache.get_dict()["highlight"]
+        )
+        return
+
 
 class BoardCanvas(tk.Canvas):
     """The canvas where the shogi position is drawn. Responsible for
@@ -204,11 +222,7 @@ class BoardCanvas(tk.Canvas):
                 self.itemconfig(id_, image="")
             return
         col_idx, row_idx = self._sq_to_idxs(self.highlighted_sq)
-        img_idx = self.board_artist.board_select_tiles[row_idx][col_idx]
-        self.itemconfig(
-            img_idx,
-            image=self.board_img_cache.get_dict()["transparent"]
-        )
+        self.board_artist.unhighlight_square(self, row_idx, col_idx)
         return
 
     def _highlight_square(self, sq: Square) -> None:
@@ -218,11 +232,7 @@ class BoardCanvas(tk.Canvas):
             self.highlighted_sq = sq
             return
         col_idx, row_idx = self._sq_to_idxs(sq)
-        img_idx = self.board_artist.board_select_tiles[row_idx][col_idx]
-        self.itemconfig(
-            img_idx,
-            image=self.board_img_cache.get_dict()["highlight"]
-        )
+        self.board_artist.highlight_square(self, row_idx, col_idx)
         self.highlighted_sq = sq
         return
 
