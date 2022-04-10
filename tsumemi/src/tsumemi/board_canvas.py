@@ -156,6 +156,12 @@ class BoardCanvas(tk.Canvas):
     def _row_num_to_idx(self, row_num: int) -> int:
         return NUM_ROWS - row_num if self.is_upside_down else row_num - 1
 
+    def _sq_to_idxs(self, sq: Square) -> Tuple[int, int]:
+        col_num, row_num = sq.get_cr()
+        col_idx = self._col_num_to_idx(col_num)
+        row_idx = self._row_num_to_idx(row_num)
+        return col_idx, row_idx
+
     def idxs_to_xy(self, col_idx: int, row_idx: int, centering=""
         ) -> Tuple[int, int]:
         x_sq = self.measurements.x_sq
@@ -197,9 +203,7 @@ class BoardCanvas(tk.Canvas):
             for id_ in self.find_withtag("komadai_focus"):
                 self.itemconfig(id_, image="")
             return
-        col_num, row_num = self.highlighted_sq.get_cr()
-        col_idx = self._col_num_to_idx(col_num)
-        row_idx = self._row_num_to_idx(row_num)
+        col_idx, row_idx = self._sq_to_idxs(self.highlighted_sq)
         img_idx = self.board_select_tiles[row_idx][col_idx]
         self.itemconfig(
             img_idx,
@@ -213,9 +217,7 @@ class BoardCanvas(tk.Canvas):
         if sq == Square.NONE:
             self.highlighted_sq = sq
             return
-        col_num, row_num = sq.get_cr()
-        col_idx = self._col_num_to_idx(col_num)
-        row_idx = self._row_num_to_idx(row_num)
+        col_idx, row_idx = self._sq_to_idxs(sq)
         img_idx = self.board_select_tiles[row_idx][col_idx]
         self.itemconfig(
             img_idx,
@@ -256,9 +258,7 @@ class BoardCanvas(tk.Canvas):
             anchor="nw",
             tags=("promotion_prompt",)
         )
-        col_num, row_num = sq.get_cr()
-        col_idx = self._col_num_to_idx(col_num)
-        row_idx = self._row_num_to_idx(row_num)
+        col_idx, row_idx = self._sq_to_idxs(sq)
         invert = self._is_inverted(self.position.turn)
 
         id_promoted = self.draw_koma(
@@ -427,9 +427,7 @@ class BoardCanvas(tk.Canvas):
         # Draw board pieces
         for koma, sqset in position.get_koma_sets().items():
             for sq in sqset:
-                col_num, row_num = sq.get_cr()
-                col_idx = self._col_num_to_idx(col_num)
-                row_idx = self._row_num_to_idx(row_num)
+                col_idx, row_idx = self._sq_to_idxs(sq)
                 id_ = self.draw_koma(
                     *self.idxs_to_xy(col_idx, row_idx, centering="xy"),
                     ktype=KomaType.get(koma),
