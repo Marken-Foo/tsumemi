@@ -3,19 +3,19 @@ from __future__ import annotations
 import functools
 import tkinter as tk
 
-from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 from tsumemi.src.shogi.basetypes import KanjiNumber, KomaType, Side, Square
-from tsumemi.src.shogi.basetypes import HAND_TYPES, KANJI_FROM_KTYPE
+from tsumemi.src.shogi.basetypes import HAND_TYPES
 from tsumemi.src.tsumemi.img_handlers import BoardImgManager, SkinSettings, BoardMeasurements, BoardSkin, KomaImgManager, KomadaiImgManager, PieceSkin
+from tsumemi.src.tsumemi.koma_artist import ImageKomaArtist, TextKomaArtist
 from tsumemi.src.tsumemi.komadai_artist import KomadaiArtist
 
 if TYPE_CHECKING:
     from typing import Dict, Optional, Tuple
     from tsumemi.src.shogi.game import Game
     from tsumemi.src.shogi.position import Position
-    from tsumemi.src.tsumemi.img_handlers import ImgDict
+    from tsumemi.src.tsumemi.koma_artist import AbstractKomaArtist
     from tsumemi.src.tsumemi.move_input_handler import MoveInputHandler
 
 
@@ -102,70 +102,6 @@ class BoardArtist:
                 fill="black", width=1,
             )
         return
-
-
-class AbstractKomaArtist(ABC):
-    @abstractmethod
-    def draw_koma(self,
-            canvas: BoardCanvas,
-            x: float,
-            y: float,
-            ktype: KomaType,
-            anchor: str = "center",
-            tags: Tuple[str, ...] = ("",),
-        ) -> int:
-        raise NotImplementedError
-
-
-class ImageKomaArtist(AbstractKomaArtist):
-    def __init__(self, koma_dict: ImgDict) -> None:
-        self.koma_dict: ImgDict = koma_dict
-        return
-
-    def draw_koma(self,
-            canvas: BoardCanvas,
-            x: float,
-            y: float,
-            ktype: KomaType,
-            anchor: str = "center",
-            tags: Tuple[str, ...] = ("",),
-        ) -> int:
-        if ktype == KomaType.NONE:
-            return None
-        img = self.koma_dict[ktype]
-        id_: int
-        id_ = canvas.create_image(x, y, image=img, anchor=anchor, tags=tags)
-        return id_
-
-
-class TextKomaArtist(AbstractKomaArtist):
-    def __init__(self, canvas: BoardCanvas, invert: bool, komadai: bool
-        ) -> None:
-        self._text_angle = 180 if invert else 0
-        self._text_size = (
-            canvas.measurements.komadai_text_size if komadai
-            else canvas.measurements.sq_text_size
-        )
-        return
-
-    def draw_koma(self,
-            canvas: BoardCanvas,
-            x: float,
-            y: float,
-            ktype: KomaType,
-            anchor: str = "center",
-            tags: Tuple[str, ...] = ("",),
-        ) -> int:
-        if ktype == KomaType.NONE:
-            return None
-        id_: int
-        id_ = canvas.create_text(
-            x, y, text=str(KANJI_FROM_KTYPE[ktype]),
-            font=("", self._text_size),
-            angle=self._text_angle,
-            anchor=anchor, tags=tags
-        )
-        return id_
 
 
 class BoardCanvas(tk.Canvas):
