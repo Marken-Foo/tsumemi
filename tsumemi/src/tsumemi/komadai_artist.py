@@ -34,13 +34,13 @@ class KomadaiArtist:
             else self.piece_size / 8
         )
         self.mochigoma_heading_size = 4 * char_height # "▲\n持\n駒\n"
-        
+
         self.hand_counts = {}
         for ktype in HAND_TYPES:
             count = hand.get_komatype_count(ktype)
             if count > 0:
                 self.hand_counts[ktype] = count
-        
+
         self.width: int = 2 * self.piece_size
         self.height: int = self.mochigoma_heading_size + (
             2 * char_height if not self.hand_counts
@@ -49,7 +49,7 @@ class KomadaiArtist:
         self.x_anchor: int = x_anchor
         self.y_anchor: int = y_anchor - self.height if align == "bottom" else y_anchor
         return
-    
+
     def draw_all_komadai_koma(self, canvas: BoardCanvas) -> None:
         if not self.hand_counts:
             self.draw_komadai_text_nashi(canvas)
@@ -62,36 +62,36 @@ class KomadaiArtist:
             )
             self.draw_komadai_koma_group(canvas, y_offset, ktype, count)
         return
-    
+
     def draw_komadai_base(self, canvas: BoardCanvas) -> int:
-        id: int = canvas.create_rectangle(
+        id_: int = canvas.create_rectangle(
             self.x_anchor-(self.width/2), self.y_anchor,
             self.x_anchor+(self.width/2), self.y_anchor+self.height,
             fill="#ffffff",
             outline="",
             tags=("komadai-solid",)
         )
-        return id
-    
+        return id_
+
     def draw_komadai_header_text(self, canvas: BoardCanvas) -> int:
         header_text = "▲\n持\n駒" if self.is_sente else "△\n持\n駒"
-        id: int = canvas.create_text(
+        id_: int = canvas.create_text(
             self.x_anchor, self.y_anchor,
             text=header_text,
             font=("", self.text_size),
             anchor="n"
         )
-        return id
-    
+        return id_
+
     def draw_komadai_text_nashi(self, canvas: BoardCanvas) -> int:
-        id: int = canvas.create_text(
+        id_: int = canvas.create_text(
             self.x_anchor, self.y_anchor+self.mochigoma_heading_size,
             text="な\nし",
             font=("", self.text_size),
             anchor="n"
         )
-        return id
-    
+        return id_
+
     def draw_komadai_koma_group(self,
             canvas: BoardCanvas,
             y_offset: float,
@@ -100,16 +100,16 @@ class KomadaiArtist:
         ) -> int:
         # returns the id of the koma drawing
         self._draw_komadai_focus_tile(canvas, y_offset, ktype)
-        id: int = self._draw_komadai_koma(canvas, y_offset, ktype)
+        id_: int = self._draw_komadai_koma(canvas, y_offset, ktype)
         self._draw_komadai_koma_count(canvas, y_offset, count)
-        return id
-    
+        return id_
+
     def _draw_komadai_focus_tile(self,
             canvas: BoardCanvas,
             y_offset: float,
             ktype: KomaType,
         ) -> int:
-        id: int = canvas.create_image(
+        id_: int = canvas.create_image(
             self.x_anchor-(self.width/5),
             self.y_anchor+y_offset,
             image="",
@@ -120,15 +120,15 @@ class KomadaiArtist:
                 "sente" if self.is_sente else "gote"
             ),
         )
-        return id
-    
+        return id_
+
     def _draw_komadai_koma(self,
             canvas: BoardCanvas,
             y_offset: float,
             ktype: KomaType,
         ) -> int:
         artist = canvas.make_koma_artist(invert=False, komadai=True)
-        id: int = artist.draw_koma(
+        id_: int = artist.draw_koma(
             canvas,
             self.x_anchor-(self.width/5),
             self.y_anchor+y_offset,
@@ -140,18 +140,18 @@ class KomadaiArtist:
                 "sente" if self.is_sente else "gote"
             ),
         )
-        return id
-    
+        return id_
+
     def _draw_komadai_koma_count(self,
             canvas: BoardCanvas,
             y_offset: float,
             count: int,
         ) -> int:
-        id: int = canvas.create_text(
+        id_: int = canvas.create_text(
             self.x_anchor+0.5*self.piece_size,
             self.y_anchor+y_offset,
             text=str(count),
             font=("", self.text_size),
             anchor="center"
         )
-        return id
+        return id_
