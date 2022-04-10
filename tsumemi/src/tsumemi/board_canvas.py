@@ -4,6 +4,7 @@ import functools
 import itertools
 import tkinter as tk
 
+from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 from tsumemi.src.shogi.basetypes import KanjiNumber, KomaType, Side, Square
@@ -14,6 +15,7 @@ if TYPE_CHECKING:
     from typing import Dict, Optional, Tuple
     from tsumemi.src.shogi.game import Game
     from tsumemi.src.shogi.position import Position
+    from tsumemi.src.tsumemi.img_handlers import ImgDict
     from tsumemi.src.tsumemi.move_input_handler import MoveInputHandler
 
 
@@ -102,8 +104,22 @@ class BoardArtist:
         return
 
 
-class KomaArtist:
-    def __init__(self) -> None:
+class AbstractKomaArtist(ABC):
+    @abstractmethod
+    def draw_koma(self,
+            canvas: BoardCanvas,
+            x: int,
+            y: int,
+            ktype: KomaType,
+            anchor: str = "center",
+            tags: Tuple[str] = ("",),
+        ) -> Optional[int]:
+        raise NotImplementedError
+
+
+class ImageKomaArtist(AbstractKomaArtist):
+    def __init__(self, koma_dict: ImgDict) -> None:
+        self.koma_dict: ImgDict = koma_dict
         return
 
     def draw_koma(self,
@@ -111,44 +127,42 @@ class KomaArtist:
             x: int,
             y: int,
             ktype: KomaType,
-            komadai: bool = False,
-            invert: bool = False,
             anchor: str = "center",
             tags: Tuple[str] = ("",),
         ) -> Optional[int]:
         if ktype == KomaType.NONE:
             return None
-        piece_dict = canvas.koma_img_cache.get_dict(
-            invert=invert, komadai=komadai
-        )
-        img = piece_dict[ktype]
+        img = self.koma_dict[ktype]
         id_: int
         id_ = canvas.create_image(x, y, image=img, anchor=anchor, tags=tags)
         return id_
 
 
-class TextKomaArtist(KomaArtist):
+class TextKomaArtist(AbstractKomaArtist):
+    def __init__(self, canvas: BoardCanvas, invert: bool, komadai: bool
+        ) -> None:
+        self._text_angle = 180 if invert else 0
+        self._text_size = (
+            canvas.measurements.komadai_text_size if komadai
+            else canvas.measurements.sq_text_size
+        )
+        return
+
     def draw_koma(self,
             canvas: BoardCanvas,
             x: int,
             y: int,
             ktype: KomaType,
-            komadai: bool = False,
-            invert: bool = False,
             anchor: str = "center",
             tags: Tuple[str] = ("",),
         ) -> Optional[int]:
         if ktype == KomaType.NONE:
             return None
-        text_size = (
-            canvas.measurements.komadai_text_size if komadai
-            else canvas.measurements.sq_text_size
-        )
         id_: int
         id_ = canvas.create_text(
             x, y, text=str(KANJI_FROM_KTYPE[ktype]),
-            font=("", text_size),
-            angle=180 if invert else 0,
+            font=("", self._text_size),
+            angle=self._text_angle,
             anchor=anchor, tags=tags
         )
         return id_
@@ -164,17 +178,17 @@ class KomadaiArtist:
             align="top",
         ) -> None:
         self.is_sente = is_sente
-        self.is_text = not canvas.koma_img_cache.has_images()
+        is_text = not canvas.koma_img_cache.has_images()
         self.text_size = canvas.measurements.komadai_text_size
         # Actual size of each character in px is about 1.5*text_size
         char_height = 1.5 * self.text_size
         self.piece_size = canvas.measurements.komadai_piece_size
         self.symbol_size = (
-            self.text_size * 3/2 if self.is_text
+            self.text_size * 3/2 if is_text
             else self.piece_size
         )
         self.pad = (
-            self.text_size / 8 if self.is_text
+            self.text_size / 8 if is_text
             else self.piece_size / 8
         )
         self.mochigoma_heading_size = 4 * char_height # "▲\n持\n駒\n"
@@ -276,7 +290,6 @@ class KomadaiArtist:
             self.y_anchor+y_offset,
             ktype=ktype,
             komadai=True,
-            is_text=self.is_text,
             anchor="center",
             tags=(
                 "komadai_koma",
@@ -330,6 +343,7 @@ class BoardCanvas(tk.Canvas):
         self.koma_img_cache = KomaImgManager(self.measurements, piece_skin)
         self.board_img_cache = BoardImgManager(self.measurements, board_skin)
         self.komadai_img_cache = KomadaiImgManager(self.measurements, komadai_skin)
+        
         # Images created and stored so only their image field changes later.
         # FEN ordering. (row_idx, col_idx), zero-based
         self.board_tiles = [[-1] * NUM_COLS for i in range(NUM_ROWS)]
@@ -362,9 +376,22 @@ class BoardCanvas(tk.Canvas):
         y = y_sq(row_idx+0.5) if "y" in centering.lower() else y_sq(row_idx)
         return x, y
     
+    def make_koma_artist(self, invert: bool, komadai: bool
+        ) -> AbstractKomaArtist:
+        if self.is_text():
+            return TextKomaArtist(canvas=self, invert=invert, komadai=komadai)
+        else:
+            koma_dict = self.koma_img_cache.get_dict(
+                invert=invert, komadai=komadai
+            )
+            return ImageKomaArtist(koma_dict)
+
     def _is_inverted(self, side: Side) -> bool:
         return not (side.is_sente() ^ self.is_upside_down)
     
+    def is_text(self) -> bool:
+        return not self.koma_img_cache.has_images()
+
     def set_position(self, pos: Position) -> None:
         """Set the internal position (and of any associated input
         handler) to the given Position object.
@@ -444,20 +471,19 @@ class BoardCanvas(tk.Canvas):
         col_num, row_num = sq.get_cr()
         col_idx = self._col_num_to_idx(col_num)
         row_idx = self._row_num_to_idx(row_num)
-        is_text = not self.koma_img_cache.has_images()
         invert = self._is_inverted(self.position.turn)
         
         id_promoted = self.draw_koma(
             *self._idxs_to_xy(col_idx, row_idx, centering="xy"),
             ktype.promote(),
-            is_text=is_text, invert=invert,
+            invert=invert,
             tags=("promotion_prompt",),
         )
         assert id_promoted is not None
         id_unpromoted = self.draw_koma(
             *self._idxs_to_xy(col_idx, row_idx+1, centering="xy"),
             ktype,
-            is_text=is_text, invert=invert,
+            invert=invert,
             tags=("promotion_prompt",),
         )
         assert id_unpromoted is not None
@@ -548,16 +574,15 @@ class BoardCanvas(tk.Canvas):
     def draw_koma(self,
             x: int, y: int, ktype: KomaType,
             komadai: bool = False, invert: bool = False,
-            is_text: bool = True, anchor: str = "center",
+            anchor: str = "center",
             tags: Tuple[str] = ("",),
         ) -> Optional[int]:
-        """Draw koma at specified location. Text is drawn if *is_text*
-        is True; *anchor* determines how the image or text is
-        positioned with respect to the point (x,y).
+        """Draw koma at specified location. *anchor* determines how the image 
+        or text is positioned with respect to the point (x,y).
         """
-        artist = TextKomaArtist() if is_text else KomaArtist()
+        artist = self.make_koma_artist(invert, komadai)
         return artist.draw_koma(
-            self, x, y, ktype, komadai, invert, anchor, tags
+            self, x, y, ktype, anchor, tags
         )
     
     def _add_all_komadai_koma_onclick_callbacks(self) -> None:
@@ -613,7 +638,6 @@ class BoardCanvas(tk.Canvas):
         # Draw board
         self.draw_board()
         # Draw board pieces
-        is_text = not self.koma_img_cache.has_images()
         for koma, kset in position.board.koma_sets.items():
             ktype = KomaType.get(koma)
             invert = self._is_inverted(koma.side())
@@ -625,7 +649,7 @@ class BoardCanvas(tk.Canvas):
                 id = self.draw_koma(
                     *self._idxs_to_xy(col_idx, row_idx, centering="xy"),
                     ktype,
-                    is_text=is_text, invert=invert
+                    invert=invert,
                 )
                 self.koma_on_board_images[id] = (col_num, row_num)
                 if self.move_input_handler is not None:
