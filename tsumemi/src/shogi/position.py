@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import re
 
-from typing import TYPE_CHECKING
-
 from tsumemi.src.shogi.basetypes import Koma, KomaType, Move, Side, Square
 from tsumemi.src.shogi.basetypes import KOMA_FROM_SFEN
 from tsumemi.src.shogi.position_internals import HandRepresentation, MailboxBoard
@@ -182,15 +180,15 @@ class Position:
             raise ValueError("SFEN contains unknown side to move")
         try:
             self.movenum = int(sfen_move_num)
-        except ValueError:
+        except ValueError as exc:
             raise ValueError(
                 f"SFEN contains unknown movenumber '{sfen_move_num}'"
-            )
+            ) from exc
         try:
             self._parse_sfen_board(sfen_board)
             self._parse_sfen_hands(sfen_hands)
-        except ValueError as e:
-            raise ValueError(f"Invalid SFEN: '{sfen}'") from e
+        except ValueError as exc:
+            raise ValueError(f"Invalid SFEN: '{sfen}'") from exc
         return
     
     def _parse_sfen_hands(self, sfen_hands: str) -> None:
@@ -198,8 +196,10 @@ class Position:
         for ch_count, ch in it_hands:
             try:
                 koma = KOMA_FROM_SFEN[ch]
-            except KeyError:
-                raise ValueError(f"SFEN contains unknown character '{ch}'")
+            except KeyError as exc:
+                raise ValueError(
+                    f"SFEN contains unknown character '{ch}'"
+                ) from exc
             ktype = KomaType.get(koma)
             target_hand = self.hand_sente if ch.isupper() else self.hand_gote
             count = int(ch_count) if ch_count else 1
@@ -239,11 +239,10 @@ class Position:
                 )
                 promotion_flag = False
                 col_num -= 1
-        else: # for-else loop over row
-            if col_num != 0:
-                raise ValueError("SFEN row has wrong length")
-            if promotion_flag:
-                raise ValueError("SFEN row cannot end with +")
+        if col_num != 0:
+            raise ValueError("SFEN row has wrong length")
+        if promotion_flag:
+            raise ValueError("SFEN row cannot end with +")
         return
     
     def _set_koma_from_sfen(self,
@@ -254,8 +253,10 @@ class Position:
         ) -> None:
         try:
             koma = KOMA_FROM_SFEN[ch]
-        except KeyError:
-            raise ValueError(f"SFEN contains unknown character '{ch}'")
+        except KeyError as exc:
+            raise ValueError(
+                f"SFEN contains unknown character '{ch}'"
+            ) from exc
         sq = Square.from_cr(col_num=col_num, row_num=row_num)
         if promotion_flag:
             koma = koma.promote()
