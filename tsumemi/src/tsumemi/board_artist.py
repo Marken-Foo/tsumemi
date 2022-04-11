@@ -38,7 +38,16 @@ class BoardImageLayer(BoardLayer):
                 self.tiles[row_idx][col_idx] = id_
         return
 
-    def update_all_images(self, canvas: BoardCanvas, img: ImageTk.PhotoImage
+    def update_tile(self,
+            canvas: BoardCanvas,
+            img: ImageTk.PhotoImage,
+            row_idx: int,
+            col_idx: int
+        ) -> None:
+        canvas.itemconfig(self.tiles[row_idx][col_idx], image=img)
+        return
+
+    def update_all_tiles(self, canvas: BoardCanvas, img: ImageTk.PhotoImage
         ) -> None:
         for row in self.tiles:
             for tile in row:
@@ -67,13 +76,13 @@ class BoardArtist:
         # FEN ordering. (row_idx, col_idx), zero-based
         self.board_rect = -1
         self.board_tile_layer = BoardImageLayer()
-        self.board_select_tiles = [[-1] * NUM_COLS for i in range(NUM_ROWS)]
+        self.highlight_layer = BoardImageLayer()
         return
 
     def update_board_tile_images(self,
             canvas: BoardCanvas, img: ImageTk.PhotoImage
         ) -> None:
-        self.board_tile_layer.update_all_images(canvas, img)
+        self.board_tile_layer.update_all_tiles(canvas, img)
         return
 
     def draw_board_base_layer(self, canvas: BoardCanvas) -> int:
@@ -90,14 +99,9 @@ class BoardArtist:
         return
 
     def draw_board_focus_layer(self, canvas: BoardCanvas) -> None:
-        for row_idx in range(NUM_ROWS):
-            for col_idx in range(NUM_COLS):
-                id_ = canvas.create_image(
-                    *canvas.idxs_to_xy(col_idx, row_idx),
-                    image=canvas.board_img_cache.get_dict()["transparent"],
-                    anchor="nw",
-                )
-                self.board_select_tiles[row_idx][col_idx] = id_
+        self.highlight_layer.draw_layer(canvas, tag="highlight_tile")
+        transparent_img = canvas.board_img_cache.get_dict()["transparent"]
+        self.highlight_layer.update_all_tiles(canvas, transparent_img)
         return
 
     def draw_board_coordinates(self, canvas: BoardCanvas) -> None:
@@ -139,17 +143,13 @@ class BoardArtist:
     def unhighlight_square(self,
             canvas: BoardCanvas, row_idx: int, col_idx: int
         ) -> None:
-        img_idx = self.board_select_tiles[row_idx][col_idx]
-        canvas.itemconfig(
-            img_idx, image=canvas.board_img_cache.get_dict()["transparent"]
-        )
+        img = canvas.board_img_cache.get_dict()["transparent"]
+        self.highlight_layer.update_tile(canvas, img, row_idx, col_idx)
         return
 
     def highlight_square(self,
             canvas: BoardCanvas, row_idx: int, col_idx: int
         ) -> None:
-        img_idx = self.board_select_tiles[row_idx][col_idx]
-        canvas.itemconfig(
-            img_idx, image=canvas.board_img_cache.get_dict()["highlight"]
-        )
+        img = canvas.board_img_cache.get_dict()["highlight"]
+        self.highlight_layer.update_tile(canvas, img, row_idx, col_idx)
         return

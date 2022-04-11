@@ -239,7 +239,7 @@ class BoardCanvas(tk.Canvas):
                     self.move_input_handler.receive_square, sq=sq
                 )
                 self.tag_bind(
-                    self.board_artist.board_select_tiles[row_idx][col_idx],
+                    self.board_artist.highlight_layer.tiles[row_idx][col_idx],
                     "<Button-1>",
                     callback,
                 )
