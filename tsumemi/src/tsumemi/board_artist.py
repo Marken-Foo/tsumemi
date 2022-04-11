@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 from tsumemi.src.shogi.basetypes import KanjiNumber
 
 if TYPE_CHECKING:
+    from PIL import ImageTk
     from tsumemi.src.tsumemi.board_canvas import BoardCanvas
 
 
@@ -13,13 +15,65 @@ NUM_COLS = 9
 NUM_ROWS = 9
 
 
+class BoardLayer(ABC):
+    def __init__(self) -> None:
+        self.tiles = [[-1] * NUM_COLS for i in range(NUM_ROWS)]
+        return
+
+    @abstractmethod
+    def draw_layer(self, canvas: BoardCanvas, tag: str = "") -> None:
+        raise NotImplementedError
+
+
+class BoardImageLayer(BoardLayer):
+    def draw_layer(self, canvas: BoardCanvas, tag: str = "") -> None:
+        for row_idx in range(NUM_ROWS):
+            for col_idx in range(NUM_COLS):
+                id_ = canvas.create_image(
+                    *canvas.idxs_to_xy(col_idx, row_idx),
+                    image="",
+                    anchor="nw",
+                    tags=tag,
+                )
+                self.tiles[row_idx][col_idx] = id_
+        return
+
+    def update_all_images(self, canvas: BoardCanvas, img: ImageTk.PhotoImage
+        ) -> None:
+        for row in self.tiles:
+            for tile in row:
+                canvas.itemconfig(tile, image=img)
+        return
+
+
+class BoardKomaTextLayer(BoardLayer):
+    def draw_layer(self, canvas: BoardCanvas, tag: str = "") -> None:
+        for row_idx in range(NUM_ROWS):
+            for col_idx in range(NUM_COLS):
+                id_ = canvas.create_text(
+                    *canvas.idxs_to_xy(col_idx, row_idx, centering="xy"),
+                    text="",
+                    font=("", canvas.measurements.sq_text_size),
+                    anchor="center",
+                    tags=tag,
+                )
+                self.tiles[row_idx][col_idx] = id_
+        return
+
+
 class BoardArtist:
     def __init__(self) -> None:
         # Stored canvas item ids for later alteration.
         # FEN ordering. (row_idx, col_idx), zero-based
         self.board_rect = -1
-        self.board_tiles = [[-1] * NUM_COLS for i in range(NUM_ROWS)]
+        self.board_tile_layer = BoardImageLayer()
         self.board_select_tiles = [[-1] * NUM_COLS for i in range(NUM_ROWS)]
+        return
+
+    def update_board_tile_images(self,
+            canvas: BoardCanvas, img: ImageTk.PhotoImage
+        ) -> None:
+        self.board_tile_layer.update_all_images(canvas, img)
         return
 
     def draw_board_base_layer(self, canvas: BoardCanvas) -> int:
@@ -32,14 +86,7 @@ class BoardArtist:
         return id_
 
     def draw_board_tile_layer(self, canvas: BoardCanvas) -> None:
-        for row_idx in range(NUM_ROWS):
-            for col_idx in range(NUM_COLS):
-                id_ = canvas.create_image(
-                    *canvas.idxs_to_xy(col_idx, row_idx),
-                    image="",
-                    anchor="nw",
-                )
-                self.board_tiles[row_idx][col_idx] = id_
+        self.board_tile_layer.draw_layer(canvas, tag="board_tile")
         return
 
     def draw_board_focus_layer(self, canvas: BoardCanvas) -> None:

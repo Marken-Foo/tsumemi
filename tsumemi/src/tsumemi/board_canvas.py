@@ -249,9 +249,7 @@ class BoardCanvas(tk.Canvas):
         if not self.board_img_cache.has_images():
             return
         board_img = self.board_img_cache.get_dict()["board"]
-        for row in self.board_artist.board_tiles:
-            for tile in row:
-                self.itemconfig(tile, image=board_img)
+        self.board_artist.update_board_tile_images(self, board_img)
         return
 
     def draw_board(self):
