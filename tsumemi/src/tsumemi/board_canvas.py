@@ -261,6 +261,8 @@ class BoardCanvas(tk.Canvas):
         artist.draw_board_base_layer(self)
         artist.draw_board_tile_layer(self)
         artist.draw_board_focus_layer(self)
+        artist.draw_koma_text_layer(self)
+        artist.draw_koma_image_layer(self)
         artist.draw_board_grid_lines(self)
         artist.draw_board_coordinates(self)
         artist.draw_click_layer(self)
@@ -340,11 +342,16 @@ class BoardCanvas(tk.Canvas):
         for koma, sqset in position.get_koma_sets().items():
             for sq in sqset:
                 col_idx, row_idx = self._sq_to_idxs(sq)
-                self.draw_koma(
-                    *self.idxs_to_xy(col_idx, row_idx, centering="xy"),
-                    ktype=KomaType.get(koma),
-                    invert=self._is_inverted(koma.side()),
-                )
+                ktype = KomaType.get(koma)
+                invert=self._is_inverted(koma.side())
+                if self.is_text():
+                    self.board_artist.draw_text_koma(
+                        self, ktype, invert, row_idx, col_idx
+                    )
+                else:
+                    self.board_artist.draw_koma(
+                        self, ktype, invert, row_idx, col_idx
+                    )
 
         # Draw komadai
         self.draw_komadai(

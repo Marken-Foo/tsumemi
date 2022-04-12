@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
-from tsumemi.src.shogi.basetypes import KanjiNumber
+from tsumemi.src.shogi.basetypes import KanjiNumber, KomaType, KANJI_FROM_KTYPE
 
 if TYPE_CHECKING:
     from PIL import ImageTk
@@ -16,7 +16,8 @@ NUM_ROWS = 9
 
 
 class BoardLayer(ABC):
-    def __init__(self) -> None:
+    def __init__(self, is_centered: bool = False) -> None:
+        self.is_centered = is_centered
         self.tiles = [[-1] * NUM_COLS for i in range(NUM_ROWS)]
         return
 
@@ -30,9 +31,13 @@ class BoardImageLayer(BoardLayer):
         for row_idx in range(NUM_ROWS):
             for col_idx in range(NUM_COLS):
                 id_ = canvas.create_image(
-                    *canvas.idxs_to_xy(col_idx, row_idx),
+                    *canvas.idxs_to_xy(
+                        col_idx,
+                        row_idx,
+                        centering="xy" if self.is_centered else "",
+                    ),
                     image="",
-                    anchor="nw",
+                    anchor="center" if self.is_centered else "nw",
                     tags=tag,
                 )
                 self.tiles[row_idx][col_idx] = id_
@@ -60,10 +65,14 @@ class BoardKomaTextLayer(BoardLayer):
         for row_idx in range(NUM_ROWS):
             for col_idx in range(NUM_COLS):
                 id_ = canvas.create_text(
-                    *canvas.idxs_to_xy(col_idx, row_idx, centering="xy"),
+                    *canvas.idxs_to_xy(
+                        col_idx,
+                        row_idx,
+                        centering="xy" if self.is_centered else "",
+                    ),
                     text="",
                     font=("", canvas.measurements.sq_text_size),
-                    anchor="center",
+                    anchor="center" if self.is_centered else "nw",
                     tags=tag,
                 )
                 self.tiles[row_idx][col_idx] = id_
@@ -77,6 +86,8 @@ class BoardArtist:
         self.board_rect = -1
         self.board_tile_layer = BoardImageLayer()
         self.highlight_layer = BoardImageLayer()
+        self.koma_image_layer = BoardImageLayer(is_centered=True)
+        self.koma_text_layer = BoardKomaTextLayer(is_centered=True)
         self.click_layer = BoardImageLayer()
         return
 
@@ -103,6 +114,47 @@ class BoardArtist:
         self.highlight_layer.draw_layer(canvas, tag="highlight_tile")
         transparent_img = canvas.board_img_cache.get_dict()["transparent"]
         self.highlight_layer.update_all_tiles(canvas, transparent_img)
+        return
+
+    def draw_koma_image_layer(self, canvas: BoardCanvas) -> None:
+        self.koma_image_layer.draw_layer(canvas)
+        return
+
+    def draw_koma_text_layer(self, canvas: BoardCanvas) -> None:
+        self.koma_text_layer.draw_layer(canvas)
+        return
+
+    def draw_koma(self,
+            canvas: BoardCanvas,
+            ktype: KomaType,
+            invert: bool,
+            row_idx: int,
+            col_idx: int,
+        ) -> None:
+        if ktype == KomaType.NONE:
+            return
+        koma_dict = canvas.koma_img_cache.get_dict(invert=invert, komadai=False)
+        img = koma_dict[ktype]
+        canvas.itemconfig(
+            self.koma_image_layer.tiles[row_idx][col_idx],
+            image=img,
+        )
+        return
+    
+    def draw_text_koma(self,
+            canvas: BoardCanvas,
+            ktype: KomaType,
+            invert: bool,
+            row_idx: int,
+            col_idx: int,
+        ) -> None:
+        if ktype == KomaType.NONE:
+            return
+        canvas.itemconfig(
+            self.koma_text_layer.tiles[row_idx][col_idx],
+            text=str(KANJI_FROM_KTYPE[ktype]),
+            angle=180 if invert else 0,
+        )
         return
 
     def draw_click_layer(self, canvas: BoardCanvas) -> None:
