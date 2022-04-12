@@ -239,7 +239,7 @@ class BoardCanvas(tk.Canvas):
                     self.move_input_handler.receive_square, sq=sq
                 )
                 self.tag_bind(
-                    self.board_artist.highlight_layer.tiles[row_idx][col_idx],
+                    self.board_artist.click_layer.tiles[row_idx][col_idx],
                     "<Button-1>",
                     callback,
                 )
@@ -263,6 +263,7 @@ class BoardCanvas(tk.Canvas):
         artist.draw_board_focus_layer(self)
         artist.draw_board_grid_lines(self)
         artist.draw_board_coordinates(self)
+        artist.draw_click_layer(self)
 
         board_skin = self.board_img_cache.skin
         self.itemconfig(self.board_artist.board_rect, fill=board_skin.colour)
@@ -339,16 +340,11 @@ class BoardCanvas(tk.Canvas):
         for koma, sqset in position.get_koma_sets().items():
             for sq in sqset:
                 col_idx, row_idx = self._sq_to_idxs(sq)
-                id_ = self.draw_koma(
+                self.draw_koma(
                     *self.idxs_to_xy(col_idx, row_idx, centering="xy"),
                     ktype=KomaType.get(koma),
                     invert=self._is_inverted(koma.side()),
                 )
-                if self.move_input_handler is not None:
-                    callback = functools.partial(
-                        self.move_input_handler.receive_square, sq=sq
-                    )
-                    self.tag_bind(id_, "<Button-1>", callback)
 
         # Draw komadai
         self.draw_komadai(
@@ -367,6 +363,7 @@ class BoardCanvas(tk.Canvas):
         )
         # set focus
         self.set_focus(self.highlighted_sq)
+        self.board_artist.lift_click_layer(self)
         return
 
     def apply_piece_skin(self, skin: PieceSkin) -> None:

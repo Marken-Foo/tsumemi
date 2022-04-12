@@ -77,6 +77,7 @@ class BoardArtist:
         self.board_rect = -1
         self.board_tile_layer = BoardImageLayer()
         self.highlight_layer = BoardImageLayer()
+        self.click_layer = BoardImageLayer()
         return
 
     def update_board_tile_images(self,
@@ -102,6 +103,16 @@ class BoardArtist:
         self.highlight_layer.draw_layer(canvas, tag="highlight_tile")
         transparent_img = canvas.board_img_cache.get_dict()["transparent"]
         self.highlight_layer.update_all_tiles(canvas, transparent_img)
+        return
+
+    def draw_click_layer(self, canvas: BoardCanvas) -> None:
+        self.click_layer.draw_layer(canvas, tag="click_tile")
+        transparent_img = canvas.board_img_cache.get_dict()["transparent"]
+        self.click_layer.update_all_tiles(canvas, transparent_img)
+        return
+
+    def lift_click_layer(self, canvas: BoardCanvas) -> None:
+        canvas.lift("click_tile")
         return
 
     def draw_board_coordinates(self, canvas: BoardCanvas) -> None:
