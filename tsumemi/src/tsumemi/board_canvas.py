@@ -245,32 +245,14 @@ class BoardCanvas(tk.Canvas):
                 )
         return
 
-    def _update_board_tile_images(self) -> None:
+    def draw_board(self):
+        self.board_artist.draw_board(self)
+        board_skin = self.board_img_cache.skin
+        self.board_artist.update_board_base_colour(self, board_skin.colour)
         if not self.board_img_cache.has_images():
             return
         board_img = self.board_img_cache.get_dict()["board"]
         self.board_artist.update_board_tile_images(self, board_img)
-        return
-
-    def draw_board(self):
-        """Draw just the shogiban, without pieces. Komadai areas not
-        included.
-        """
-        self._draw_canvas_base_layer()
-        artist = self.board_artist
-        artist.draw_board_base_layer(self)
-        artist.draw_board_tile_layer(self)
-        artist.draw_board_focus_layer(self)
-        artist.draw_koma_text_layer(self)
-        artist.draw_koma_image_layer(self)
-        artist.draw_board_grid_lines(self)
-        artist.draw_board_coordinates(self)
-        artist.draw_click_layer(self)
-
-        board_skin = self.board_img_cache.skin
-        self.itemconfig(self.board_artist.board_rect, fill=board_skin.colour)
-        self._add_board_onclick_callbacks()
-        self._update_board_tile_images()
         return
 
     def draw_koma(self,
@@ -336,8 +318,10 @@ class BoardCanvas(tk.Canvas):
         north_hand = position.get_hand_of_side(north_side)
         south_hand = position.get_hand_of_side(south_side)
 
+        self._draw_canvas_base_layer()
         # Draw board
         self.draw_board()
+        self._add_board_onclick_callbacks()
         # Draw board pieces
         for koma, sqset in position.get_koma_sets().items():
             for sq in sqset:

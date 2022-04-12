@@ -97,7 +97,23 @@ class BoardArtist:
         self.board_tile_layer.update_all_tiles(canvas, img)
         return
 
-    def draw_board_base_layer(self, canvas: BoardCanvas) -> int:
+    def update_board_base_colour(self, canvas: BoardCanvas, colour: str
+        ) -> None:
+        canvas.itemconfig(self.board_rect, fill=colour)
+        return
+
+    def draw_board(self, canvas: BoardCanvas) -> None:
+        self._draw_board_base_layer(canvas)
+        self._draw_board_tile_layer(canvas)
+        self._draw_board_focus_layer(canvas)
+        self._draw_koma_text_layer(canvas)
+        self._draw_koma_image_layer(canvas)
+        self._draw_board_grid_lines(canvas)
+        self._draw_board_coordinates(canvas)
+        self._draw_click_layer(canvas)
+        return
+
+    def _draw_board_base_layer(self, canvas: BoardCanvas) -> int:
         id_: int = canvas.create_rectangle(
             *canvas.idxs_to_xy(0, 0),
             *canvas.idxs_to_xy(NUM_COLS, NUM_ROWS),
@@ -106,21 +122,21 @@ class BoardArtist:
         self.board_rect = id_
         return id_
 
-    def draw_board_tile_layer(self, canvas: BoardCanvas) -> None:
+    def _draw_board_tile_layer(self, canvas: BoardCanvas) -> None:
         self.board_tile_layer.draw_layer(canvas, tag="board_tile")
         return
 
-    def draw_board_focus_layer(self, canvas: BoardCanvas) -> None:
+    def _draw_board_focus_layer(self, canvas: BoardCanvas) -> None:
         self.highlight_layer.draw_layer(canvas, tag="highlight_tile")
         transparent_img = canvas.board_img_cache.get_dict()["transparent"]
         self.highlight_layer.update_all_tiles(canvas, transparent_img)
         return
 
-    def draw_koma_image_layer(self, canvas: BoardCanvas) -> None:
+    def _draw_koma_image_layer(self, canvas: BoardCanvas) -> None:
         self.koma_image_layer.draw_layer(canvas)
         return
 
-    def draw_koma_text_layer(self, canvas: BoardCanvas) -> None:
+    def _draw_koma_text_layer(self, canvas: BoardCanvas) -> None:
         self.koma_text_layer.draw_layer(canvas)
         return
 
@@ -157,7 +173,7 @@ class BoardArtist:
         )
         return
 
-    def draw_click_layer(self, canvas: BoardCanvas) -> None:
+    def _draw_click_layer(self, canvas: BoardCanvas) -> None:
         self.click_layer.draw_layer(canvas, tag="click_tile")
         transparent_img = canvas.board_img_cache.get_dict()["transparent"]
         self.click_layer.update_all_tiles(canvas, transparent_img)
@@ -167,7 +183,7 @@ class BoardArtist:
         canvas.lift("click_tile")
         return
 
-    def draw_board_coordinates(self, canvas: BoardCanvas) -> None:
+    def _draw_board_coordinates(self, canvas: BoardCanvas) -> None:
         coords_text_size = canvas.measurements.coords_text_size
         for row_idx in range(NUM_ROWS):
             row_num = canvas.row_idx_to_num(row_idx)
@@ -188,7 +204,7 @@ class BoardArtist:
             )
         return
 
-    def draw_board_grid_lines(self, canvas: BoardCanvas) -> None:
+    def _draw_board_grid_lines(self, canvas: BoardCanvas) -> None:
         for i in range(NUM_COLS+1):
             canvas.create_line(
                 *canvas.idxs_to_xy(i, 0),
