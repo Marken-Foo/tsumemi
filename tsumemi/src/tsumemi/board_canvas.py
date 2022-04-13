@@ -165,29 +165,17 @@ class BoardCanvas(tk.Canvas):
         """Display the visual cues prompting user to choose promotion
         or non-promotion.
         """
-        id_cover = self.create_image(
-            *self.idxs_to_xy(0, 0),
-            image=self.board_img_cache.get_dict("board")["semi-transparent"],
-            anchor="nw",
-            tags=("promotion_prompt",)
-        )
+        id_cover = self.board_artist.draw_promotion_cover(self)
+
         col_idx, row_idx = self._sq_to_idxs(sq)
         invert = self._is_inverted(self.position.turn)
 
-        id_promoted = self.draw_koma(
-            *self.idxs_to_xy(col_idx, row_idx, centering="xy"),
-            ktype.promote(),
-            invert=invert,
-            tags=("promotion_prompt",),
+        id_promoted = self.board_artist.draw_promotion_prompt_koma(
+            self, ktype.promote(), invert, row_idx, col_idx
         )
-        assert id_promoted is not None
-        id_unpromoted = self.draw_koma(
-            *self.idxs_to_xy(col_idx, row_idx+1, centering="xy"),
-            ktype,
-            invert=invert,
-            tags=("promotion_prompt",),
+        id_unpromoted = self.board_artist.draw_promotion_prompt_koma(
+            self, ktype, invert, row_idx+1, col_idx
         )
-        assert id_unpromoted is not None
         callback = functools.partial(
             self._prompt_promotion_callback, sq=sq, ktype=ktype
         )
@@ -218,7 +206,8 @@ class BoardCanvas(tk.Canvas):
         return
 
     def clear_promotion_prompts(self) -> None:
-        self.delete("promotion_prompt")
+        self.board_artist.clear_promotion_prompts(self)
+        # self.delete("promotion_prompt")
         return
 
     def _draw_canvas_base_layer(self) -> int:
@@ -254,18 +243,6 @@ class BoardCanvas(tk.Canvas):
         board_img = self.board_img_cache.get_dict()["board"]
         self.board_artist.update_board_tile_images(self, board_img)
         return
-
-    def draw_koma(self,
-            x: int, y: int, ktype: KomaType,
-            invert: bool = False,
-            anchor: str = "center",
-            tags: Tuple[str] = ("",),
-        ) -> Optional[int]:
-        """Draw koma at specified location. *anchor* determines how the image
-        or text is positioned with respect to the point (x,y).
-        """
-        artist = self.make_koma_artist(invert, False)
-        return artist.draw_koma(self, x, y, ktype, anchor, tags)
 
     def _add_all_komadai_koma_onclick_callbacks(self) -> None:
         if self.move_input_handler is None:

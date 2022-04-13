@@ -151,12 +151,9 @@ class BoardArtist:
             return
         koma_dict = canvas.koma_img_cache.get_dict(invert=invert, komadai=False)
         img = koma_dict[ktype]
-        canvas.itemconfig(
-            self.koma_image_layer.tiles[row_idx][col_idx],
-            image=img,
-        )
+        self.koma_image_layer.update_tile(canvas, img, row_idx, col_idx)
         return
-    
+
     def draw_text_koma(self,
             canvas: BoardCanvas,
             ktype: KomaType,
@@ -217,6 +214,35 @@ class BoardArtist:
                 *canvas.idxs_to_xy(NUM_COLS, j),
                 fill="black", width=1,
             )
+        return
+
+    def draw_promotion_cover(self, canvas: BoardCanvas) -> int:
+        id_: int
+        id_ = canvas.create_image(
+            *canvas.idxs_to_xy(0, 0),
+            image=canvas.board_img_cache.get_dict("board")["semi-transparent"],
+            anchor="nw",
+            tags="promotion_prompt",
+        )
+        return id_
+
+    def draw_promotion_prompt_koma(self, canvas: BoardCanvas,
+            ktype: KomaType,
+            invert: bool,
+            row_idx: int,
+            col_idx: int,
+        ) -> int:
+        artist = canvas.make_koma_artist(invert, False)
+        return artist.draw_koma(
+            canvas,
+            *canvas.idxs_to_xy(col_idx, row_idx, centering="xy"),
+            ktype,
+            anchor="center",
+            tags=("promotion_prompt"),
+        )
+
+    def clear_promotion_prompts(self, canvas: BoardCanvas) -> None:
+        canvas.delete("promotion_prompt")
         return
 
     def unhighlight_square(self,
