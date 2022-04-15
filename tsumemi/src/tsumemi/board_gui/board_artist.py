@@ -8,7 +8,7 @@ from tsumemi.src.tsumemi.img_handlers import BoardImgManager, BoardMeasurements,
 
 if TYPE_CHECKING:
     from PIL import ImageTk
-    from tsumemi.src.tsumemi.board_canvas import BoardCanvas
+    from tsumemi.src.tsumemi.board_gui.board_canvas import BoardCanvas
 
 
 # Shogi board dimensions in squares

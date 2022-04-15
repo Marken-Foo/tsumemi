@@ -8,7 +8,7 @@ from tsumemi.src.shogi.basetypes import KANJI_FROM_KTYPE
 
 if TYPE_CHECKING:
     from typing import Tuple
-    from tsumemi.src.tsumemi.board_canvas import BoardCanvas
+    from tsumemi.src.tsumemi.board_gui.board_canvas import BoardCanvas
     from tsumemi.src.tsumemi.img_handlers import ImgDict
 
 

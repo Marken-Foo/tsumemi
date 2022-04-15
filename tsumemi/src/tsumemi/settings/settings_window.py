@@ -5,12 +5,12 @@ import tkinter as tk
 from tkinter import ttk
 from typing import TYPE_CHECKING
 
-from tsumemi.src.tsumemi.board_setting_choices import BoardSkinSelectionFrame, KomadaiSkinSelectionFrame
-from tsumemi.src.tsumemi.notation_setting_choices import NotationSelectionFrame
-from tsumemi.src.tsumemi.piece_setting_choices import PieceSkinSelectionFrame
+from tsumemi.src.tsumemi.settings.board_setting_choices import BoardSkinSelectionFrame, KomadaiSkinSelectionFrame
+from tsumemi.src.tsumemi.settings.notation_setting_choices import NotationSelectionFrame
+from tsumemi.src.tsumemi.settings.piece_setting_choices import PieceSkinSelectionFrame
 
 if TYPE_CHECKING:
-    from tsumemi.src.tsumemi.settings_controller import Settings
+    from tsumemi.src.tsumemi.settings.settings_controller import Settings
 
 
 class OptionsFrame(ttk.Frame):

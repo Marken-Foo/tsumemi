@@ -6,7 +6,7 @@ from tkinter import ttk
 from typing import TYPE_CHECKING
 
 import tsumemi.src.shogi.notation_writer as nwriter
-import tsumemi.src.tsumemi.setting_choices as setc
+import tsumemi.src.tsumemi.settings.setting_choices as setc
 
 from tsumemi.src.shogi.basetypes import Koma, Square
 from tsumemi.src.shogi.position import Position

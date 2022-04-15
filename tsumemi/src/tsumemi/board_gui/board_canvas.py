@@ -7,17 +7,17 @@ from typing import TYPE_CHECKING
 
 from tsumemi.src.shogi.basetypes import KANJI_FROM_KTYPE, KomaType, Side, Square
 from tsumemi.src.shogi.basetypes import HAND_TYPES
-from tsumemi.src.tsumemi.board_artist import BoardArtist, NUM_COLS, NUM_ROWS
+from tsumemi.src.tsumemi.board_gui.board_artist import BoardArtist, NUM_COLS, NUM_ROWS
 from tsumemi.src.tsumemi.img_handlers import SkinSettings, BoardMeasurements, BoardSkin, KomaImgManager, KomadaiImgManager, PieceSkin
-from tsumemi.src.tsumemi.koma_artist import ImageKomaArtist, TextKomaArtist
-from tsumemi.src.tsumemi.komadai_artist import KomadaiArtist
+from tsumemi.src.tsumemi.board_gui.koma_artist import ImageKomaArtist, TextKomaArtist
+from tsumemi.src.tsumemi.board_gui.komadai_artist import KomadaiArtist
 
 if TYPE_CHECKING:
     from PIL import ImageTk
     from typing import Optional, Tuple
     from tsumemi.src.shogi.game import Game
     from tsumemi.src.shogi.position import Position
-    from tsumemi.src.tsumemi.koma_artist import AbstractKomaArtist
+    from tsumemi.src.tsumemi.board_gui.koma_artist import AbstractKomaArtist
     from tsumemi.src.tsumemi.move_input_handler import MoveInputHandler
 
 

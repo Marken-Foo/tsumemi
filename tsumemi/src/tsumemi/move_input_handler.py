@@ -11,10 +11,10 @@ import tsumemi.src.tsumemi.event as evt
 from tsumemi.src.shogi.basetypes import Koma, KomaType, Move, Side, Square
 
 if TYPE_CHECKING:
-    import tkinter.Event as tkEvent
+    from tkinter import Event as tkEvent
     from typing import Dict, List, Optional
     from tsumemi.src.shogi.position import Position
-    from tsumemi.src.tsumemi.board_canvas import BoardCanvas
+    from tsumemi.src.tsumemi.board_gui.board_canvas import BoardCanvas
 
 logger = logging.getLogger(__name__)
 
