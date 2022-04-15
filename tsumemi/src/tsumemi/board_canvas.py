@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from tsumemi.src.shogi.basetypes import KANJI_FROM_KTYPE, KomaType, Side, Square
 from tsumemi.src.shogi.basetypes import HAND_TYPES
 from tsumemi.src.tsumemi.board_artist import BoardArtist, NUM_COLS, NUM_ROWS
-from tsumemi.src.tsumemi.img_handlers import BoardImgManager, SkinSettings, BoardMeasurements, BoardSkin, KomaImgManager, KomadaiImgManager, PieceSkin
+from tsumemi.src.tsumemi.img_handlers import SkinSettings, BoardMeasurements, BoardSkin, KomaImgManager, KomadaiImgManager, PieceSkin
 from tsumemi.src.tsumemi.koma_artist import ImageKomaArtist, TextKomaArtist
 from tsumemi.src.tsumemi.komadai_artist import KomadaiArtist
 
@@ -57,9 +57,8 @@ class BoardCanvas(tk.Canvas):
         piece_skin, board_skin, komadai_skin = skin_settings.get()
         # Cached images and image settings
         self.koma_img_cache = KomaImgManager(self.measurements, piece_skin)
-        self.board_img_cache = BoardImgManager(self.measurements, board_skin)
         self.komadai_img_cache = KomadaiImgManager(self.measurements, komadai_skin)
-        self.board_artist = BoardArtist()
+        self.board_artist = BoardArtist(self.measurements, board_skin)
         # Currently highlighted tile [col_num, row_num]
         # Hand pieces would be [0, KomaType]
         self.highlighted_sq = Square.NONE
@@ -208,7 +207,6 @@ class BoardCanvas(tk.Canvas):
 
     def clear_promotion_prompts(self) -> None:
         self.board_artist.clear_promotion_prompts(self)
-        # self.delete("promotion_prompt")
         return
 
     def _draw_canvas_base_layer(self) -> int:
@@ -233,16 +231,6 @@ class BoardCanvas(tk.Canvas):
                     "<Button-1>",
                     callback,
                 )
-        return
-
-    def draw_board(self):
-        self.board_artist.draw_board(self)
-        board_skin = self.board_img_cache.skin
-        self.board_artist.update_board_base_colour(self, board_skin.colour)
-        if not self.board_img_cache.has_images():
-            return
-        board_img = self.board_img_cache.get_dict()["board"]
-        self.board_artist.update_board_tile_images(self, board_img)
         return
 
     def _add_all_komadai_koma_onclick_callbacks(self) -> None:
@@ -303,7 +291,7 @@ class BoardCanvas(tk.Canvas):
 
         self._draw_canvas_base_layer()
         # Draw board
-        self.draw_board()
+        self.board_artist.draw_board(self)
         self._add_board_onclick_callbacks()
         # Draw board pieces
         for koma, sqset in position.get_koma_sets().items():
@@ -345,8 +333,7 @@ class BoardCanvas(tk.Canvas):
         return
 
     def apply_board_skin(self, skin: BoardSkin) -> None:
-        self.itemconfig(self.board_artist.board_rect, fill=skin.colour)
-        self.board_img_cache.load(skin)
+        self.board_artist.apply_skin(self, skin)
         return
 
     def apply_komadai_skin(self, skin: BoardSkin) -> None:
@@ -361,7 +348,7 @@ class BoardCanvas(tk.Canvas):
         self.height = event.height
         self.measurements.recalculate_sizes(event.width, event.height)
         self.koma_img_cache.resize_images()
-        self.board_img_cache.resize_images()
+        self.board_artist.update_measurements()
         self.komadai_img_cache.resize_images()
         # Redraw board after setting new dimensions
         self.draw()
