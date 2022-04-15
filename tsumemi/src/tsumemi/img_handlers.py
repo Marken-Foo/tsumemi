@@ -334,8 +334,11 @@ class BoardImgManager(ImgManager):
                 imgdict.resize_images()
         return
 
-    def get_dict(self) -> ImgDict:
-        return self.tile_sized.get_dict()
+    def get_dict(self, board_sized: bool = False) -> ImgDict:
+        if board_sized:
+            return self.board_sized.get_dict()
+        else:
+            return self.tile_sized.get_dict()
 
 
 class KomadaiImgManager(ImgManager):

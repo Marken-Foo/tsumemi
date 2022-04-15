@@ -228,10 +228,13 @@ class BoardArtist:
         return
 
     def draw_promotion_cover(self, canvas: BoardCanvas) -> int:
+        img = self.board_img_cache.get_dict(
+            board_sized=True
+        )["semi-transparent"]
         id_: int
         id_ = canvas.create_image(
             *canvas.idxs_to_xy(0, 0),
-            image=self.board_img_cache.get_dict("board")["semi-transparent"],
+            image=img,
             anchor="nw",
             tags="promotion_prompt",
         )
