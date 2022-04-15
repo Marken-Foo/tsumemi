@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
-from tsumemi.src.shogi.basetypes import KanjiNumber, KomaType, KANJI_FROM_KTYPE
+from tsumemi.src.shogi.basetypes import KanjiNumber, KomaType
 
 if TYPE_CHECKING:
     from PIL import ImageTk
@@ -142,30 +142,23 @@ class BoardArtist:
 
     def draw_koma(self,
             canvas: BoardCanvas,
-            ktype: KomaType,
-            invert: bool,
+            img: ImageTk,
             row_idx: int,
             col_idx: int,
         ) -> None:
-        if ktype == KomaType.NONE:
-            return
-        koma_dict = canvas.koma_img_cache.get_dict(invert=invert, komadai=False)
-        img = koma_dict[ktype]
         self.koma_image_layer.update_tile(canvas, img, row_idx, col_idx)
         return
 
     def draw_text_koma(self,
             canvas: BoardCanvas,
-            ktype: KomaType,
+            text: str,
             invert: bool,
             row_idx: int,
             col_idx: int,
         ) -> None:
-        if ktype == KomaType.NONE:
-            return
         canvas.itemconfig(
             self.koma_text_layer.tiles[row_idx][col_idx],
-            text=str(KANJI_FROM_KTYPE[ktype]),
+            text=text,
             angle=180 if invert else 0,
         )
         return

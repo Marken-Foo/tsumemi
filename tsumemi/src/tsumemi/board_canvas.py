@@ -5,7 +5,7 @@ import tkinter as tk
 
 from typing import TYPE_CHECKING
 
-from tsumemi.src.shogi.basetypes import KomaType, Side, Square
+from tsumemi.src.shogi.basetypes import KANJI_FROM_KTYPE, KomaType, Side, Square
 from tsumemi.src.shogi.basetypes import HAND_TYPES
 from tsumemi.src.tsumemi.board_artist import BoardArtist, NUM_COLS, NUM_ROWS
 from tsumemi.src.tsumemi.img_handlers import BoardImgManager, SkinSettings, BoardMeasurements, BoardSkin, KomaImgManager, KomadaiImgManager, PieceSkin
@@ -13,6 +13,7 @@ from tsumemi.src.tsumemi.koma_artist import ImageKomaArtist, TextKomaArtist
 from tsumemi.src.tsumemi.komadai_artist import KomadaiArtist
 
 if TYPE_CHECKING:
+    from PIL import ImageTk
     from typing import Optional, Tuple
     from tsumemi.src.shogi.game import Game
     from tsumemi.src.shogi.position import Position
@@ -276,6 +277,11 @@ class BoardCanvas(tk.Canvas):
         self._add_all_komadai_koma_onclick_callbacks()
         return
 
+    def get_koma_image(self, ktype: KomaType, invert: bool) -> ImageTk:
+        assert ktype != KomaType.NONE
+        koma_dict = self.koma_img_cache.get_dict(invert=invert, komadai=False)
+        return koma_dict[ktype]
+
     def draw(self):
         """Draw complete board with komadai and pieces.
         """
@@ -306,13 +312,13 @@ class BoardCanvas(tk.Canvas):
                 ktype = KomaType.get(koma)
                 invert=self._is_inverted(koma.side())
                 if self.is_text():
+                    text = str(KANJI_FROM_KTYPE[ktype])
                     self.board_artist.draw_text_koma(
-                        self, ktype, invert, row_idx, col_idx
+                        self, text, invert, row_idx, col_idx
                     )
                 else:
-                    self.board_artist.draw_koma(
-                        self, ktype, invert, row_idx, col_idx
-                    )
+                    img = self.get_koma_image(ktype, invert)
+                    self.board_artist.draw_koma(self, img, row_idx, col_idx)
 
         # Draw komadai
         self.draw_komadai(
