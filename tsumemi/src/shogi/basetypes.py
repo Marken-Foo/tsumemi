@@ -287,7 +287,19 @@ class Square(IntEnum):
         return self.name.startswith("b")
     
     def is_hand(self) -> bool:
-        return self == 82
+        return self == Square.HAND
+    
+    def is_in_promotion_zone(self, side: Side) -> bool:
+        _, row = self.get_cr()
+        return row in (1, 2, 3) if side.is_sente() else row in (7, 8, 9)
+    
+    def is_in_last_two_rows(self, side: Side) -> bool:
+        _, row = self.get_cr()
+        return row in (1, 2) if side.is_sente() else row in (8, 9)
+
+    def is_in_last_row(self, side: Side) -> bool:
+        _, row = self.get_cr()
+        return row == 1 if side.is_sente() else row == 9
     
     def is_left_of(self, sq_other: Square, side: Side) -> bool:
         col_diff, _ = self._subtract_squares(sq_other)

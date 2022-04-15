@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import tkinter as tk
 
 from tkinter import ttk
@@ -8,31 +7,31 @@ from typing import TYPE_CHECKING
 from PIL import Image, ImageTk
 
 import tsumemi.src.tsumemi.img_handlers as imghand
-import tsumemi.src.tsumemi.setting_choices as setc
+import tsumemi.src.tsumemi.settings.setting_choices as setc
 
 if TYPE_CHECKING:
     from typing import List, Optional
 
 
-class PieceSkinChoice(setc.Choice[imghand.PieceSkin]):
+class BoardSkinChoice(setc.Choice[imghand.BoardSkin]):
     pass
 
 
-PIECE_SKIN_CHOICES: List[PieceSkinChoice] = [
-    PieceSkinChoice(skin, skin.desc, skin.name) for skin in imghand.PieceSkin
+BOARD_SKIN_CHOICES: List[BoardSkinChoice] = [
+    BoardSkinChoice(skin, skin.desc, skin.name) for skin in imghand.BoardSkin
 ]
 
 
-class PieceSkinSelection(setc.Selection[imghand.PieceSkin]):
+class BoardSkinSelection(setc.Selection[imghand.BoardSkin]):
     pass
 
 
-class PieceSkinSelectionController:
+class BoardSkinSelectionController:
     def __init__(self) -> None:
-        self.model = PieceSkinSelection(PIECE_SKIN_CHOICES)
+        self.model = BoardSkinSelection(BOARD_SKIN_CHOICES)
         return
     
-    def get_piece_skin(self) -> imghand.PieceSkin:
+    def get_board_skin(self) -> imghand.BoardSkin:
         return self.model.get_item()
     
     def get_config_string(self) -> str:
@@ -43,20 +42,20 @@ class PieceSkinSelectionController:
         return
 
 
-class PieceSkinDropdown(setc.Dropdown[imghand.PieceSkin]):
+class BoardSkinDropdown(setc.Dropdown[imghand.BoardSkin]):
     pass
 
 
-class PieceSkinSelectionFrame(ttk.Frame):
+class BoardSkinSelectionFrame(ttk.Frame):
     PREVIEW_WIDTH_HEIGHT = (33, 36)
     def __init__(self,
             parent: tk.Widget,
-            controller: PieceSkinSelectionController,
+            controller: BoardSkinSelectionController,
         ) -> None:
         self.controller = controller
         super().__init__(parent)
-        self.lbl_name = ttk.Label(self, text="Piece set")
-        self.cmb_dropdown = PieceSkinDropdown(parent=self, controller=controller.model)
+        self.lbl_name = ttk.Label(self, text="Board set")
+        self.cmb_dropdown = BoardSkinDropdown(parent=self, controller=controller.model)
         # mypy doesn't recognise the "add" parameter overload to bind
         self.cmb_dropdown.bind( # type: ignore
             "<<ComboboxSelected>>", self.set_preview, add="+"
@@ -74,15 +73,30 @@ class PieceSkinSelectionFrame(ttk.Frame):
         return
     
     def set_preview(self, event: Optional[tk.Event]) -> None:
-        skin = self.controller.get_piece_skin()
+        skin = self.controller.get_board_skin()
         filepath = skin.path
         if filepath:
-            filename = os.path.join(filepath, "0GI.png")
-            img = Image.open(filename).resize(self.PREVIEW_WIDTH_HEIGHT)
-            self.lbl_preview["text"] = ""
+            img = Image.open(filepath).resize(self.PREVIEW_WIDTH_HEIGHT)
         else:
-            img = Image.new("RGB", self.PREVIEW_WIDTH_HEIGHT, "#FFFFFF")
-            self.lbl_preview["text"] = "銀"
+            img = Image.new("RGB", self.PREVIEW_WIDTH_HEIGHT, skin.colour)
+        self.preview_photoimage = ImageTk.PhotoImage(img)
+        self.lbl_preview["image"] = self.preview_photoimage
+        return
+
+
+class KomadaiSkinSelectionFrame(BoardSkinSelectionFrame):
+    def __init__(self,
+            parent: tk.Widget,
+            controller: BoardSkinSelectionController
+        ) -> None:
+        super().__init__(parent=parent, controller=controller)
+        self.lbl_name["text"] = "Komadai"
+        return
+    
+    def set_preview(self, event: Optional[tk.Event]) -> None:
+        skin = self.controller.get_board_skin()
+        filepath = skin.path
+        img = Image.new("RGB", self.PREVIEW_WIDTH_HEIGHT, skin.colour)
         self.preview_photoimage = ImageTk.PhotoImage(img)
         self.lbl_preview["image"] = self.preview_photoimage
         return

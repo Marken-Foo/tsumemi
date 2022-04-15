@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from typing import Callable, Optional
-    import tsumemi.src.tsumemi.board_canvas as bc
+    import tsumemi.src.tsumemi.board_gui.board_canvas as bc
     import tsumemi.src.tsumemi.game_controller as gamecon
     import tsumemi.src.tsumemi.img_handlers as imghand
     import tsumemi.src.tsumemi.problem_list_controller as plistcon

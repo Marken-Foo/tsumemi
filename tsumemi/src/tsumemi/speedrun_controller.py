@@ -10,7 +10,7 @@ import tsumemi.src.tsumemi.game_controller as gamecon
 import tsumemi.src.tsumemi.problem_list as plist
 
 if TYPE_CHECKING:
-    import tk
+    import tkinter as tk
     from typing import Dict
     from tsumemi.src.tsumemi.kif_browser_gui import RootController
 

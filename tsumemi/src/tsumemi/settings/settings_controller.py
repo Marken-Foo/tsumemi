@@ -6,11 +6,11 @@ import os
 from typing import TYPE_CHECKING
 
 import tsumemi.src.tsumemi.img_handlers as imghand
-import tsumemi.src.tsumemi.board_setting_choices as bchoices
-import tsumemi.src.tsumemi.notation_setting_choices as nchoices
-import tsumemi.src.tsumemi.piece_setting_choices as pchoices
+import tsumemi.src.tsumemi.settings.board_setting_choices as bchoices
+import tsumemi.src.tsumemi.settings.notation_setting_choices as nchoices
+import tsumemi.src.tsumemi.settings.piece_setting_choices as pchoices
 
-from tsumemi.src.tsumemi.settings_window import SettingsWindow
+from tsumemi.src.tsumemi.settings.settings_window import SettingsWindow
 
 if TYPE_CHECKING:
     from typing import Union

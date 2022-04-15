@@ -3,7 +3,7 @@ from __future__ import annotations
 from tkinter import ttk
 from typing import TYPE_CHECKING
 
-import tsumemi.src.tsumemi.board_canvas as bc
+import tsumemi.src.tsumemi.board_gui.board_canvas as bc
 import tsumemi.src.tsumemi.event as evt
 import tsumemi.src.tsumemi.move_input_handler as mih
 
