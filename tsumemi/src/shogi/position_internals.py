@@ -139,7 +139,7 @@ class MailboxBoard:
 
     def get_koma_sets(self) -> Dict[Koma, Set[Square]]:
         return {
-            koma: map(MailboxBoard.idx_to_sq, idxset)
+            koma: set(map(MailboxBoard.idx_to_sq, idxset))
             for koma, idxset in self.koma_sets.items()
         }
 

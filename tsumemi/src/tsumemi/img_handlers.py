@@ -236,6 +236,7 @@ class KomaImgManager(ImgManager):
         self.inverted = ImgSizingDict(_board_piece_size)
         self.komadai_upright = ImgSizingDict(_komadai_piece_size)
         self.komadai_inverted = ImgSizingDict(_komadai_piece_size)
+        self.skin: PieceSkin
         self.load(skin)
         return
 
@@ -311,6 +312,7 @@ class BoardImgManager(ImgManager):
         self.tile_sized.add_image("highlight", IMG_HIGHLIGHT)
         self.board_sized = ImgSizingDict(_board_size)
         self.board_sized.add_image("semi-transparent", IMG_SEMI_TRANSPARENT)
+        self.skin: BoardSkin
         self.load(skin)
         return
 

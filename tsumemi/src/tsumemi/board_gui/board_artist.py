@@ -171,7 +171,7 @@ class BoardArtist:
             *canvas.idxs_to_xy(col_idx, row_idx, centering="xy"),
             ktype,
             anchor="center",
-            tags=("promotion_prompt"),
+            tags=(("promotion_prompt",)),
         )
 
     def clear_promotion_prompts(self, canvas: BoardCanvas) -> None:
