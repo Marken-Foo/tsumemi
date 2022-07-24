@@ -24,13 +24,13 @@ class MoveNode:
         self.comment = ""
         self.variations: List[MoveNode] = []
         return
-    
+
     def is_null(self) -> bool:
         return False
-    
+
     def is_leaf(self) -> bool:
         return not bool(self.variations)
-    
+
     def add_move(self, move: Move) -> MoveNode:
         """Add a new node to the movetree. If move already exists as a
         variation, don't create a new node but return the existing
@@ -42,10 +42,10 @@ class MoveNode:
         new_node = MoveNode(move, self)
         self.variations.append(new_node)
         return new_node
-    
+
     def has_as_next_move(self, move: Move) -> bool:
         return any(node.move == move for node in self.variations)
-    
+
     def get_variation_node(self, move: Move) -> MoveNode:
         """Return the child node corresponding to the given move.
         """
@@ -55,13 +55,13 @@ class MoveNode:
         raise ValueError(
             f"Move ({str(move)}) is not a variation after move (str(self.movenum))"
         )
-    
+
     def next(self) -> MoveNode:
         return self.variations[0] if self.variations else NullMoveNode()
-    
+
     def prev(self) -> MoveNode:
         return self.parent
-    
+
     def _rec_str(self, acc: List[Any],
             func: Callable[[MoveNode, List[Any]], None]
             ) -> None:
@@ -72,12 +72,12 @@ class MoveNode:
             return
         for node in self.variations:
             node._rec_str(acc, func)
-    
+
     def _str_move(self, acc: List[str]) -> None:
         if not self.move.is_null():
             acc.append(str(self.movenum) + "." + str(self.move))
         return
-    
+
     def _latin_move(self, acc: List[str]) -> None:
         if not self.move.is_null():
             acc.append(str(self.movenum) + "." + self.move.to_latin())
@@ -96,7 +96,7 @@ class NullMoveNode(MoveNode):
         self.comment = ""
         self.variations: List[MoveNode] = []
         return
-    
+
     def is_null(self) -> bool:
         return True
 
@@ -113,14 +113,13 @@ class GameNode(MoveNode):
         self.handicap = ""
         self.start_pos = "" # sfen
         return
-    
+
     def __str__(self) -> str:
         acc: List[str] = []
         self._rec_str(acc, MoveNode._str_move)
         return " ".join(acc)
-    
+
     def to_latin(self) -> str:
         acc: List[str] = []
         self._rec_str(acc, MoveNode._latin_move)
         return " ".join(acc)
-
