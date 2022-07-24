@@ -19,11 +19,17 @@ class IObserver(ABC):
     """
     def __init__(self) -> None:
         self.NOTIFY_ACTIONS: Dict[Type[Event], Callable[..., Any]] = {}
-    
+        return
+
     def on_notify(self, event: Event) -> None:
         event_type = type(event)
         if event_type in self.NOTIFY_ACTIONS:
             self.NOTIFY_ACTIONS[event_type](event)
+        return
+
+    def add_notification(self, event: Type[Event], func: Callable[..., Any]
+        ) -> None:
+        self.NOTIFY_ACTIONS[event] = func
         return
 
 
@@ -33,11 +39,11 @@ class Emitter():
     def __init__(self) -> None:
         self.observers: List[IObserver] = []
         return
-    
+
     def add_observer(self, observer: IObserver) -> None:
         self.observers.append(observer)
         return
-    
+
     def remove_observer(self, observer: IObserver) -> None:
         try:
             self.observers.remove(observer)
@@ -45,7 +51,7 @@ class Emitter():
             # observer does not exist in list; log
             pass
         return
-    
+
     def _notify_observers(self, event: Event) -> None:
         for observer in self.observers:
             observer.on_notify(event)
