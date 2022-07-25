@@ -22,14 +22,14 @@ class Game:
         self.curr_node: MoveNode = self.movetree
         self.position = Position()
         return
-    
+
     def reset(self) -> None:
         """Reset self to a new empty game.
         """
         self.movetree = GameNode()
         self.curr_node = self.movetree
         self.position.reset()
-    
+
     def add_move(self, move: Move) -> None:
         """Execute the given move and add it to the movetree if it
         doesn't already exist.
@@ -37,7 +37,7 @@ class Game:
         self.position.make_move(move) # should check for exceptions
         self.curr_node = self.curr_node.add_move(move)
         return
-    
+
     def make_move(self, move: Move) -> bool:
         """If the move exists in the movetree, execute the move. If
         not, don't do anything.
@@ -47,20 +47,20 @@ class Game:
             self.position.make_move(move) # should check for exceptions
             self.curr_node = self.curr_node.get_variation_node(move)
         return res
-    
+
     def is_mainline(self, move: Move) -> bool:
         if self.curr_node.is_leaf():
             return False
         else:
             return self.curr_node.next().move == move
-    
+
     def is_end(self) -> bool:
         return self.curr_node.is_leaf()
-    
+
     def get_mainline_move(self) -> Move:
         next_node = self.curr_node.next()
         return next_node.move
-    
+
     def go_next_move(self) -> bool:
         """Go one move further into the game, following the mainline.
         """
@@ -70,7 +70,7 @@ class Game:
         self.position.make_move(next_node.move)
         self.curr_node = next_node
         return True
-    
+
     def go_prev_move(self) -> None:
         """Step one move back in the game.
         """
@@ -80,7 +80,7 @@ class Game:
         self.position.unmake_move(self.curr_node.move)
         self.curr_node = prev_node
         return
-    
+
     def go_to_start(self) -> None:
         """Go to the start of the game.
         """
@@ -89,7 +89,7 @@ class Game:
         self.position.from_sfen(self.movetree.start_pos)
         self.curr_node = self.movetree
         return
-    
+
     def go_to_end(self) -> None:
         """Go to the end of the current branch.
         """
@@ -97,10 +97,10 @@ class Game:
         while has_next:
             has_next = self.go_next_move()
         return
-    
+
     def get_current_sfen(self) -> str:
         return self.position.to_sfen()
-    
+
     def get_mainline_notation(self,
             move_writer: AbstractMoveWriter
         ) -> List[str]:
