@@ -1,12 +1,15 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import NewType, TYPE_CHECKING
 
 from tsumemi.src.shogi.basetypes import NullMove
 
 if TYPE_CHECKING:
-    from typing import Any, Callable, List, Optional
+    from typing import Any, Callable, Generator, List
     from tsumemi.src.shogi.basetypes import Move
+
+
+MoveNodeId = NewType("MoveNodeId", str)
 
 
 class MoveNode:
@@ -15,14 +18,16 @@ class MoveNode:
     Each node also contains a reference to its parent, and an ordered
     list of child nodes (the mainline is first in the list).
     """
-    def __init__(self, move: Move = NullMove(),
-            parent: Optional[MoveNode] = None
+    def __init__(self,
+            move: Move, parent: MoveNode, _id: MoveNodeId = MoveNodeId("")
         ) -> None:
-        self.move = move # move leading to this node
-        self.parent: MoveNode = NullMoveNode() if parent is None else parent
-        self.movenum: int = 0 if parent is None else parent.movenum + 1
-        self.comment = ""
+        self.move: Move = move # move leading to this node
+        self.parent: MoveNode = parent
+        self.movenum: int = 0 if parent.is_null() else parent.movenum + 1
+        self.comment: str = ""
         self.variations: List[MoveNode] = []
+        # implementation detail
+        self.id: MoveNodeId = _id
         return
 
     def is_null(self) -> bool:
@@ -31,7 +36,8 @@ class MoveNode:
     def is_leaf(self) -> bool:
         return not bool(self.variations)
 
-    def add_move(self, move: Move) -> MoveNode:
+    def add_move(self, move: Move, _id: MoveNodeId = MoveNodeId("")
+        ) -> MoveNode:
         """Add a new node to the movetree. If move already exists as a
         variation, don't create a new node but return the existing
         variation node.
@@ -39,7 +45,7 @@ class MoveNode:
         for node in self.variations:
             if move == node.move:
                 return node
-        new_node = MoveNode(move, self)
+        new_node = MoveNode(move, self, _id)
         self.variations.append(new_node)
         return new_node
 
@@ -61,6 +67,14 @@ class MoveNode:
 
     def prev(self) -> MoveNode:
         return self.parent
+
+    def traverse_preorder(self) -> Generator[MoveNode, None, None]:
+        """Traverse the game tree from this node by preorder.
+        This will yield the mainline first.
+        """
+        yield self
+        for node in self.variations:
+            yield from node.traverse_preorder()
 
     def _rec_str(self, acc: List[Any],
             func: Callable[[MoveNode, List[Any]], None]
@@ -87,14 +101,8 @@ class MoveNode:
 class NullMoveNode(MoveNode):
     """Null object to act as sentinel.
     """
-    def __init__(self, move: Move = NullMove(),
-            parent: Optional[MoveNode] = None
-            ) -> None:
-        self.move = NullMove()
-        self.parent: MoveNode = self
-        self.movenum = 0
-        self.comment = ""
-        self.variations: List[MoveNode] = []
+    def __init__(self) -> None:
+        super().__init__(move=NullMove(), parent=self)
         return
 
     def is_null(self) -> bool:
@@ -107,11 +115,11 @@ class GameNode(MoveNode):
     position) and the player names.
     """
     def __init__(self) -> None:
-        super().__init__()
-        self.sente = ""
-        self.gote = ""
-        self.handicap = ""
-        self.start_pos = "" # sfen
+        super().__init__(NullMove(), NullMoveNode())
+        self.sente: str = ""
+        self.gote: str = ""
+        self.handicap: str = ""
+        self.start_pos: str = "" # sfen
         return
 
     def __str__(self) -> str:

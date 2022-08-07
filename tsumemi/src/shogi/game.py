@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from tsumemi.src.shogi.gametree import GameNode
+from tsumemi.src.shogi.gametree import GameNode, MoveNodeId
 from tsumemi.src.shogi.position import Position
 
 if TYPE_CHECKING:
-    from typing import List
+    from typing import List, Generator, Optional
     from tsumemi.src.shogi.basetypes import Move
     from tsumemi.src.shogi.gametree import MoveNode
     from tsumemi.src.shogi.notation_writer import AbstractMoveWriter
@@ -30,12 +30,12 @@ class Game:
         self.curr_node = self.movetree
         self.position.reset()
 
-    def add_move(self, move: Move) -> None:
+    def add_move(self, move: Move, _id: MoveNodeId = MoveNodeId("")) -> None:
         """Execute the given move and add it to the movetree if it
         doesn't already exist.
         """
         self.position.make_move(move) # should check for exceptions
-        self.curr_node = self.curr_node.add_move(move)
+        self.curr_node = self.curr_node.add_move(move, _id)
         return
 
     def make_move(self, move: Move) -> bool:
@@ -51,8 +51,7 @@ class Game:
     def is_mainline(self, move: Move) -> bool:
         if self.curr_node.is_leaf():
             return False
-        else:
-            return self.curr_node.next().move == move
+        return self.curr_node.next().move == move
 
     def is_end(self) -> bool:
         return self.curr_node.is_leaf()
@@ -100,6 +99,12 @@ class Game:
 
     def get_current_sfen(self) -> str:
         return self.position.to_sfen()
+
+    def get_movelist(self) -> Generator[Optional[Move], None, None]:
+        return (
+            None if node.is_null() else node.move
+            for node in self.movetree.traverse_preorder()
+        )
 
     def get_mainline_notation(self,
             move_writer: AbstractMoveWriter
