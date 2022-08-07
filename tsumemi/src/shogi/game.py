@@ -6,7 +6,7 @@ from tsumemi.src.shogi.gametree import GameNode, MoveNodeId
 from tsumemi.src.shogi.position import Position
 
 if TYPE_CHECKING:
-    from typing import List, Generator, Optional
+    from typing import Generator, List, Optional
     from tsumemi.src.shogi.basetypes import Move
     from tsumemi.src.shogi.gametree import MoveNode
     from tsumemi.src.shogi.notation_writer import AbstractMoveWriter
@@ -18,9 +18,9 @@ class Game:
     position in the game.
     """
     def __init__(self) -> None:
-        self.movetree = GameNode()
+        self.movetree: GameNode = GameNode()
         self.curr_node: MoveNode = self.movetree
-        self.position = Position()
+        self.position: Position = Position()
         return
 
     def reset(self) -> None:

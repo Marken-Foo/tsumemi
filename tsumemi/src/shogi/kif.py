@@ -12,7 +12,6 @@ from tsumemi.src.shogi.game import Game
 if TYPE_CHECKING:
     import os
     from typing import Dict, Optional, Sequence, Union
-    from tsumemi.src.shogi.basetypes import KomaType
     PathLike = Union[str, os.PathLike]
 
 
@@ -25,8 +24,8 @@ def read_kif(filepath: PathLike) -> Optional[Game]:
     game = None
     for enc in encodings:
         try:
-            with open(filepath, "r", encoding=enc) as f:
-                game = reader.read(f, visitor)
+            with open(filepath, "r", encoding=enc) as _file:
+                game = reader.read(_file, visitor)
         except UnicodeDecodeError:
             pass
         else:
@@ -105,6 +104,7 @@ class ParserVisitor:
 
 class GameBuilderPVis(ParserVisitor):
     def __init__(self) -> None:
+        super().__init__()
         return
 
     def visit_board(self, reader: Reader, lines: Sequence[str]) -> None:
@@ -169,76 +169,75 @@ class GameBuilderPVis(ParserVisitor):
 
     def visit_move(self, reader: Reader, line: str) -> None:
         game = reader.game
-        match = re.search(KIF_MOVELINE_REGEX, line)
-        if match is None:
+        line_match = re.search(KIF_MOVELINE_REGEX, line)
+        if line_match is None:
             raise TypeError("Match object is None, cannot identify move")
-        else:
-            movenum = match.group("movenum")
-            movestr = match.group("move")
-            movetime = match.group("movetime")
-            totaltime = match.group("totaltime")
-            move: Move
-            if movestr in GameTermination:
-                move = TerminationMove(GameTermination(movestr))
-            else:
-                m = re.search(KIF_MOVE_REGEX, movestr)
-                if m is None:
-                    raise ValueError("KIF move regex failed to match movestr: " + movestr)
-                dest = m.group("sq_dest")
-                komastr = m.group("koma")
-                drop_prom = m.group("drop_prom")
-                sq_origin = m.group("sq_origin")
-                # Find destination square
-                if dest == "同　":
-                    end_sq = game.curr_node.move.end_sq
-                    captured = game.position.get_koma(sq=end_sq)
-                else:
-                    col = int(dest[0])
-                    row = int(KanjiNumber[dest[1]])
-                    end_sq = Square.from_cr(col, row)
-                    captured = game.position.get_koma(sq=end_sq)
-                ktype: KomaType
-                if komastr[0] == "成":
-                    ktype = KTYPE_FROM_KANJI[komastr[1]]
-                    ktype = ktype.promote()
-                else:
-                    try:
-                        ktype = KTYPE_FROM_KANJI[komastr]
-                    except KeyError as e:
-                        #TODO: handle gracefully and skip game
-                        raise KeyError("Unknown koma encountered: " + komastr) from e
-                # Find origin square
-                if drop_prom != "打":
-                    start_sq = Square.from_coord(int(sq_origin))
-                else:
-                    if ktype not in HAND_TYPES:
-                        raise ValueError("Koma " + str(ktype) + " cannot be dropped")
-                    start_sq = Square.HAND # Not NONE, not on board
-                # Identify if promotion
-                is_promotion = (drop_prom == "成")
-                # Construct Move
-                side = Side.SENTE if (int(movenum) % 2 == 1) else Side.GOTE
-                koma = Koma.make(side, ktype)
-                move = Move(start_sq, end_sq, is_promotion, koma, captured)
+        movenum = line_match.group("movenum")
+        movestr = line_match.group("move")
+        movetime = line_match.group("movetime")
+        totaltime = line_match.group("totaltime")
+        # Identify move components
+        move: Move
+        if movestr in GameTermination:
+            move = TerminationMove(GameTermination(movestr))
             game.add_move(move)
+            return
+        move_match = re.search(KIF_MOVE_REGEX, movestr)
+        if move_match is None:
+            raise ValueError("KIF move regex failed to match movestr: " + movestr)
+        dest = move_match.group("sq_dest")
+        komastr = move_match.group("koma")
+        drop_prom = move_match.group("drop_prom")
+        sq_origin = move_match.group("sq_origin")
+        # Find destination square
+        if dest == "同　":
+            end_sq = game.curr_node.move.end_sq
+            captured = game.position.get_koma(sq=end_sq)
+        else:
+            col = int(dest[0])
+            row = int(KanjiNumber[dest[1]])
+            end_sq = Square.from_cr(col, row)
+            captured = game.position.get_koma(sq=end_sq)
+        # Identify koma type
+        try:
+            ktype = (
+                KTYPE_FROM_KANJI[komastr[1]].promote()
+                if komastr[0] == "成"
+                else KTYPE_FROM_KANJI[komastr]
+            )
+        except KeyError as exc:
+            raise KeyError("Unknown koma encountered: " + komastr) from exc
+        # Find origin square
+        if drop_prom != "打":
+            start_sq = Square.from_coord(int(sq_origin))
+        else:
+            if ktype not in HAND_TYPES:
+                raise ValueError("Koma " + str(ktype) + " cannot be dropped")
+            start_sq = Square.HAND # Not NONE, not on board
+        # Identify if promotion
+        is_promotion = (drop_prom == "成")
+        # Construct Move
+        side = Side.SENTE if (int(movenum) % 2 == 1) else Side.GOTE
+        koma = Koma.make(side, ktype)
+        move = Move(start_sq, end_sq, is_promotion, koma, captured)
+        game.add_move(move)
         return
 
     def visit_variation(self, reader: Reader, line: str) -> None:
         game = reader.game
-        match = re.match(KIF_VARIATION_REGEX, line)
-        if match is None:
+        line_match = re.match(KIF_VARIATION_REGEX, line)
+        if line_match is None:
             raise ValueError("KIF variation regex failed to match: " + line)
-        else:
-            var_movenum = int(match.group("movenum"))
-            while (
-                (not game.curr_node.is_null())
-                and game.curr_node.movenum != var_movenum
-            ):
-                game.go_prev_move()
-            game.go_prev_move() # Once more to reach the prior move
-            if game.curr_node.is_null():
-                raise Exception("HALP desired movenum not found")
-            return
+        var_movenum = int(line_match.group("movenum"))
+        while (
+            (not game.curr_node.is_null())
+            and game.curr_node.movenum != var_movenum
+        ):
+            game.go_prev_move()
+        game.go_prev_move() # Once more to reach the prior move
+        if game.curr_node.is_null():
+            raise Exception("HALP desired movenum not found")
+        return
 
 
 class Reader:
@@ -252,7 +251,7 @@ class Reader:
 
 class KifReader(Reader):
     def __init__(self) -> None:
-        self.game = Game()
+        super().__init__()
         return
 
     def read(self, handle: typing.TextIO, visitor: ParserVisitor) -> Game:
