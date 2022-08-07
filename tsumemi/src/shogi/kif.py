@@ -3,7 +3,6 @@ from __future__ import annotations
 import re
 import typing
 
-from enum import IntEnum
 from typing import TYPE_CHECKING
 
 from tsumemi.src.shogi.basetypes import GameTermination, KanjiNumber, Koma, Move, Side, Square, TerminationMove
@@ -84,22 +83,22 @@ class ParserVisitor:
     # the same visitor, which holds diff methods for diff readers.
     def __init__(self) -> None:
         return
-    
+
     def visit_board(self, reader: Reader, lines: Sequence[str]) -> None:
         pass
-    
+
     def visit_comment(self, reader: Reader, line: str) -> None:
         pass
-    
+
     def visit_escape(self, reader: Reader, line: str) -> None:
         pass
-    
+
     def visit_handicap(self, reader: Reader, line: str) -> None:
         pass
-    
+
     def visit_move(self, reader: Reader, line: str) -> None:
         pass
-    
+
     def visit_variation(self, reader: Reader, line: str) -> None:
         pass
 
@@ -107,11 +106,11 @@ class ParserVisitor:
 class GameBuilderPVis(ParserVisitor):
     def __init__(self) -> None:
         return
-    
+
     def visit_board(self, reader: Reader, lines: Sequence[str]) -> None:
         """Read the BOD representation given by the argument lines,
         and set reader's board accordingly.
-        
+
         lines should be a list of exactly 14 strings as per BOD:
         gote's hand, decorative coordinates, decorative line,
         9x board rows, decorative line, sente's hand.
@@ -142,7 +141,7 @@ class GameBuilderPVis(ParserVisitor):
             pos.set_hand_koma_count(Side.GOTE, ktype, count)
         for ktype, count in read_hand(line_sente_hand):
             pos.set_hand_koma_count(Side.SENTE, ktype, count)
-        
+
         # Board
         for r_idx, line in enumerate(lines[3:-2]):
             rank_str = line.split("|")[1]
@@ -154,7 +153,7 @@ class GameBuilderPVis(ParserVisitor):
                 pos.set_koma(koma, Square.from_cr(col_num=9-c_idx, row_num=r_idx+1))
         movetree.start_pos = pos.to_sfen()
         return
-    
+
     def visit_handicap(self, reader: Reader, line: str) -> None:
         pos = reader.game.position
         movetree = reader.game.movetree
@@ -167,7 +166,7 @@ class GameBuilderPVis(ParserVisitor):
             # To handle elegantly? Maybe the rest is still valid.
             pass
         return
-    
+
     def visit_move(self, reader: Reader, line: str) -> None:
         game = reader.game
         match = re.search(KIF_MOVELINE_REGEX, line)
@@ -223,7 +222,7 @@ class GameBuilderPVis(ParserVisitor):
                 move = Move(start_sq, end_sq, is_promotion, koma, captured)
             game.add_move(move)
         return
-    
+
     def visit_variation(self, reader: Reader, line: str) -> None:
         game = reader.game
         match = re.match(KIF_VARIATION_REGEX, line)
@@ -246,7 +245,7 @@ class Reader:
     def __init__(self) -> None:
         self.game = Game()
         return
-    
+
     def read(self, handle: typing.TextIO, visitor: ParserVisitor) -> Game:
         return self.game
 
@@ -255,7 +254,7 @@ class KifReader(Reader):
     def __init__(self) -> None:
         self.game = Game()
         return
-    
+
     def read(self, handle: typing.TextIO, visitor: ParserVisitor) -> Game:
         self.game.reset()
         line = handle.readline()
