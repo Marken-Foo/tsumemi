@@ -11,9 +11,9 @@ class MetaEnum(EnumMeta):
     """Override __contains__() method of enum.EnumMeta for syntactic
     sugar: `if item in Enum: ...`
     """
-    def __contains__(self, item) -> bool:
+    def __contains__(cls, item) -> bool:
         try:
-            self(item)
+            cls(item)
         except ValueError:
             return False
         return True

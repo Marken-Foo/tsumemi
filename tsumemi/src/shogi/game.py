@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from tsumemi.src.shogi.gametree import GameNode, MoveNodeId
+from tsumemi.src.shogi.gametree import GameNode
 from tsumemi.src.shogi.position import Position
 
 if TYPE_CHECKING:
@@ -30,12 +30,12 @@ class Game:
         self.curr_node = self.movetree
         self.position.reset()
 
-    def add_move(self, move: Move, _id: MoveNodeId = MoveNodeId("")) -> None:
+    def add_move(self, move: Move) -> None:
         """Execute the given move and add it to the movetree if it
         doesn't already exist.
         """
         self.position.make_move(move) # should check for exceptions
-        self.curr_node = self.curr_node.add_move(move, _id)
+        self.curr_node = self.curr_node.add_move(move)
         return
 
     def make_move(self, move: Move) -> bool:

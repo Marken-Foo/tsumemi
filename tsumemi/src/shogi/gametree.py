@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from tsumemi.src.shogi.basetypes import Move
 
 
-MoveNodeId = NewType("MoveNodeId", str)
+MoveNodeId = NewType("MoveNodeId", int)
 
 
 class MoveNode:
@@ -18,16 +18,17 @@ class MoveNode:
     Each node also contains a reference to its parent, and an ordered
     list of child nodes (the mainline is first in the list).
     """
-    def __init__(self,
-            move: Move, parent: MoveNode, _id: MoveNodeId = MoveNodeId("")
-        ) -> None:
+    _id = 0 # running unique ID for MoveNodes
+
+    def __init__(self, move: Move, parent: MoveNode) -> None:
         self.move: Move = move # move leading to this node
         self.parent: MoveNode = parent
         self.movenum: int = 0 if parent.is_null() else parent.movenum + 1
         self.comment: str = ""
         self.variations: List[MoveNode] = []
         # implementation detail
-        self.id: MoveNodeId = _id
+        self.id: MoveNodeId = MoveNodeId(MoveNode._id)
+        MoveNode._id += 1
         return
 
     def is_null(self) -> bool:
@@ -36,8 +37,7 @@ class MoveNode:
     def is_leaf(self) -> bool:
         return not bool(self.variations)
 
-    def add_move(self, move: Move, _id: MoveNodeId = MoveNodeId("")
-        ) -> MoveNode:
+    def add_move(self, move: Move) -> MoveNode:
         """Add a new node to the movetree. If move already exists as a
         variation, don't create a new node but return the existing
         variation node.
@@ -45,7 +45,7 @@ class MoveNode:
         for node in self.variations:
             if move == node.move:
                 return node
-        new_node = MoveNode(move, self, _id)
+        new_node = MoveNode(move, self)
         self.variations.append(new_node)
         return new_node
 
