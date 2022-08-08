@@ -94,10 +94,10 @@ class ParserVisitor:
     def visit_escape(self, reader: Reader, line: str) -> None:
         pass
 
-    def visit_handicap(self, reader: Reader, line: str) -> None:
+    def visit_handicap(self, reader: Reader, handicap_sfen: str) -> None:
         pass
 
-    def visit_move(self, reader: Reader, line: str) -> None:
+    def visit_move(self, reader: Reader, move: Move) -> None:
         pass
 
     def visit_variation(self, reader: Reader, line: str) -> None:
@@ -105,6 +105,50 @@ class ParserVisitor:
 
 
 class GameBuilderPVis(ParserVisitor):
+    def __init__(self) -> None:
+        super().__init__()
+        return
+
+    def visit_handicap(self, reader: Reader, handicap_sfen: str) -> None:
+        pos = reader.game.position
+        movetree = reader.game.movetree
+        pos.from_sfen(handicap_sfen)
+        movetree.handicap = handicap_sfen
+        movetree.start_pos = handicap_sfen
+        return
+
+    def visit_move(self, reader: Reader, move: Move) -> None:
+        game = reader.game
+        game.add_move(move)
+        return
+
+    def visit_variation(self, reader: Reader, line: str) -> None:
+        game = reader.game
+        line_match = re.match(KIF_VARIATION_REGEX, line)
+        if line_match is None:
+            raise ValueError("KIF variation regex failed to match: " + line)
+        var_movenum = int(line_match.group("movenum"))
+        while (
+            (not game.curr_node.is_null())
+            and game.curr_node.movenum != var_movenum
+        ):
+            game.go_prev_move()
+        game.go_prev_move() # Once more to reach the prior move
+        if game.curr_node.is_null():
+            raise Exception("HALP desired movenum not found")
+        return
+
+
+class Reader:
+    def __init__(self) -> None:
+        self.game = Game()
+        return
+
+    def read(self, handle: typing.TextIO, visitor: ParserVisitor) -> Game:
+        return self.game
+
+
+class KifReader(Reader):
     def __init__(self) -> None:
         super().__init__()
         return
@@ -195,7 +239,56 @@ class GameBuilderPVis(ParserVisitor):
             else Square.from_coord(int(sq_origin_str))
         )
 
-    def visit_board(self, reader: Reader, lines: Sequence[str]) -> None:
+    def read(self, handle: typing.TextIO, visitor: ParserVisitor) -> Game:
+        self.game.reset()
+        line = handle.readline()
+        while line != "":
+            line = line.lstrip().rstrip()
+            if line == "":
+                pass
+            elif line.startswith("手合割："):
+                handicap_sfen = self.read_handicap_line(line)
+                visitor.visit_handicap(self, handicap_sfen)
+            elif line.startswith("後手の持駒："):
+                # Signals start of BOD, read all of it
+                bod_lines = [line]
+                while (not line.startswith("先手の持駒：")) and line:
+                    line = handle.readline()
+                    bod_lines.append(line.lstrip().rstrip())
+                self.read_bod(bod_lines)
+                #visitor.visit_board(self, bod_lines)
+            elif line.startswith("手数--"):
+                # movesection delineation
+                pass
+            elif line[0].isdigit():
+                # Signals a move; thus, requires moves to be numbered.
+                move = self.read_move(line)
+                visitor.visit_move(self, move)
+            elif line.startswith("*"):
+                visitor.visit_comment(self, line)
+            elif line.startswith("#"):
+                visitor.visit_escape(self, line)
+            elif line.startswith("変化："):
+                # Variation
+                visitor.visit_variation(self, line)
+            else:
+                # Unknown line; skip it
+                pass
+            # MUST fallthrough to here to complete one while iteration
+            line = handle.readline()
+        self.game.go_to_start()
+        return self.game
+
+    def read_handicap_line(self, line: str) -> str:
+        """Reads the handicap field. Returns a SFEN string.
+        """
+        val = line.split("：")[1]
+        try:
+            return SFEN_FROM_HANDICAP[val]
+        except KeyError as exc:
+            raise KeyError("Unknown handicap: " + val) from exc
+
+    def read_bod(self, lines: Sequence[str]) -> None:
         """Read the BOD representation given by the argument lines,
         and set reader's board accordingly.
 
@@ -203,8 +296,8 @@ class GameBuilderPVis(ParserVisitor):
         gote's hand, decorative coordinates, decorative line,
         9x board rows, decorative line, sente's hand.
         """
-        pos = reader.game.position
-        movetree = reader.game.movetree
+        pos = self.game.position
+        movetree = self.game.movetree
         line_gote_hand = lines[0]
         line_sente_hand = lines[-1]
         lines_board = lines[3:-2] # This should be exactly 9 strings
@@ -222,27 +315,12 @@ class GameBuilderPVis(ParserVisitor):
         movetree.start_pos = pos.to_sfen()
         return
 
-    def visit_handicap(self, reader: Reader, line: str) -> None:
-        pos = reader.game.position
-        movetree = reader.game.movetree
-        val = line.split("：")[1]
-        try:
-            pos.from_sfen(SFEN_FROM_HANDICAP[val])
-            movetree.handicap = val
-            movetree.start_pos = SFEN_FROM_HANDICAP[val]
-        except KeyError as exc:
-            raise KeyError("Unknown handicap: " + val) from exc
-        return
-
-    def visit_move(self, reader: Reader, line: str) -> None:
-        game = reader.game
+    def read_move(self, line: str) -> Move:
+        game = self.game
         movenum, movestr, _, _ = self.read_kif_move_line(line)
         # Identify move components
-        move: Move
         if movestr in GameTermination:
-            move = TerminationMove(GameTermination(movestr))
-            game.add_move(move)
-            return
+            return TerminationMove(GameTermination(movestr))
         dest_str, koma_str, drop_prom, sq_origin = self.read_kif_move(movestr)
         prev_end_sq = (
             Square.NONE if game.curr_node.move.is_null()
@@ -259,77 +337,7 @@ class GameBuilderPVis(ParserVisitor):
         # Construct Move
         side = Side.SENTE if (movenum % 2 == 1) else Side.GOTE
         koma = Koma.make(side, ktype)
-        move = Move(start_sq, end_sq, is_promotion, koma, captured)
-        game.add_move(move)
-        return
-
-    def visit_variation(self, reader: Reader, line: str) -> None:
-        game = reader.game
-        line_match = re.match(KIF_VARIATION_REGEX, line)
-        if line_match is None:
-            raise ValueError("KIF variation regex failed to match: " + line)
-        var_movenum = int(line_match.group("movenum"))
-        while (
-            (not game.curr_node.is_null())
-            and game.curr_node.movenum != var_movenum
-        ):
-            game.go_prev_move()
-        game.go_prev_move() # Once more to reach the prior move
-        if game.curr_node.is_null():
-            raise Exception("HALP desired movenum not found")
-        return
-
-
-class Reader:
-    def __init__(self) -> None:
-        self.game = Game()
-        return
-
-    def read(self, handle: typing.TextIO, visitor: ParserVisitor) -> Game:
-        return self.game
-
-
-class KifReader(Reader):
-    def __init__(self) -> None:
-        super().__init__()
-        return
-
-    def read(self, handle: typing.TextIO, visitor: ParserVisitor) -> Game:
-        self.game.reset()
-        line = handle.readline()
-        while line != "":
-            line = line.lstrip().rstrip()
-            if line == "":
-                pass
-            elif line.startswith("手合割："):
-                visitor.visit_handicap(self, line)
-            elif line.startswith("後手の持駒："):
-                # Signals start of BOD, read all of it
-                bod_lines = [line]
-                while (not line.startswith("先手の持駒：")) and line:
-                    line = handle.readline()
-                    bod_lines.append(line.lstrip().rstrip())
-                visitor.visit_board(self, bod_lines)
-            elif line.startswith("手数--"):
-                # movesection delineation
-                pass
-            elif line[0].isdigit():
-                # Signals a move; thus, requires moves to be numbered.
-                visitor.visit_move(self, line)
-            elif line.startswith("*"):
-                visitor.visit_comment(self, line)
-            elif line.startswith("#"):
-                visitor.visit_escape(self, line)
-            elif line.startswith("変化："):
-                # Variation
-                visitor.visit_variation(self, line)
-            else:
-                # Unknown line; skip it
-                pass
-            # MUST fallthrough to here to complete one while iteration
-            line = handle.readline()
-        self.game.go_to_start()
-        return self.game
+        return Move(start_sq, end_sq, is_promotion, koma, captured)
 
 
 # Since these are essentially just collections of methods a single
