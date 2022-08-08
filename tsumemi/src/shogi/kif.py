@@ -5,13 +5,15 @@ import typing
 
 from typing import TYPE_CHECKING
 
-from tsumemi.src.shogi.basetypes import GameTermination, KanjiNumber, Koma, Move, Side, Square, TerminationMove
+from tsumemi.src.shogi.basetypes import GameTermination, KanjiNumber, Koma
+from tsumemi.src.shogi.basetypes import Move, Side, Square, TerminationMove
 from tsumemi.src.shogi.basetypes import HAND_TYPES, KTYPE_FROM_KANJI
 from tsumemi.src.shogi.game import Game
 
 if TYPE_CHECKING:
     import os
-    from typing import Dict, Optional, Sequence, Union
+    from typing import Dict, Generator, List, Optional, Sequence, Tuple, Union
+    from tsumemi.src.shogi.basetypes import KomaType
     PathLike = Union[str, os.PathLike]
 
 
@@ -107,6 +109,92 @@ class GameBuilderPVis(ParserVisitor):
         super().__init__()
         return
 
+    @staticmethod
+    def read_bod_hand(bod_hand_line: str) -> List[Tuple[KomaType, int]]:
+        # Reads a line representing a player's hand in BOD format
+        # Returns a list of (koma type, piece count).
+        res = []
+        hand_str = bod_hand_line.split("：")[1]
+        hand = re.split("　| ", hand_str)
+        for entry in hand:
+            if entry == "なし":
+                break
+            ktype = KTYPE_FROM_KANJI[entry[0]]
+            if len(entry) == 1:
+                count = 1
+            elif len(entry) == 2:
+                count = int(KanjiNumber[entry[1]])
+            elif len(entry) == 3:
+                # e.g. 十八 = 18; max for a shogi position should be 18 (pawns)
+                count = int(KanjiNumber[entry[1]]) + int(KanjiNumber[entry[2]])
+            res.append((ktype, count))
+        return res
+
+    @staticmethod
+    def read_bod_row(bod_board_line: str
+        ) -> Generator[Koma, None, None]:
+        # Reads a line representing a row of the boarda in BOD format.
+        # Returns a generator of Koma.
+        rank_str = bod_board_line.split("|")[1]
+        piece_strs = (rank_str[i:i+2] for i in range(0, len(rank_str), 2))
+        return (
+            Koma.make(
+                Side.GOTE if piece_str[0] == "v" else Side.SENTE,
+                KTYPE_FROM_KANJI[piece_str[1]]
+            )
+            for piece_str in piece_strs
+        )
+
+    @staticmethod
+    def read_kif_move_line(line: str) -> Tuple[int, str, str, str]:
+        line_match = re.search(KIF_MOVELINE_REGEX, line)
+        if line_match is None:
+            raise TypeError("Match object is None, cannot identify move from line:\n" + line)
+        move_num = line_match.group("movenum")
+        move_str = line_match.group("move")
+        move_time = line_match.group("movetime")
+        total_time = line_match.group("totaltime")
+        return int(move_num), move_str, move_time, total_time
+
+    @staticmethod
+    def read_kif_move(move_str: str) -> Tuple[str, str, str, str]:
+        move_match = re.search(KIF_MOVE_REGEX, move_str)
+        if move_match is None:
+            raise ValueError("KIF move regex failed to match movestr: " + move_str)
+        dest_str = move_match.group("sq_dest")
+        koma_str = move_match.group("koma")
+        drop_prom_str = move_match.group("drop_prom")
+        sq_origin_str = move_match.group("sq_origin")
+        return dest_str, koma_str, drop_prom_str, sq_origin_str
+
+    @staticmethod
+    def read_kif_dest_sq(dest_str: str, sq_prev: Square) -> Square:
+        if dest_str == "同　":
+            if sq_prev == Square.NONE:
+                raise ValueError("No last move specified for same destination quare.")
+            return sq_prev
+        col = int(dest_str[0])
+        row = int(KanjiNumber[dest_str[1]])
+        return Square.from_cr(col, row)
+
+    @staticmethod
+    def read_kif_komatype(koma_str: str) -> KomaType:
+        try:
+            return (
+                KTYPE_FROM_KANJI[koma_str[1]].promote()
+                if koma_str[0] == "成"
+                else KTYPE_FROM_KANJI[koma_str]
+            )
+        except KeyError as exc:
+            raise KeyError("Unknown koma: " + koma_str) from exc
+
+    @staticmethod
+    def read_kif_origin_sq(sq_origin_str: str, is_drop: bool) -> Square:
+        return (
+            Square.HAND if is_drop
+            else Square.from_coord(int(sq_origin_str))
+        )
+
     def visit_board(self, reader: Reader, lines: Sequence[str]) -> None:
         """Read the BOD representation given by the argument lines,
         and set reader's board accordingly.
@@ -119,38 +207,18 @@ class GameBuilderPVis(ParserVisitor):
         movetree = reader.game.movetree
         line_gote_hand = lines[0]
         line_sente_hand = lines[-1]
+        lines_board = lines[3:-2] # This should be exactly 9 strings
         # Hands
-        def read_hand(line):
-            res = []
-            hand_str = line.split("：")[1]
-            hand = re.split("　| ", hand_str)
-            for entry in hand:
-                if entry == "なし":
-                    break
-                ktype = KTYPE_FROM_KANJI[entry[0]]
-                if len(entry) == 1:
-                    count = 1
-                elif len(entry) == 2:
-                    count = int(KanjiNumber[entry[1]])
-                elif len(entry) == 3:
-                    # e.g. 十八 = 18; max for a shogi position should be 18 (pawns)
-                    count = int(KanjiNumber[entry[1]]) + int(KanjiNumber[entry[2]])
-                res.append((ktype, count))
-            return res
-        for ktype, count in read_hand(line_gote_hand):
+        for ktype, count in self.read_bod_hand(line_gote_hand):
             pos.set_hand_koma_count(Side.GOTE, ktype, count)
-        for ktype, count in read_hand(line_sente_hand):
+        for ktype, count in self.read_bod_hand(line_sente_hand):
             pos.set_hand_koma_count(Side.SENTE, ktype, count)
-
         # Board
-        for r_idx, line in enumerate(lines[3:-2]):
-            rank_str = line.split("|")[1]
-            rank = [rank_str[i:i+2] for i in range(0, len(rank_str), 2)]
-            for c_idx, pc_str in enumerate(rank):
-                ktype = KTYPE_FROM_KANJI[pc_str[1]]
-                side = Side.GOTE if pc_str[0] == "v" else Side.SENTE
-                koma = Koma.make(side, ktype)
-                pos.set_koma(koma, Square.from_cr(col_num=9-c_idx, row_num=r_idx+1))
+        for row_idx, line_rank in enumerate(lines_board):
+            for col_idx, koma in enumerate(self.read_bod_row(line_rank)):
+                pos.set_koma(
+                    koma, Square.from_cr(col_num=9-col_idx, row_num=row_idx+1)
+                )
         movetree.start_pos = pos.to_sfen()
         return
 
@@ -162,62 +230,34 @@ class GameBuilderPVis(ParserVisitor):
             pos.from_sfen(SFEN_FROM_HANDICAP[val])
             movetree.handicap = val
             movetree.start_pos = SFEN_FROM_HANDICAP[val]
-        except KeyError:
-            # To handle elegantly? Maybe the rest is still valid.
-            pass
+        except KeyError as exc:
+            raise KeyError("Unknown handicap: " + val) from exc
         return
 
     def visit_move(self, reader: Reader, line: str) -> None:
         game = reader.game
-        line_match = re.search(KIF_MOVELINE_REGEX, line)
-        if line_match is None:
-            raise TypeError("Match object is None, cannot identify move")
-        movenum = line_match.group("movenum")
-        movestr = line_match.group("move")
-        movetime = line_match.group("movetime")
-        totaltime = line_match.group("totaltime")
+        movenum, movestr, _, _ = self.read_kif_move_line(line)
         # Identify move components
         move: Move
         if movestr in GameTermination:
             move = TerminationMove(GameTermination(movestr))
             game.add_move(move)
             return
-        move_match = re.search(KIF_MOVE_REGEX, movestr)
-        if move_match is None:
-            raise ValueError("KIF move regex failed to match movestr: " + movestr)
-        dest = move_match.group("sq_dest")
-        komastr = move_match.group("koma")
-        drop_prom = move_match.group("drop_prom")
-        sq_origin = move_match.group("sq_origin")
-        # Find destination square
-        if dest == "同　":
-            end_sq = game.curr_node.move.end_sq
-            captured = game.position.get_koma(sq=end_sq)
-        else:
-            col = int(dest[0])
-            row = int(KanjiNumber[dest[1]])
-            end_sq = Square.from_cr(col, row)
-            captured = game.position.get_koma(sq=end_sq)
-        # Identify koma type
-        try:
-            ktype = (
-                KTYPE_FROM_KANJI[komastr[1]].promote()
-                if komastr[0] == "成"
-                else KTYPE_FROM_KANJI[komastr]
-            )
-        except KeyError as exc:
-            raise KeyError("Unknown koma encountered: " + komastr) from exc
-        # Find origin square
-        if drop_prom != "打":
-            start_sq = Square.from_coord(int(sq_origin))
-        else:
-            if ktype not in HAND_TYPES:
-                raise ValueError("Koma " + str(ktype) + " cannot be dropped")
-            start_sq = Square.HAND # Not NONE, not on board
-        # Identify if promotion
+        dest_str, koma_str, drop_prom, sq_origin = self.read_kif_move(movestr)
+        prev_end_sq = (
+            Square.NONE if game.curr_node.move.is_null()
+            else game.curr_node.move.end_sq
+        )
+        end_sq = self.read_kif_dest_sq(dest_str, prev_end_sq)
+        captured = game.position.get_koma(end_sq)
+        ktype = self.read_kif_komatype(koma_str)
+        is_drop = (drop_prom == "打")
+        if is_drop and ktype not in HAND_TYPES:
+            raise ValueError("Koma " + str(ktype) + " cannot be dropped")
+        start_sq = self.read_kif_origin_sq(sq_origin, is_drop)
         is_promotion = (drop_prom == "成")
         # Construct Move
-        side = Side.SENTE if (int(movenum) % 2 == 1) else Side.GOTE
+        side = Side.SENTE if (movenum % 2 == 1) else Side.GOTE
         koma = Koma.make(side, ktype)
         move = Move(start_sq, end_sq, is_promotion, koma, captured)
         game.add_move(move)
