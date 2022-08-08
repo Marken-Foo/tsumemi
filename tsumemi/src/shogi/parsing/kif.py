@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from tsumemi.src.shogi.base_readers_visitors import GameBuilderPVis
+from tsumemi.src.shogi.parsing.base_readers_visitors import GameBuilderPVis
 from tsumemi.src.shogi.game import Game
-from tsumemi.src.shogi.kif_reader import KifReader
+from tsumemi.src.shogi.parsing.kif_reader import KifReader
 
 if TYPE_CHECKING:
     import os

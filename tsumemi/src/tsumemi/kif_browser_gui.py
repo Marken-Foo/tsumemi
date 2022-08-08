@@ -9,7 +9,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from typing import TYPE_CHECKING
 
-import tsumemi.src.shogi.kif as kif
+import tsumemi.src.shogi.parsing.kif as kif
 import tsumemi.src.tsumemi.event as evt
 import tsumemi.src.tsumemi.game_controller as gamecon
 import tsumemi.src.tsumemi.problem_list as plist
