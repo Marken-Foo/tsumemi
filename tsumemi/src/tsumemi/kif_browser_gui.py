@@ -4,7 +4,6 @@ import datetime
 import functools
 import logging.config
 import os
-from shutil import move
 import tkinter as tk
 
 from tkinter import filedialog, messagebox, ttk
@@ -45,9 +44,9 @@ class RootController(evt.IObserver):
         self.movelist_controller = mvlistcon.MovelistController(
             self.main_game.game, self.move_writer
         )
-        
+
         self.speedrun_controller = speedcon.SpeedrunController(self)
-        
+
         self.main_game.add_observer(self.speedrun_controller._speedrun_states["question"])
         self.main_timer.clock.add_observer(self)
         self.main_problem_list.problem_list.add_observer(self)
@@ -55,29 +54,29 @@ class RootController(evt.IObserver):
             timer.TimerSplitEvent: self._on_split,
             plist.ProbSelectedEvent: self._on_prob_selected,
         }
-        
+
         # GUI
         self.root: tk.Tk = root
         root.option_add("*tearOff", False)
         root.grid_columnconfigure(0, weight=1)
         root.grid_rowconfigure(0, weight=1)
         root.title("tsumemi")
-        
+
         self.menubar: Menubar = Menubar(parent=self.root, controller=self)
-        
+
         self.mainframe: MainWindowView = MainWindowView(root, self)
         self.mainframe.grid_items_normal()
-        
+
         # Keyboard shortcuts
         self.bindings = Bindings(self)
         self.bindings.bind_shortcuts(self.root, self.bindings.MASTER_SHORTCUTS)
         self.bindings.bind_shortcuts(self.root, self.bindings.FREE_SHORTCUTS)
         return
-    
+
     def open_settings_window(self) -> None:
         self.settings.open_settings_window()
         return
-    
+
     def open_folder(self, event: Optional[tk.Event] = None,
             recursive: bool = False
         ) -> None:
@@ -89,17 +88,17 @@ class RootController(evt.IObserver):
         directory = os.path.normpath(directory)
         prob = self.main_problem_list.set_directory(directory, recursive=recursive)
         return
-    
+
     def open_folder_recursive(self, event: Optional[tk.Event] = None) -> None:
         return self.open_folder(event, recursive=True)
-    
+
     def copy_sfen_to_clipboard(self) -> None:
         sfen = self.main_game.get_current_sfen()
         self.root.clipboard_clear()
         self.root.clipboard_append(sfen)
         self.root.update()
         return
-    
+
     def show_problem(self, prob: plist.Problem) -> None:
         """Display the given problem in the GUI and enable move input.
         """
@@ -111,7 +110,7 @@ class RootController(evt.IObserver):
         self.mainframe.hide_solution()
         self.root.title(window_title)
         return
-    
+
     def _read_problem(self, prob: plist.Problem) -> None:
         """Read the problem data from file into the program.
         """
@@ -126,7 +125,7 @@ class RootController(evt.IObserver):
         game.go_to_start()
         self.main_game.set_game(game)
         return
-    
+
     def refresh_solution_text(self) -> None:
         game = self.main_game.game
         move_string_list = game.get_mainline_notation(self.move_writer)
@@ -135,39 +134,39 @@ class RootController(evt.IObserver):
         self.mainframe.toggle_solution()
         self.mainframe.toggle_solution()
         return
-    
+
     def go_next_file(self, event: Optional[tk.Event] = None) -> bool:
         prob = self.main_problem_list.go_next_problem()
         return prob is not None
-    
+
     def go_prev_file(self, event: Optional[tk.Event] = None) -> bool:
         prob = self.main_problem_list.go_prev_problem()
         return prob is not None
-    
+
     def go_to_file(self, event: Optional[tk.Event] = None, idx: int = 0
         ) -> bool:
         # GUI callback
         prob = self.main_problem_list.go_to_problem(idx)
         return prob is not None
-    
+
     def clear_statuses(self) -> None:
         self.main_problem_list.clear_statuses()
         return
-    
+
     def clear_times(self) -> None:
         self.main_problem_list.clear_times()
         return
-    
+
     def clear_results(self) -> None:
         self.main_problem_list.clear_statuses()
         self.main_problem_list.clear_times()
         return
-    
+
     def generate_statistics(self) -> None:
         stats = self.main_problem_list.generate_statistics()
         StatisticsDialog(stats)
         return
-    
+
     def export_prob_list_csv(self) -> None:
         date_time_now = datetime.datetime.now()
         datetimestr = date_time_now.strftime("%Y%m%d-%H%M")
@@ -180,7 +179,7 @@ class RootController(evt.IObserver):
             return
         self.main_problem_list.export_as_csv(directory)
         return
-    
+
     #=== Speedrun controller commands
     def start_speedrun(self) -> None:
         self.speedrun_controller.start_speedrun()
@@ -188,7 +187,7 @@ class RootController(evt.IObserver):
         self.mainframe.btn_abort_speedrun.config(state="normal")
         self.bindings.unbind_shortcuts(self.root, self.bindings.FREE_SHORTCUTS)
         return
-    
+
     def abort_speedrun(self) -> None:
         self.speedrun_controller.abort_speedrun()
         self.update_nav_control_pane(self.mainframe.make_nav_pane_normal)
@@ -196,13 +195,13 @@ class RootController(evt.IObserver):
         self.mainframe.btn_abort_speedrun.config(state="disabled")
         self.bindings.bind_shortcuts(self.root, self.bindings.FREE_SHORTCUTS)
         return
-    
+
     def update_nav_control_pane(self,
             nav_pane_constructor: Callable[[tk.Widget], ttk.Frame]
         ) -> None:
         self.mainframe.update_nav_control_pane(nav_pane_constructor)
         return
-    
+
     #=== GUI display methods
     def apply_skin_settings(self, settings: imghand.SkinSettings) -> None:
         # GUI callback
@@ -210,7 +209,7 @@ class RootController(evt.IObserver):
         self.main_game.skin_settings = settings
         self.mainframe.apply_skins(settings)
         return
-    
+
     def apply_notation_settings(self, move_writer: nwriter.AbstractMoveWriter
         ) -> None:
         # GUI callback
@@ -219,7 +218,7 @@ class RootController(evt.IObserver):
         self.refresh_solution_text()
         self.mainframe.movelist_frame.refresh_content()
         return
-    
+
     #=== Observer callbacks
     def _on_split(self, event: timer.TimerSplitEvent) -> None:
         # Observer callback
@@ -227,7 +226,7 @@ class RootController(evt.IObserver):
         if self.main_timer.clock == event.clock:
             self.main_problem_list.set_time(time)
         return
-    
+
     def _on_prob_selected(self, event: plist.ProbSelectedEvent) -> None:
         # Observer callback
         if event.sender == self.main_problem_list.problem_list:
@@ -239,29 +238,29 @@ class Bindings:
     # Just to group all shortcut bindings together for convenience.
     def __init__(self, controller):
         self.controller = controller
-    
+
         self.MASTER_SHORTCUTS = {
             "<Control-o>": self.controller.open_folder,
             "<Control-O>": self.controller.open_folder,
             "<Control-Shift-O>": self.controller.open_folder_recursive,
             "<Control-Shift-o>": self.controller.open_folder_recursive,
         }
-        
+
         self.FREE_SHORTCUTS = {
             "<Key-h>": self.controller.mainframe.toggle_solution,
             "<Key-H>": self.controller.mainframe.toggle_solution,
             "<Left>": self.controller.go_prev_file,
             "<Right>": self.controller.go_next_file,
         }
-        
+
         self.SPEEDRUN_SHORTCUTS = {}
-    
+
     @staticmethod
     def bind_shortcuts(target, shortcuts):
         for keypress, command in shortcuts.items():
             target.bind(keypress, command)
         return
-    
+
     @staticmethod
     def unbind_shortcuts(target, shortcuts):
         for keypress in shortcuts.keys():
@@ -279,7 +278,7 @@ class Menubar(tk.Menu):
         ) -> None:
         self.controller = controller
         super().__init__(parent, *args, **kwargs)
-        
+
         # Set cascades
         menu_file = tk.Menu(self)
         self.add_cascade(menu=menu_file, label="File")
@@ -287,7 +286,7 @@ class Menubar(tk.Menu):
         self.add_cascade(menu=menu_solving, label="Solving")
         menu_settings = tk.Menu(self)
         self.add_cascade(menu=menu_settings, label="Settings")
-        
+
         # File
         menu_file.add_command(
             label="Open folder...",
@@ -392,7 +391,7 @@ class StatisticsDialog(tk.Toplevel):
                 f"Shortest time taken: {_fastest_time.to_hms_str(places=1)} ({_fastest_filename})"
             )
         report_text = "\n".join(message_strings)
-        
+
         self.title("Solving statistics")
         lbl_report = ttk.Label(self, text=report_text)
         lbl_message = ttk.Label(self, text="Copy your results from below:")
@@ -404,7 +403,7 @@ class StatisticsDialog(tk.Toplevel):
         hsc_txt_report = ttk.Scrollbar(self, orient="horizontal", command=txt_report.xview)
         txt_report["xscrollcommand"] = hsc_txt_report.set
         btn_ok = ttk.Button(self, text="OK", command=self.destroy)
-        
+
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(2, weight=1)
         for child in self.winfo_children():
