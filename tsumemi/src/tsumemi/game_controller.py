@@ -64,7 +64,7 @@ class GameController(evt.Emitter, evt.IObserver):
         return self.game.get_current_sfen()
 
     def set_game(self, game: Game) -> None:
-        self.game = game
+        self.game.copy_from(game)
         for board_canvas in self.views:
             board_canvas.set_position(game.position)
         return

@@ -4,14 +4,17 @@ import datetime
 import functools
 import logging.config
 import os
+from shutil import move
 import tkinter as tk
 
 from tkinter import filedialog, messagebox, ttk
 from typing import TYPE_CHECKING
 
 import tsumemi.src.shogi.parsing.kif as kif
+import tsumemi.src.shogi.notation_writer as nwriter
 import tsumemi.src.tsumemi.event as evt
 import tsumemi.src.tsumemi.game_controller as gamecon
+import tsumemi.src.tsumemi.movelist.movelist_controller as mvlistcon
 import tsumemi.src.tsumemi.problem_list as plist
 import tsumemi.src.tsumemi.problem_list_controller as plistcon
 import tsumemi.src.tsumemi.settings.settings_controller as setcon
@@ -39,6 +42,9 @@ class RootController(evt.IObserver):
         self.main_game = gamecon.GameController(self.skin_settings)
         self.main_timer = timecon.TimerController()
         self.main_problem_list = plistcon.ProblemListController()
+        self.movelist_controller = mvlistcon.MovelistController(
+            self.main_game.game, self.move_writer
+        )
         
         self.speedrun_controller = speedcon.SpeedrunController(self)
         
@@ -100,6 +106,7 @@ class RootController(evt.IObserver):
         self._read_problem(prob)
         window_title = "tsumemi - " + str(prob.filepath)
         self.mainframe.refresh_main_board()
+        self.mainframe.refresh_move_list()
         self.mainframe.enable_move_input()
         self.mainframe.hide_solution()
         self.root.title(window_title)
@@ -202,6 +209,15 @@ class RootController(evt.IObserver):
         self.skin_settings = settings
         self.main_game.skin_settings = settings
         self.mainframe.apply_skins(settings)
+        return
+    
+    def apply_notation_settings(self, move_writer: nwriter.AbstractMoveWriter
+        ) -> None:
+        # GUI callback
+        self.move_writer = move_writer
+        self.movelist_controller.update_move_writer(move_writer)
+        self.refresh_solution_text()
+        self.mainframe.movelist_frame.refresh_content()
         return
     
     #=== Observer callbacks

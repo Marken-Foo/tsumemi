@@ -87,10 +87,9 @@ class Settings:
     
     def push_settings_to_controller(self) -> None:
         skin_settings = self.get_skin_settings()
-        self.controller.skin_settings = skin_settings
-        self.controller.move_writer = self.notation_controller.get_move_writer()
+        move_writer = self.notation_controller.get_move_writer()
         self.controller.apply_skin_settings(skin_settings)
-        self.controller.refresh_solution_text()
+        self.controller.apply_notation_settings(move_writer)
         return
     
     def get_skin_settings(self) -> imghand.SkinSettings:

@@ -23,12 +23,21 @@ class Game:
         self.position: Position = Position()
         return
 
+    def copy_from(self, game: Game) -> None:
+        """Shallow copy provided game onto self.
+        """
+        self.movetree = game.movetree
+        self.curr_node = game.curr_node
+        self.position = game.position
+        return
+
     def reset(self) -> None:
         """Reset self to a new empty game.
         """
         self.movetree = GameNode()
         self.curr_node = self.movetree
         self.position.reset()
+        return
 
     def add_move(self, move: Move) -> None:
         """Execute the given move and add it to the movetree if it

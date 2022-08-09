@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     import tsumemi.src.tsumemi.problem_list_controller as plistcon
     import tsumemi.src.tsumemi.timer_controller as timecon
     from tsumemi.src.tsumemi.kif_browser_gui import RootController
+    from tsumemi.src.tsumemi.movelist.movelist_view import MovelistFrame
 
 
 class MainWindowView(ttk.Frame):
@@ -23,7 +24,14 @@ class MainWindowView(ttk.Frame):
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
         self.grid(row=0, column=0, sticky="NSEW")
-        
+
+        self.movelist_frame: MovelistFrame
+        self.movelist_frame = (
+            root_controller
+            .movelist_controller
+            .make_movelist_view(self)
+        )
+
         self.board_frame: gamecon.NavigableGameFrame
         self.board_canvas: bc.BoardCanvas
         self.board_frame, self.board_canvas = (
@@ -87,6 +95,10 @@ class MainWindowView(ttk.Frame):
         self.board_canvas.flip_board(want_upside_down)
         return
     
+    def refresh_move_list(self) -> None:
+        self.movelist_frame.refresh_content()
+        return
+
     def disable_move_input(self) -> None:
         move_input_handler = self.board_canvas.move_input_handler
         if move_input_handler is not None:
@@ -162,6 +174,8 @@ class MainWindowView(ttk.Frame):
         return
     
     def grid_items_normal(self) -> None:
+        self.movelist_frame.grid_columnconfigure(0, weight=1)
+        self.movelist_frame.grid_rowconfigure(0, weight=1)
         self.board_frame.grid_columnconfigure(0, weight=1)
         self.board_frame.grid_rowconfigure(0, weight=1)
         self.main_timer_view.grid_columnconfigure(0, weight=0)
@@ -169,28 +183,33 @@ class MainWindowView(ttk.Frame):
         self.problem_list_pane.grid_columnconfigure(0, weight=1)
         self.problem_list_pane.grid_rowconfigure(0, weight=1)
         
+        self.movelist_frame.grid(
+            row=0, column=0,
+            sticky="NSEW", padx=5, pady=5
+        )
+
         self.board_frame.grid(
-             row=0, column=0,
+             row=0, column=1,
             sticky="NSEW", padx=5, pady=5
         )
         self.problem_list_pane.grid(
-            row=0, column=1,
+            row=0, column=2,
             sticky="NSEW", padx=5, pady=5
         )
         self.lbl_solution.grid(
-            row=1, column=0,
+            row=1, column=1,
             sticky="W", padx=5, pady=5
         )
         self.main_timer_view.grid(
-            row=1, column=1,
+            row=1, column=2,
         )
         self.nav_control_pane.grid(
-            row=2, column=0
+            row=2, column=1
         )
         self.update_nav_control_pane(self.make_nav_pane_normal)
         self._grid_nav_control_pane(self.nav_controls)
         self.speedrun_frame.grid(
-            row=2, column=1,
+            row=2, column=2,
         )
         self.btn_speedrun.grid(row=0, column=0)
         self.btn_abort_speedrun.grid(row=0, column=1)

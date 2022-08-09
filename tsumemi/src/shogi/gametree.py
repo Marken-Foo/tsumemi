@@ -76,6 +76,13 @@ class MoveNode:
         for node in self.variations:
             yield from node.traverse_preorder()
 
+    def traverse_mainline(self) -> Generator[MoveNode, None, None]:
+        """Traverse only the mainline of this node.
+        """
+        yield self
+        if self.variations:
+            yield from self.variations[0].traverse_mainline()
+
     def _rec_str(self, acc: List[Any],
             func: Callable[[MoveNode, List[Any]], None]
             ) -> None:
