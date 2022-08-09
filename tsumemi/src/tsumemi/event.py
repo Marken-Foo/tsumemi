@@ -21,18 +21,24 @@ class IObserver(ABC):
     """Base class for any class that needs to observe events.
     """
     def __init__(self) -> None:
-        self.NOTIFY_ACTIONS: Dict[Type[Event], Callable[..., Any]] = {}
+        self._notify_actions: Dict[Type[Event], Callable[..., Any]] = {}
         return
 
     def on_notify(self, event: Event) -> None:
         event_type = type(event)
-        if event_type in self.NOTIFY_ACTIONS:
-            self.NOTIFY_ACTIONS[event_type](event)
+        if event_type in self._notify_actions:
+            self._notify_actions[event_type](event)
         return
 
-    def add_notification(self, event: Type[Event], func: Callable[..., Any]
+    def set_callbacks(self,
+            notification_dict: Dict[Type[Event], Callable[..., Any]]
         ) -> None:
-        self.NOTIFY_ACTIONS[event] = func
+        self._notify_actions = notification_dict
+        return
+
+    def add_callback(self, event: Type[Event], func: Callable[..., Any]
+        ) -> None:
+        self._notify_actions[event] = func
         return
 
 

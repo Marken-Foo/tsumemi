@@ -51,10 +51,10 @@ class RootController(evt.IObserver):
         self.main_game.add_observer(self.speedrun_controller._speedrun_states["question"])
         self.main_timer.clock.add_observer(self)
         self.main_problem_list.problem_list.add_observer(self)
-        self.NOTIFY_ACTIONS = {
+        self.set_callbacks({
             timer.TimerSplitEvent: self._on_split,
             plist.ProbSelectedEvent: self._on_prob_selected,
-        }
+        })
 
         # GUI
         self.root: tk.Tk = root

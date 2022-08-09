@@ -44,10 +44,10 @@ class TimerDisplay(ttk.Label, evt.IObserver):
         super().__init__(parent, *args, **kwargs)
         self.clock: timer.Timer = clock
         self.clock.add_observer(self)
-        self.NOTIFY_ACTIONS = {
+        self.set_callbacks({
             timer.TimerStartEvent: self._on_start,
             timer.TimerStopEvent: self._on_stop
-        }
+        })
         # Assume timer is in reset state, initialise to match
         self.is_running: bool = False
         self.time_str: tk.StringVar = tk.StringVar(

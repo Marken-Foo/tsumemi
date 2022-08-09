@@ -122,11 +122,11 @@ class ProblemsView(ttk.Treeview, evt.IObserver):
         super().__init__(parent, *args, **kwargs)
         self.problem_list: plist.ProblemList = problem_list
         self.problem_list.add_observer(self)
-        self.NOTIFY_ACTIONS = {
+        self.set_callbacks({
             plist.ProbStatusEvent: self.display_status,
             plist.ProbTimeEvent: self.display_time,
             plist.ProbListEvent: self.refresh_view,
-        }
+        })
 
         self.status_strings: Dict[plist.ProblemStatus, str] = {
             plist.ProblemStatus.NONE: "",

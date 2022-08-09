@@ -70,11 +70,11 @@ class GameController(evt.Emitter, evt.IObserver):
         return
 
     def set_speedrun_mode(self) -> None:
-        self.NOTIFY_ACTIONS[mih.MoveEvent] = self.verify_move
+        self.add_callback(mih.MoveEvent, self.verify_move)
         return
 
     def set_free_mode(self) -> None:
-        self.NOTIFY_ACTIONS[mih.MoveEvent] = self._add_move
+        self.add_callback(mih.MoveEvent, self._add_move)
         return
 
     def refresh_views(self) -> None:

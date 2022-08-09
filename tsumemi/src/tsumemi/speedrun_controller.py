@@ -195,10 +195,10 @@ class SpeedrunState(evt.IObserver):
 class SpeedrunQuestionState(SpeedrunState):
     def __init__(self, controller: SpeedrunController) -> None:
         SpeedrunState.__init__(self, controller)
-        self.NOTIFY_ACTIONS = {
+        self.set_callbacks({
             gamecon.GameEndEvent: self._mark_correct,
             gamecon.WrongMoveEvent: self._mark_wrong,
-        }
+        })
         return
     
     def on_entry(self) -> None:
