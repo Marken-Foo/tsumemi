@@ -30,7 +30,7 @@ class MoveInputHandler(evt.Emitter):
     Emits MoveEvents when a legal move has been successfully input.
     """
     def __init__(self, board_canvas: BoardCanvas) -> None:
-        self.observers: List[evt.IObserver] = []
+        super().__init__()
         self.position: Position
         self.focused_sq = Square.NONE
         self.focused_ktype = KomaType.NONE

@@ -181,8 +181,8 @@ class Timer(evt.Emitter):
     functions. Emits events to be observed by GUI displays of
     the timer (or for other purposes)."""
     def __init__(self) -> None:
+        super().__init__()
         self.clock = SplitTimer()
-        self.observers: List[evt.IObserver] = []
         return
     
     def read(self) -> Time:

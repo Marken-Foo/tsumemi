@@ -79,10 +79,10 @@ class ProblemList(evt.Emitter):
         return ProblemList.natural_sort_key(prob.filepath)
     
     def __init__(self, problems: Optional[List[Problem]] = None) -> None:
+        super().__init__()
         self.problems: List[Problem] = [] if problems is None else problems
         self.curr_prob: Optional[Problem] = None
         self.curr_prob_idx: Optional[int] = None
-        self.observers: List[evt.IObserver] = []
         return
     
     def __iter__(self):
