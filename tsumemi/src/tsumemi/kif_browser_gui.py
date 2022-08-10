@@ -43,7 +43,7 @@ class RootController(evt.IObserver):
         self.main_timer = timecon.TimerController()
         self.main_problem_list = plistcon.ProblemListController()
         self.movelist_controller = mvlistcon.MovelistController(
-            self.main_game.game, self.move_writer
+            self.main_game.game.game, self.move_writer
         )
 
         self.speedrun_controller = speedcon.SpeedrunController(self)
@@ -129,7 +129,7 @@ class RootController(evt.IObserver):
 
     def refresh_solution_text(self) -> None:
         game = self.main_game.game
-        move_string_list = game.get_mainline_notation(self.move_writer)
+        move_string_list = game.game.get_mainline_notation(self.move_writer)
         self.mainframe.set_solution("　".join(move_string_list))
         # force view to update
         self.mainframe.toggle_solution()
