@@ -10,11 +10,13 @@ from tsumemi.src.shogi.basetypes import TerminationMove
 from tsumemi.src.shogi.game import Game
 from tsumemi.src.tsumemi.game.game_model import GameModel, GameUpdateEvent
 from tsumemi.src.tsumemi.game_navigation_view import NavigableGameFrame
+from tsumemi.src.tsumemi.movelist.movelist_controller import MovelistController
 
 if TYPE_CHECKING:
     import tkinter as tk
-    from typing import Tuple
+    from typing import Optional, Tuple
     import tsumemi.src.tsumemi.img_handlers as imghand
+    from tsumemi.src.shogi.notation_writer import AbstractMoveWriter
 
 
 class GameEndEvent(evt.Event):
@@ -30,10 +32,13 @@ class WrongMoveEvent(evt.Event):
 
 
 class GameController(evt.Emitter, evt.IObserver):
-    def __init__(self) -> None:
+    def __init__(self, move_writer: AbstractMoveWriter) -> None:
         evt.Emitter.__init__(self)
         evt.IObserver.__init__(self)
-        self.game = GameModel()
+        self.game: GameModel = GameModel()
+        self.movelist_controller: MovelistController = MovelistController(
+            self.game, move_writer
+        )
         self.set_free_mode()
         return
 

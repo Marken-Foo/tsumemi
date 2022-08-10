@@ -12,7 +12,7 @@ import tsumemi.src.shogi.parsing.kif as kif
 import tsumemi.src.shogi.notation_writer as nwriter
 import tsumemi.src.tsumemi.event as evt
 import tsumemi.src.tsumemi.game_controller as gamecon
-import tsumemi.src.tsumemi.movelist.movelist_controller as mvlistcon
+# import tsumemi.src.tsumemi.movelist.movelist_controller as mvlistcon
 import tsumemi.src.tsumemi.problem_list as plist
 import tsumemi.src.tsumemi.problem_list_controller as plistcon
 import tsumemi.src.tsumemi.settings.settings_controller as setcon
@@ -39,12 +39,9 @@ class RootController(evt.IObserver):
         self.settings = setcon.Settings(self)
         self.skin_settings = self.settings.get_skin_settings()
         self.move_writer = self.settings.notation_controller.get_move_writer()
-        self.main_game = gamecon.GameController()
+        self.main_game = gamecon.GameController(self.move_writer)
         self.main_timer = timecon.TimerController()
         self.main_problem_list = plistcon.ProblemListController()
-        self.movelist_controller = mvlistcon.MovelistController(
-            self.main_game.game.game, self.move_writer
-        )
 
         self.speedrun_controller = speedcon.SpeedrunController(self)
 
@@ -214,7 +211,7 @@ class RootController(evt.IObserver):
         ) -> None:
         # GUI callback
         self.move_writer = move_writer
-        self.movelist_controller.update_move_writer(move_writer)
+        self.main_game.movelist_controller.update_move_writer(move_writer)
         self.refresh_solution_text()
         self.mainframe.movelist_frame.refresh_content()
         return

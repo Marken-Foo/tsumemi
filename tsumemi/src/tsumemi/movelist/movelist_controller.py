@@ -7,13 +7,13 @@ from tsumemi.src.tsumemi.movelist.movelist_view import MovelistFrame, MovelistTr
 
 if TYPE_CHECKING:
     import tkinter as tk
-    from tsumemi.src.shogi.game import Game
     from tsumemi.src.shogi.notation_writer import AbstractMoveWriter
+    from tsumemi.src.tsumemi.game.game_model import GameModel
 
 
 class MovelistController:
     def __init__(self,
-            game: Game,
+            game: GameModel,
             move_writer: AbstractMoveWriter
         ) -> None:
         self.viewmodel = MovelistViewModel(game, move_writer)

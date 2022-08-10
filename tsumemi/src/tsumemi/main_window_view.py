@@ -28,6 +28,7 @@ class MainWindowView(ttk.Frame):
         self.movelist_frame: MovelistFrame
         self.movelist_frame = (
             root_controller
+            .main_game
             .movelist_controller
             .make_movelist_view(self)
         )
