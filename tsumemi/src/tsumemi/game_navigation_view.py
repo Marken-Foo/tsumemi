@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     import tkinter as tk
+    import tsumemi.src.tsumemi.img_handlers as imghand
     from tsumemi.src.tsumemi.game_controller import GameController
 
 
@@ -12,13 +13,16 @@ class NavigableGameFrame(ttk.Frame):
     """A GUI frame that displays a game and has basic move navigation
     controls underneath the board.
     """
-    def __init__(self, parent: tk.Widget, controller: GameController,
+    def __init__(self,
+            parent: tk.Widget,
+            skin_settings: imghand.SkinSettings,
+            controller: GameController,
             *args, **kwargs
         ) -> None:
         self.controller: GameController = controller
         super().__init__(parent, *args, **kwargs)
         # make board canvas
-        self.board_canvas = controller.make_board_canvas(self)
+        self.board_canvas = controller.make_board_canvas(self, skin_settings)
         self.board_canvas.grid(row=0, column=0, sticky="NSEW")
         self.board_canvas.bind("<Configure>", self.board_canvas.on_resize)
         # make |<<, <, >, >>| buttons

@@ -37,7 +37,9 @@ class MainWindowView(ttk.Frame):
         self.board_frame, self.board_canvas = (
             root_controller
             .main_game
-            .make_navigable_view(parent=self)
+            .make_navigable_view(
+                parent=self, skin_settings=root_controller.skin_settings
+            )
         )
 
         self.main_timer_view: timecon.TimerPane = (

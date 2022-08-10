@@ -29,21 +29,22 @@ class WrongMoveEvent(evt.Event):
 
 
 class GameController(evt.Emitter, evt.IObserver):
-    def __init__(self, skin_settings: imghand.SkinSettings) -> None:
+    def __init__(self) -> None:
         evt.Emitter.__init__(self)
         evt.IObserver.__init__(self)
         self.game = Game()
         self.views: List[bc.BoardCanvas] = []
-        self.skin_settings = skin_settings
         self.set_free_mode()
         return
 
-    def make_board_canvas(self, parent: tk.Widget,
+    def make_board_canvas(self,
+            parent: tk.Widget,
+            skin_settings: imghand.SkinSettings,
             *args, **kwargs
         ) -> bc.BoardCanvas:
         """Creates a BoardCanvas to display the game.
         """
-        board_canvas = bc.BoardCanvas(parent, self.game, self.skin_settings,
+        board_canvas = bc.BoardCanvas(parent, self.game, skin_settings,
             bg="white", *args, **kwargs
         )
         move_input_handler = mih.MoveInputHandler(board_canvas)
@@ -51,9 +52,14 @@ class GameController(evt.Emitter, evt.IObserver):
         self.views.append(board_canvas)
         return board_canvas
 
-    def make_navigable_view(self, parent: tk.Widget, *args, **kwargs
+    def make_navigable_view(self,
+            parent: tk.Widget,
+            skin_settings: imghand.SkinSettings,
+            *args, **kwargs
         ) -> Tuple[NavigableGameFrame, bc.BoardCanvas]:
-        nav_game_frame = NavigableGameFrame(parent, self, *args, **kwargs)
+        nav_game_frame = NavigableGameFrame(
+            parent, skin_settings, self, *args, **kwargs
+        )
         board_canvas = nav_game_frame.board_canvas
         move_input_handler = mih.MoveInputHandler(board_canvas)
         move_input_handler.add_observer(self)

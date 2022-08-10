@@ -39,7 +39,7 @@ class RootController(evt.IObserver):
         self.settings = setcon.Settings(self)
         self.skin_settings = self.settings.get_skin_settings()
         self.move_writer = self.settings.notation_controller.get_move_writer()
-        self.main_game = gamecon.GameController(self.skin_settings)
+        self.main_game = gamecon.GameController()
         self.main_timer = timecon.TimerController()
         self.main_problem_list = plistcon.ProblemListController()
         self.movelist_controller = mvlistcon.MovelistController(
@@ -207,7 +207,6 @@ class RootController(evt.IObserver):
     def apply_skin_settings(self, settings: imghand.SkinSettings) -> None:
         # GUI callback
         self.skin_settings = settings
-        self.main_game.skin_settings = settings
         self.mainframe.apply_skins(settings)
         return
 
