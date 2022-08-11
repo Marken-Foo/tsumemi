@@ -62,11 +62,10 @@ class GameController(evt.Emitter, evt.IObserver):
 
     def make_navigable_view(self,
             parent: tk.Widget,
-            skin_settings: imghand.SkinSettings,
-            *args, **kwargs
+            skin_settings: imghand.SkinSettings
         ) -> Tuple[NavigableGameFrame, bc.BoardCanvas]:
         nav_game_frame = NavigableGameFrame(
-            parent, skin_settings, self, *args, **kwargs
+            parent, skin_settings, self
         )
         board_canvas = nav_game_frame.board_canvas
         move_input_handler = mih.MoveInputHandler(board_canvas)
