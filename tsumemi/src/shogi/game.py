@@ -8,7 +8,7 @@ from tsumemi.src.shogi.position import Position
 if TYPE_CHECKING:
     from typing import Generator, List, Optional
     from tsumemi.src.shogi.basetypes import Move
-    from tsumemi.src.shogi.gametree import MoveNode
+    from tsumemi.src.shogi.gametree import MoveNode, MoveNodeId
     from tsumemi.src.shogi.notation_writer import AbstractMoveWriter
 
 
@@ -104,6 +104,23 @@ class Game:
         has_next = True
         while has_next:
             has_next = self.go_next_move()
+        return
+
+    def go_to_id(self, _id: int) -> None:
+        """Go to the node with the given id.
+        """
+        for node in self.movetree.traverse_preorder():
+            if node.id == _id:
+                target_node = node
+                break
+        else:
+            # Node not found, do nothing
+            return
+        # Now, need to actually reach the node and get the position correct
+        path_nodes = target_node.get_path_from_root()
+        self.go_to_start()
+        for node in path_nodes:
+            self.make_move(node.move)
         return
 
     def get_current_sfen(self) -> str:

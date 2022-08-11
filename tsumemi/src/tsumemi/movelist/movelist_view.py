@@ -64,6 +64,12 @@ class MovelistTreeview(ttk.Treeview):
         self.column("move", width=50)
         self.heading("alternative", text="")
         self.column("alternative", width=10)
+        # Bind double click to go to a move
+        def _click_to_position(event: tk.Event) -> None:
+            iid = int(self.identify("item", event.x, event.y))
+            self.viewmodel.go_to_id(iid)
+            return
+        self.bind("<Double-1>", _click_to_position)
         return
 
     def refresh_view(self) -> None:

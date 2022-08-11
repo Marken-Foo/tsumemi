@@ -8,6 +8,7 @@ from tsumemi.src.shogi.game import Game
 
 if TYPE_CHECKING:
     from tsumemi.src.shogi.basetypes import Move
+    from tsumemi.src.shogi.gametree import MoveNodeId
     from tsumemi.src.shogi.position import Position
 
 
@@ -48,6 +49,11 @@ class GameModel(evt.Emitter):
 
     def go_prev_move(self) -> None:
         self.game.go_prev_move()
+        self._notify_observers(GameUpdateEvent(self))
+        return
+
+    def go_to_id(self, _id: MoveNodeId) -> None:
+        self.game.go_to_id(_id)
         self._notify_observers(GameUpdateEvent(self))
         return
 

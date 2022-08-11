@@ -32,6 +32,10 @@ class MovelistViewModel:
             )
         return
 
+    def go_to_id(self, _id: int) -> None:
+        self.game.go_to_id(_id)
+        return
+
     def go_to_start(self) -> None:
         self.game.go_to_start()
         return

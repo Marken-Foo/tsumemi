@@ -5,7 +5,7 @@ from typing import NewType, TYPE_CHECKING
 from tsumemi.src.shogi.basetypes import NullMove
 
 if TYPE_CHECKING:
-    from typing import Any, Callable, Generator, List
+    from typing import Any, Callable, Generator, Iterator, List
     from tsumemi.src.shogi.basetypes import Move
 
 
@@ -61,6 +61,15 @@ class MoveNode:
         raise ValueError(
             f"Move ({str(move)}) is not a variation after move (str(self.movenum))"
         )
+
+    def get_path_from_root(self) -> Iterator[MoveNode]:
+        # returns path, does not include first non-null node
+        node = self
+        res = []
+        while not node.parent.is_null():
+            res.append(node)
+            node = node.parent
+        return reversed(res)
 
     def next(self) -> MoveNode:
         return self.variations[0] if self.variations else NullMoveNode()
