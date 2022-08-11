@@ -9,12 +9,12 @@ import tsumemi.src.tsumemi.move_input_handler as mih
 from tsumemi.src.shogi.basetypes import TerminationMove
 from tsumemi.src.shogi.game import Game
 from tsumemi.src.tsumemi.game.game_model import GameModel, GameUpdateEvent
-from tsumemi.src.tsumemi.game_navigation_view import NavigableGameFrame
+from tsumemi.src.tsumemi.game.game_navigation_view import NavigableGameFrame
 from tsumemi.src.tsumemi.movelist.movelist_controller import MovelistController
 
 if TYPE_CHECKING:
     import tkinter as tk
-    from typing import Optional, Tuple
+    from typing import Tuple
     import tsumemi.src.tsumemi.img_handlers as imghand
     from tsumemi.src.shogi.notation_writer import AbstractMoveWriter
 

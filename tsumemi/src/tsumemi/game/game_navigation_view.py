@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     import tkinter as tk
     import tsumemi.src.tsumemi.img_handlers as imghand
-    from tsumemi.src.tsumemi.game_controller import GameController
+    from tsumemi.src.tsumemi.game.game_controller import GameController
 
 
 class NavigableGameFrame(ttk.Frame):
