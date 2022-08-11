@@ -117,19 +117,3 @@ class GameController(evt.Emitter, evt.IObserver):
             return
         self._notify_observers(WrongMoveEvent())
         return
-
-    def go_to_start(self):
-        self.game.go_to_start()
-        return
-
-    def go_to_end(self):
-        self.game.go_to_end()
-        return
-
-    def go_next_move(self):
-        self.game.go_next_move()
-        return
-
-    def go_prev_move(self):
-        self.game.go_prev_move()
-        return
