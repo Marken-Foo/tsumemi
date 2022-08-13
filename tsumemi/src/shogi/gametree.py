@@ -63,13 +63,23 @@ class MoveNode:
         )
 
     def get_path_from_root(self) -> Iterator[MoveNode]:
-        # returns path, does not include first non-null node
+        """Returns an iterator of MoveNodes leading from the root of
+        the gametree to the caller node, inclusive.
+        """
         node = self
         res = []
-        while not node.parent.is_null():
+        while not node.is_null():
             res.append(node)
             node = node.parent
         return reversed(res)
+
+    def get_last_node(self) -> MoveNode:
+        """Returns the node at the end of the mainline from this node.
+        """
+        node = self
+        while node.variations:
+            node = node.variations[0]
+        return node
 
     def next(self) -> MoveNode:
         return self.variations[0] if self.variations else NullMoveNode()

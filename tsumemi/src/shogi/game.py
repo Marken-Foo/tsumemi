@@ -6,9 +6,9 @@ from tsumemi.src.shogi.gametree import GameNode
 from tsumemi.src.shogi.position import Position
 
 if TYPE_CHECKING:
-    from typing import Generator, List, Optional
+    from typing import Generator, Iterable, List, Optional
     from tsumemi.src.shogi.basetypes import Move
-    from tsumemi.src.shogi.gametree import MoveNode, MoveNodeId
+    from tsumemi.src.shogi.gametree import MoveNode
     from tsumemi.src.shogi.notation_writer import AbstractMoveWriter
 
 
@@ -93,6 +93,7 @@ class Game:
         """Go to the start of the game.
         """
         if not self.movetree.start_pos:
+            # This should not happen, but needs to be handled
             return
         self.position.from_sfen(self.movetree.start_pos)
         self.curr_node = self.movetree
@@ -116,11 +117,18 @@ class Game:
         else:
             # Node not found, do nothing
             return
-        # Now, need to actually reach the node and get the position correct
+        self._go_to_node(target_node)
+        return
+
+    def _go_to_node(self, target_node: MoveNode) -> None:
+        """Go to the target node, assuming it is in the movetree.
+        """
         path_nodes = target_node.get_path_from_root()
-        self.go_to_start()
-        for node in path_nodes:
-            self.make_move(node.move)
+        path_nodes.__next__() # discard the root node, it has a nullmove
+        self.position = self.get_end_position(
+            (node.move for node in path_nodes)
+        )
+        self.curr_node = target_node
         return
 
     def get_current_sfen(self) -> str:
@@ -131,6 +139,13 @@ class Game:
             None if node.is_null() else node.move
             for node in self.movetree.traverse_preorder()
         )
+
+    def get_end_position(self, moves: Iterable[Move]) -> Position:
+        position = Position()
+        position.from_sfen(self.movetree.start_pos)
+        for move in moves:
+            position.make_move(move)
+        return position
 
     def get_mainline_notation(self,
             move_writer: AbstractMoveWriter
