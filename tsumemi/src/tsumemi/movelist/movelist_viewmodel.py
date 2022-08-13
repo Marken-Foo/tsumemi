@@ -27,13 +27,11 @@ class MovelistViewModel:
             return
         pos = Position()
         pos.from_sfen(sfen)
+
         for node in displayed_nodes:
             move_num = node.movenum
-            if node.move.is_null():
-                move_str = ""
-            else:
-                move_str = self.move_writer.write_move(node.move, pos, False)
-                pos.make_move(node.move)
+            move_str = node.write_move(self.move_writer, pos)
+            pos.make_move(node.move)
             variation_indicator = "+" if len(node.parent.variations) > 1 else ""
             tvw.insert(
                 "", "end", iid=str(node.id),
@@ -48,7 +46,7 @@ class MovelistViewModel:
         if len(variations) <= 1:
             return
         for i, node in enumerate(variations):
-            move_str = self.move_writer.write_move(node.move, pos)
+            move_str = node.write_move(self.move_writer, pos)
             tvw.insert("", "end", iid=str(node.id), values=(str(i+1), move_str))
         return
 

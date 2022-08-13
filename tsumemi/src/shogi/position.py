@@ -110,6 +110,8 @@ class Position:
     def make_move(self, move: Move) -> None:
         """Makes a move on the board.
         """
+        if move.is_null():
+            return
         if move.is_pass():
             # to account for game terminations or other passing moves
             self.movenum += 1

@@ -7,6 +7,8 @@ from tsumemi.src.shogi.basetypes import NullMove
 if TYPE_CHECKING:
     from typing import Any, Callable, Generator, Iterator, List
     from tsumemi.src.shogi.basetypes import Move
+    from tsumemi.src.shogi.notation_writer import AbstractMoveWriter
+    from tsumemi.src.shogi.position import Position
 
 
 MoveNodeId = NewType("MoveNodeId", int)
@@ -89,18 +91,34 @@ class MoveNode:
 
     def traverse_preorder(self) -> Generator[MoveNode, None, None]:
         """Traverse the game tree from this node by preorder.
-        This will yield the mainline first.
+        This will yield the mainline first. Includes the called node.
         """
         yield self
         for node in self.variations:
             yield from node.traverse_preorder()
 
     def traverse_mainline(self) -> Generator[MoveNode, None, None]:
-        """Traverse only the mainline of this node.
+        """Traverse only the mainline of this node. Includes the
+        called node.
         """
         yield self
         if self.variations:
             yield from self.variations[0].traverse_mainline()
+
+    def write_move(self,
+            move_writer: AbstractMoveWriter,
+            position: Position,
+        ) -> str:
+        """Returns the node's move as a string in the format of
+        `move_writer`. The `position` is required for disambiguation.
+        """
+        if self.move.is_null():
+            return ""
+        is_same_sq = (
+            not self.parent.move.is_null()
+            and self.parent.move.end_sq == self.move.end_sq
+        )
+        return move_writer.write_move(self.move, position, is_same_sq)
 
     def _rec_str(self, acc: List[Any],
             func: Callable[[MoveNode, List[Any]], None]

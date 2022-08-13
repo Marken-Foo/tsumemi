@@ -86,8 +86,9 @@ class MovelistTreeview(ttk.Treeview, evt.IObserver):
 
         # Bind single click to go to a move
         def _click_to_position(event: tk.Event) -> None:
-            iid = int(self.identify("item", event.x, event.y))
-            self.viewmodel.go_to_id(iid)
+            iid_str = self.identify("item", event.x, event.y)
+            if iid_str:
+                self.viewmodel.go_to_id(int(iid_str))
             return
         self.bind("<Button-1>", _click_to_position)
         return
@@ -118,6 +119,14 @@ class MovelistVariationTvw(ttk.Treeview, evt.IObserver):
         self.heading("move", text="Variation")
 
         self.set_callbacks({GameUpdateEvent: self.refresh_view})
+
+        # Bind single click to go to a move
+        def _click_to_position(event: tk.Event) -> None:
+            iid_str = self.identify("item", event.x, event.y)
+            if iid_str:
+                self.viewmodel.go_to_id(int(iid_str))
+            return
+        self.bind("<Button-1>", _click_to_position)
         return
 
     def refresh_view(self, event: Optional[evt.Event] = None) -> None:
