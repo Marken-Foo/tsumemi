@@ -221,12 +221,14 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
         callback = functools.partial(
             self._prompt_promotion_callback, sq=sq, ktype=ktype
         )
-        self.tag_bind(id_promoted, "<Button-1>",
-            functools.partial(callback, is_promotion=True)
-        )
-        self.tag_bind(id_unpromoted, "<Button-1>",
-            functools.partial(callback, is_promotion=False)
-        )
+        if id_promoted is not None:
+            self.tag_bind(id_promoted, "<Button-1>",
+                functools.partial(callback, is_promotion=True)
+            )
+        if id_unpromoted is not None:
+            self.tag_bind(id_unpromoted, "<Button-1>",
+                functools.partial(callback, is_promotion=False)
+            )
         self.tag_bind(id_cover, "<Button-1>",
             functools.partial(callback, is_promotion=None)
         )

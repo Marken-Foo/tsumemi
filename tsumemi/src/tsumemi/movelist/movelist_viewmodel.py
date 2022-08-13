@@ -50,8 +50,8 @@ class MovelistViewModel:
             tvw.insert("", "end", iid=str(node.id), values=(str(i+1), move_str))
         return
 
-    def go_to_id(self, _id: int) -> None:
-        self.game.go_to_id(_id)
+    def go_to_id(self, id_: int) -> None:
+        self.game.go_to_id(id_)
         return
 
     def go_to_start(self) -> None:

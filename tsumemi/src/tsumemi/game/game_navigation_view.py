@@ -32,9 +32,11 @@ class NavigableGameFrame(ttk.Frame):
         return
 
     def disable_buttons(self) -> None:
-        self.buttons_frame.disable()
+        if self.buttons_frame is not None:
+            self.buttons_frame.disable()
         return
 
     def enable_buttons(self) -> None:
-        self.buttons_frame.enable()
+        if self.buttons_frame is not None:
+            self.buttons_frame.enable()
         return

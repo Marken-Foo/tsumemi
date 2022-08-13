@@ -11,39 +11,26 @@ from tsumemi.src.tsumemi.game.game_nav_btns_view import GameNavButtonsFrame
 if TYPE_CHECKING:
     import tkinter as tk
     from typing import Optional
-    from tsumemi.src.shogi.gametree import MoveNodeId
     from tsumemi.src.tsumemi.movelist.movelist_viewmodel import MovelistViewModel
 
 
 class MovelistFrame(ttk.Frame):
-    def __init__(self,
-            parent: tk.Widget, *args, **kwargs
-        ) -> None:
-        super().__init__(parent, *args, **kwargs)
-        self.tvw: Optional[MovelistTreeview] = None
-        self.scrollbar_tvw: Optional[ttk.Scrollbar] = None
-        self.frm_nav: GameNavButtonsFrame = GameNavButtonsFrame(self)
-        self.var_tvw: Optional[MovelistVariationTvw] = None
-        self.scrollbar_var_tvw: Optional[ttk.Scrollbar] = None
-        return
-
-    def add_treeview(self,
-            tvw: MovelistTreeview,
-            var_tvw: MovelistVariationTvw
-        ) -> None:
-        self.tvw = tvw
-        self.var_tvw = var_tvw
-        # Make scrollbar
+    def __init__(self, parent: tk.Widget, viewmodel: MovelistViewModel) -> None:
+        ttk.Frame.__init__(self, parent)
+        # Movelist treeview and scrollbar
+        self.tvw = MovelistTreeview(self, viewmodel)
         self.scrollbar_tvw = ttk.Scrollbar(
             self, orient="vertical", command=self.tvw.yview
         )
         self.tvw["yscrollcommand"] = self.scrollbar_tvw.set
-
+        # Variation treeview and scrollbar
+        self.var_tvw = MovelistVariationTvw(self, viewmodel)
         self.scrollbar_var_tvw = ttk.Scrollbar(
             self, orient="vertical", command=self.var_tvw.yview
         )
         self.var_tvw["yscrollcommand"] = self.scrollbar_var_tvw.set
 
+        self.frm_nav = GameNavButtonsFrame(self)
         self.bind_buttons()
 
         self.tvw.grid(row=0, column=0, sticky="NSEW")
@@ -111,7 +98,7 @@ class MovelistTreeview(ttk.Treeview, evt.IObserver):
         self.unbind("<Button-1>")
         return
 
-    def set_focus(self, iid: MoveNodeId) -> None:
+    def set_focus(self, iid: str) -> None:
         self.focus(iid)
         self.selection_set(iid)
         self.see(iid)
