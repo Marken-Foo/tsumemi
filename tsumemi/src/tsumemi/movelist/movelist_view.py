@@ -105,6 +105,8 @@ class MovelistTreeview(ttk.Treeview, evt.IObserver):
         return
 
     def refresh_view(self, event: Optional[evt.Event] = None) -> None:
+        # pylint: disable=unused-argument
+        # (event is necessary as a callback)
         self.delete(*self.get_children())
         self.viewmodel.populate_treeview(self)
         iid = str(self.viewmodel.game.game.curr_node.id)
@@ -154,6 +156,8 @@ class MovelistVariationTvw(ttk.Treeview, evt.IObserver):
         return
 
     def refresh_view(self, event: Optional[evt.Event] = None) -> None:
+        # pylint: disable=unused-argument
+        # (event is necessary as a callback)
         self.delete(*self.get_children())
         self.viewmodel.populate_variation_treeview(self)
         return

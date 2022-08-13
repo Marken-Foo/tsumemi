@@ -81,6 +81,8 @@ class RootController(evt.IObserver):
         ) -> None:
         """Prompt user for a folder, open into main_problem_list.
         """
+        # pylint: disable=unused-argument
+        # (event is necessary as a callback)
         directory = filedialog.askdirectory()
         if directory == "":
             return
@@ -167,16 +169,21 @@ class RootController(evt.IObserver):
         return
 
     def go_next_file(self, event: Optional[tk.Event] = None) -> bool:
+        # pylint: disable=unused-argument
+        # (event is necessary as a callback)
         prob = self.main_problem_list.go_next_problem()
         return prob is not None
 
     def go_prev_file(self, event: Optional[tk.Event] = None) -> bool:
+        # pylint: disable=unused-argument
+        # (event is necessary as a callback)
         prob = self.main_problem_list.go_prev_problem()
         return prob is not None
 
     def go_to_file(self, event: Optional[tk.Event] = None, idx: int = 0
         ) -> bool:
-        # GUI callback
+        # pylint: disable=unused-argument
+        # (event is necessary as a callback)
         prob = self.main_problem_list.go_to_problem(idx)
         return prob is not None
 

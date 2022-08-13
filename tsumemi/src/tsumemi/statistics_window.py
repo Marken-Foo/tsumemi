@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 import tsumemi.src.tsumemi.timer as timer
 
 if TYPE_CHECKING:
-    import tsumemi.src.tsumemi.problem_list_controller as plistcon
+    import tsumemi.src.tsumemi.problem_list.problem_list_controller as plistcon
 
 
 class StatisticsDialog(tk.Toplevel):
