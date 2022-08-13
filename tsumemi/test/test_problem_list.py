@@ -1,14 +1,13 @@
 import unittest
 
-from tsumemi.src.tsumemi.problem_list import Problem, ProblemList, ProblemStatus
-from tsumemi.src.tsumemi.problem_list import ProbListEvent, ProbStatusEvent, ProbTimeEvent
+import tsumemi.src.tsumemi.problem_list.problem_list_model as plist
 
 
 class TestProblemList(unittest.TestCase):
     '''Tests for the internals of the ProblemList class.'''
     def setUp(self):
         def make_problem(name, time, status):
-            prob = Problem(name)
+            prob = plist.Problem(name)
             prob.time = time
             prob.status = status
             return prob
@@ -20,15 +19,16 @@ class TestProblemList(unittest.TestCase):
             return probs
         
         # make problem list with statuses, times and fake filepaths
-        self.problem_list = ProblemList()
+        self.problem_list = plist.ProblemList()
         names = [
             "1.kif", "2.kif", "3.kif", "4.kif", "5.kif", "6.kif", "7.kif", "8.kif"
         ]
         times = [11.1, 44.2, 13.3, 16.7, 65.0, 5.8, 9.1, 10.2]
         statuses = [
-            ProblemStatus.CORRECT, ProblemStatus.SKIP, ProblemStatus.WRONG,
-            ProblemStatus.SKIP, ProblemStatus.CORRECT, ProblemStatus.CORRECT,
-            ProblemStatus.WRONG, ProblemStatus.WRONG
+            plist.ProblemStatus.CORRECT, plist.ProblemStatus.SKIP,
+            plist.ProblemStatus.WRONG, plist.ProblemStatus.SKIP,
+            plist.ProblemStatus.CORRECT, plist.ProblemStatus.CORRECT,
+            plist.ProblemStatus.WRONG, plist.ProblemStatus.WRONG
         ]
         self.problem_list.add_problems(make_probs(names, times, statuses))
         idx = 5
@@ -69,15 +69,15 @@ class TestProblemList(unittest.TestCase):
         self.assertEqual(self.problem_list.problems.index(prob), self.problem_list.curr_prob_idx)
     
     def verify_status_event(self):
-        self.assertTrue(isinstance(self.event, ProbStatusEvent))
+        self.assertTrue(isinstance(self.event, plist.ProbStatusEvent))
         self.assertEqual(self.event.status, self.problem_list.curr_prob.status)
     
     def verify_time_event(self):
-        self.assertTrue(isinstance(self.event, ProbTimeEvent))
+        self.assertTrue(isinstance(self.event, plist.ProbTimeEvent))
         self.assertEqual(self.event.time, self.problem_list.curr_prob.time)
     
     def verify_list_event(self):
-        self.assertTrue(isinstance(self.event, ProbListEvent))
+        self.assertTrue(isinstance(self.event, plist.ProbListEvent))
         self.assertEqual(self.event.sender, self.problem_list)
     
     def test_clear(self):
@@ -91,19 +91,23 @@ class TestProblemList(unittest.TestCase):
         self.verify_list_event()
     
     def test_add_one_problem(self):
-        new_prob = Problem("new_problem.kif")
+        new_prob = plist.Problem("new_problem.kif")
         self.problem_list.add_problems([new_prob])
         self.assertEqual(self.problem_list.problems[-1], new_prob)
     
     def test_add_three_problems(self):
-        new_probs = [Problem("new1.kif"), Problem("new2.kif"), Problem("new3.kif")]
+        new_probs = [
+            plist.Problem("new1.kif"),
+            plist.Problem("new2.kif"),
+            plist.Problem("new3.kif"),
+        ]
         self.problem_list.add_problems(new_probs)
         self.assertEqual(self.problem_list.problems[-1], new_probs[2])
         self.assertEqual(self.problem_list.problems[-2], new_probs[1])
         self.assertEqual(self.problem_list.problems[-3], new_probs[0])
     
     def test_notify_on_add(self):
-        self.problem_list.add_problems([Problem("new.kif")])
+        self.problem_list.add_problems([plist.Problem("new.kif")])
         self.verify_list_event()
     
     def test_get_curr_filepath(self):
@@ -114,19 +118,25 @@ class TestProblemList(unittest.TestCase):
         self.assertIsNone(self.problem_list.get_curr_filepath())
     
     def test_set_status_correct(self):
-        self.problem_list.set_status(ProblemStatus.CORRECT)
-        self.assertEqual(self.problem_list.curr_prob.status, ProblemStatus.CORRECT)
+        self.problem_list.set_status(plist.ProblemStatus.CORRECT)
+        self.assertEqual(
+            self.problem_list.curr_prob.status,
+            plist.ProblemStatus.CORRECT
+        )
     
     def test_notify_set_status_correct(self):
-        self.problem_list.set_status(ProblemStatus.CORRECT)
+        self.problem_list.set_status(plist.ProblemStatus.CORRECT)
         self.verify_status_event()
     
     def test_set_status_wrong(self):
-        self.problem_list.set_status(ProblemStatus.WRONG)
-        self.assertEqual(self.problem_list.curr_prob.status, ProblemStatus.WRONG)
+        self.problem_list.set_status(plist.ProblemStatus.WRONG)
+        self.assertEqual(
+            self.problem_list.curr_prob.status,
+            plist.ProblemStatus.WRONG
+        )
     
     def test_notify_set_status_wrong(self):
-        self.problem_list.set_status(ProblemStatus.WRONG)
+        self.problem_list.set_status(plist.ProblemStatus.WRONG)
         self.verify_status_event()
     
     def test_set_time(self):

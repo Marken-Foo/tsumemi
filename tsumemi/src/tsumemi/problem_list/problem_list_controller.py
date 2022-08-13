@@ -5,9 +5,9 @@ import os
 
 from typing import TYPE_CHECKING
 
-import tsumemi.src.tsumemi.problem_list as plist
+import tsumemi.src.tsumemi.problem_list.problem_list_model as plist
 
-from tsumemi.src.tsumemi.problem_list_view import ProblemListPane
+from tsumemi.src.tsumemi.problem_list.problem_list_view import ProblemListPane
 
 if TYPE_CHECKING:
     import tkinter as tk

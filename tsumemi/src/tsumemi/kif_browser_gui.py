@@ -12,8 +12,8 @@ import tsumemi.src.shogi.parsing.kif as kif
 import tsumemi.src.shogi.notation_writer as nwriter
 import tsumemi.src.tsumemi.event as evt
 import tsumemi.src.tsumemi.game.game_controller as gamecon
-import tsumemi.src.tsumemi.problem_list as plist
-import tsumemi.src.tsumemi.problem_list_controller as plistcon
+import tsumemi.src.tsumemi.problem_list.problem_list_model as plist
+import tsumemi.src.tsumemi.problem_list.problem_list_controller as plistcon
 import tsumemi.src.tsumemi.settings.settings_controller as setcon
 import tsumemi.src.tsumemi.speedrun_controller as speedcon
 import tsumemi.src.tsumemi.timer as timer

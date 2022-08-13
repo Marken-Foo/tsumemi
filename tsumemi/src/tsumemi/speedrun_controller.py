@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 import tsumemi.src.tsumemi.event as evt
 import tsumemi.src.tsumemi.game.game_controller as gamecon
-import tsumemi.src.tsumemi.problem_list as plist
+import tsumemi.src.tsumemi.problem_list.problem_list_model as plist
 
 if TYPE_CHECKING:
     import tkinter as tk
