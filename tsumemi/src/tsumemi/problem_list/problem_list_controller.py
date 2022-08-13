@@ -11,7 +11,7 @@ from tsumemi.src.tsumemi.problem_list.problem_list_view import ProblemListPane
 
 if TYPE_CHECKING:
     import tkinter as tk
-    from typing import List, Optional, Union
+    from typing import Iterable, Optional, Union
     import tsumemi.src.tsumemi.timer as timer
     PathLike = Union[str, os.PathLike]
 
@@ -71,13 +71,16 @@ class ProblemListController:
         self.problem_list.add_observer(problem_list_pane.tvw)
         return problem_list_pane
 
-    def set_directory(self, directory: PathLike, recursive: bool = False
+    def set_directory(self,
+            directory: PathLike,
+            file_list: Iterable[PathLike],
         ) -> Optional[plist.Problem]:
         """Open directory and set own problem list to contents.
         """
         self.problem_list.clear(suppress=True)
-        self._add_problems_in_directory(
-            directory, recursive=recursive, suppress=True
+        self.problem_list.add_problems(
+            (plist.Problem(filepath) for filepath in file_list),
+            suppress=True
         )
         self.problem_list.sort_by_file()
         self.directory = directory
@@ -99,30 +102,6 @@ class ProblemListController:
                 prob_status = str(prob.status)
                 prob_time = 0 if prob.time is None else prob.time.seconds
                 csvwriter.writerow([prob_filename, prob_status, prob_time])
-        return
-
-    def _add_problems_in_directory(self, directory: PathLike,
-            recursive: bool = False, suppress: bool = False
-        ) -> None:
-        # Adds all problems in given directory.
-        new_problems: List[plist.Problem] = []
-        if recursive:
-            for dirpath, _, filenames in os.walk(directory):
-                new_problems.extend([
-                    plist.Problem(os.path.join(dirpath, filename))
-                    for filename in filenames
-                    if filename.endswith(".kif")
-                    or filename.endswith(".kifu")
-                ])
-        else:
-            with os.scandir(directory) as it:
-                new_problems = [
-                    plist.Problem(os.path.join(directory, entry.name))
-                    for entry in it
-                    if entry.name.endswith(".kif")
-                    or entry.name.endswith(".kifu")
-                ]
-        self.problem_list.add_problems(new_problems, suppress=suppress)
         return
 
 

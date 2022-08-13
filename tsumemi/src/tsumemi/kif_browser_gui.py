@@ -24,8 +24,9 @@ from tsumemi.src.tsumemi.menubar import Menubar
 from tsumemi.src.tsumemi.statistics_window import StatisticsDialog
 
 if TYPE_CHECKING:
-    from typing import Callable, Optional
+    from typing import Callable, Generator, List, Optional, Union
     import tsumemi.src.tsumemi.img_handlers as imghand
+    PathLike = Union[str, os.PathLike]
 
 
 class RootController(evt.IObserver):
@@ -84,11 +85,43 @@ class RootController(evt.IObserver):
         if directory == "":
             return
         directory = os.path.normpath(directory)
-        self.main_problem_list.set_directory(directory, recursive=recursive)
+        kif_files = (
+            self._list_kif_files_recursive(directory) if recursive
+            else self._list_kif_files(directory)
+        )
+        self.main_problem_list.set_directory(
+            directory, kif_files
+        )
         return
 
     def open_folder_recursive(self, event: Optional[tk.Event] = None) -> None:
         return self.open_folder(event, recursive=True)
+
+    def _list_kif_files(self, directory: PathLike
+        ) -> List[PathLike]:
+        """Returns a generator of full filepaths ending in `.kif` or
+        `.kifu` in a directory.
+        """
+        with os.scandir(directory) as itr:
+            return [
+                os.path.join(directory, entry.name)
+                for entry in itr
+                if entry.name.endswith(".kif")
+                or entry.name.endswith(".kifu")
+            ]
+
+    def _list_kif_files_recursive(self, directory: PathLike
+        ) -> Generator[PathLike, None, None]:
+        """Returns a generator of full filepaths ending in `.kif` or
+        `.kifu` in a directory and all its subdirectories.
+        """
+        for dirpath, _, filenames in os.walk(directory):
+            yield from (
+                os.path.join(dirpath, filename)
+                for filename in filenames
+                if filename.endswith(".kif")
+                or filename.endswith(".kifu")
+            )
 
     def copy_sfen_to_clipboard(self) -> None:
         sfen = self.main_game.get_current_sfen()
