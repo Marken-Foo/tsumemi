@@ -10,10 +10,10 @@ if TYPE_CHECKING:
     import tsumemi.src.tsumemi.board_gui.board_canvas as bc
     import tsumemi.src.tsumemi.game.game_controller as gamecon
     import tsumemi.src.tsumemi.img_handlers as imghand
-    import tsumemi.src.tsumemi.problem_list_controller as plistcon
     import tsumemi.src.tsumemi.timer_controller as timecon
     from tsumemi.src.tsumemi.kif_browser_gui import RootController
     from tsumemi.src.tsumemi.movelist.movelist_view import MovelistFrame
+    from tsumemi.src.tsumemi.problem_list_view import ProblemListPane
 
 
 class MainWindowView(ttk.Frame):
@@ -48,7 +48,7 @@ class MainWindowView(ttk.Frame):
             .main_timer
             .make_timer_pane(parent=self)
         )
-        self.problem_list_pane: plistcon.ProblemListPane = (
+        self.problem_list_pane: ProblemListPane = (
             root_controller
             .main_problem_list
             .make_problem_list_pane(parent=self)
