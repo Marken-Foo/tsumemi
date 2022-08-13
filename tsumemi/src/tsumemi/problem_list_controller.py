@@ -152,7 +152,10 @@ class ProblemsView(ttk.Treeview, evt.IObserver):
         self.tag_configure("SKIP", background="snow2")
         self.tag_configure("CORRECT", background="PaleGreen1")
         self.tag_configure("WRONG", background="LightPink1")
+        self._bind_double_click()
+        return
 
+    def _bind_double_click(self) -> None:
         # Bind double click to go to problem
         def _click_to_prob(event: tk.Event) -> None:
             idx = self.get_idx_on_click(event)
@@ -160,6 +163,10 @@ class ProblemsView(ttk.Treeview, evt.IObserver):
                 self.problem_list.go_to_idx(idx)
             return
         self.bind("<Double-1>", _click_to_prob)
+        return
+
+    def _unbind_double_click(self) -> None:
+        self.unbind("<Double-1>")
         return
 
     def display_time(self, event: plist.ProbTimeEvent) -> None:

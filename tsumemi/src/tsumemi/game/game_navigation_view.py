@@ -30,3 +30,11 @@ class NavigableGameFrame(ttk.Frame):
         self.buttons_frame = buttons_frame
         buttons_frame.grid(row=1, column=0, sticky="NSEW")
         return
+
+    def disable_buttons(self) -> None:
+        self.buttons_frame.disable()
+        return
+
+    def enable_buttons(self) -> None:
+        self.buttons_frame.enable()
+        return

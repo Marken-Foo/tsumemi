@@ -54,3 +54,17 @@ class GameNavButtonsFrame(ttk.Frame):
     def add_command_btn_far_right(self, cmd: Callable[..., Any]) -> None:
         self.btn_far_right.configure(command=cmd)
         return
+
+    def disable(self) -> None:
+        self.btn_far_left.config(state="disabled")
+        self.btn_left.config(state="disabled")
+        self.btn_right.config(state="disabled")
+        self.btn_far_right.config(state="disabled")
+        return
+
+    def enable(self) -> None:
+        self.btn_far_left.config(state="normal")
+        self.btn_left.config(state="normal")
+        self.btn_right.config(state="normal")
+        self.btn_far_right.config(state="normal")
+        return
