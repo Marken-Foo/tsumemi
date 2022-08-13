@@ -17,7 +17,10 @@ if TYPE_CHECKING:
 
 
 class ProblemStatus(Enum):
-    NONE = 0; CORRECT = 1; WRONG = 2; SKIP = 3
+    NONE = 0
+    CORRECT = 1
+    WRONG = 2
+    SKIP = 3
 
     def __str__(self):
         return self.name
@@ -25,6 +28,7 @@ class ProblemStatus(Enum):
 
 class ProbSelectedEvent(evt.Event):
     def __init__(self, sender: ProblemList, prob: Problem) -> None:
+        evt.Event.__init__(self)
         self.sender = sender
         self.problem = prob
         return
@@ -32,12 +36,14 @@ class ProbSelectedEvent(evt.Event):
 
 class ProbListEvent(evt.Event):
     def __init__(self, sender: ProblemList) -> None:
+        evt.Event.__init__(self)
         self.sender = sender
         return
 
 
 class ProbStatusEvent(evt.Event):
     def __init__(self, prob_idx: int, status: ProblemStatus) -> None:
+        evt.Event.__init__(self)
         self.idx = prob_idx
         self.status = status
         return
@@ -45,6 +51,7 @@ class ProbStatusEvent(evt.Event):
 
 class ProbTimeEvent(evt.Event):
     def __init__(self, prob_idx: int, time: timer.Time) -> None:
+        evt.Event.__init__(self)
         self.idx = prob_idx
         self.time = time
         return
@@ -70,9 +77,9 @@ class ProblemList(evt.Emitter):
     solve time and status.
     """
     @staticmethod
-    def natural_sort_key(str: str, _nsre=re.compile(r'(\d+)')
+    def natural_sort_key(_str: str, _nsre=re.compile(r'(\d+)')
         ) -> List[Union[int, str]]:
-        return [int(c) if c.isdigit() else c.lower() for c in _nsre.split(str)]
+        return [int(c) if c.isdigit() else c.lower() for c in _nsre.split(_str)]
 
     @staticmethod
     def _file_key(prob) -> List[Union[int, str]]:
@@ -146,20 +153,20 @@ class ProblemList(evt.Emitter):
 
     def get_total_time(self) -> timer.Time:
         return sum(
-            (prob.time for prob in self.problems if (prob.time is not None)),
+            (prob.time for prob in self.problems if prob.time is not None),
             start=timer.Time(0)
         )
 
     def get_slowest_problem(self) -> Optional[Problem]:
         return max(
-            (prob for prob in self.problems if (prob.time is not None)),
+            (prob for prob in self.problems if prob.time is not None),
             key=operator.attrgetter("time"),
             default=None,
         )
 
     def get_fastest_problem(self) -> Optional[Problem]:
         return min(
-            (prob for prob in self.problems if (prob.time is not None)),
+            (prob for prob in self.problems if prob.time is not None),
             key=operator.attrgetter("time"),
             default=None,
         )
@@ -214,7 +221,9 @@ class ProblemList(evt.Emitter):
         return self.sort(key=ProblemList._file_key)
 
     def sort_by_time(self) -> None:
-        return self.sort(key=lambda p: -1.0 if p.time is None else p.time)
+        return self.sort(
+            key=lambda p: timer.Time(-1.0) if p.time is None else p.time
+        )
 
     def sort_by_status(self) -> None:
         return self.sort(key=lambda p: p.status.name)
@@ -223,20 +232,18 @@ class ProblemList(evt.Emitter):
         """Randomly shuffle problem list in place, keeping focus on
         the same problem before and after the shuffle.
         """
-        z = list(enumerate(self.problems))
-        random.shuffle(z)
-        idxs, probs = zip(*z)
+        idxed_problems = list(enumerate(self.problems))
+        random.shuffle(idxed_problems)
+        idxs, probs = zip(*idxed_problems)
         self.problems = list(probs)
         self.curr_prob_idx = idxs.index(self.curr_prob_idx)
-        curr_prob = self.problems[self.curr_prob_idx]
         self._notify_observers(ProbListEvent(self))
         return
 
     def _set_active_problem(self, prob) -> bool:
-        if prob in self.problems:
-            idx = self.problems.index(prob)
-            self.curr_prob_idx = idx
-            self.curr_prob = self.problems[self.curr_prob_idx]
-            return True
-        else:
+        if prob not in self.problems:
             return False
+        idx = self.problems.index(prob)
+        self.curr_prob_idx = idx
+        self.curr_prob = self.problems[self.curr_prob_idx]
+        return True

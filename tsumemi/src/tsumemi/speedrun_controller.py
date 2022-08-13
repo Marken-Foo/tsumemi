@@ -58,7 +58,7 @@ class SpeedrunController:
         self.target.main_timer.reset()
         self.start_timer()
         self.go_to_state("question")
-        self.target.mainframe.problem_list_pane.tvw._unbind_double_click()
+        self.target.mainframe.problem_list_pane.tvw.disable_input()
         return
 
     def abort_speedrun(self) -> None:
@@ -67,7 +67,7 @@ class SpeedrunController:
         self.target.main_game.set_free_mode()
         self.target.mainframe.movelist_frame.enable_display()
         self.target.mainframe.board_frame.enable_buttons()
-        self.target.mainframe.problem_list_pane.tvw._bind_double_click()
+        self.target.mainframe.problem_list_pane.tvw.enable_input()
         self.go_to_state("off")
         return
 
@@ -199,6 +199,7 @@ class SpeedrunState(evt.IObserver):
 class SpeedrunQuestionState(SpeedrunState):
     def __init__(self, controller: SpeedrunController) -> None:
         SpeedrunState.__init__(self, controller)
+        evt.IObserver.__init__(self)
         self.set_callbacks({
             gamecon.GameEndEvent: self._mark_correct,
             gamecon.WrongMoveEvent: self._mark_wrong,

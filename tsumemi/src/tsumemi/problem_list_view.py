@@ -11,18 +11,18 @@ import tsumemi.src.tsumemi.problem_list as plist
 
 if TYPE_CHECKING:
     from typing import Dict, Optional
+    from tsumemi.src.tsumemi.problem_list_controller import ProblemListController
 
 
 class ProblemsView(ttk.Treeview, evt.IObserver):
     """GUI class to display list of problems.
     Observes underlying problem list and updates its view as needed.
     """
-    def __init__(self, parent: tk.Widget, problem_list: plist.ProblemList,
-            *args, **kwargs
+    def __init__(self, parent: tk.Widget, controller: ProblemListController
         ) -> None:
-        super().__init__(parent, *args, **kwargs)
-        self.problem_list: plist.ProblemList = problem_list
-        self.problem_list.add_observer(self)
+        ttk.Treeview.__init__(self, parent)
+        evt.IObserver.__init__(self)
+        self.controller = controller
         self.set_callbacks({
             plist.ProbStatusEvent: self.display_status,
             plist.ProbTimeEvent: self.display_time,
@@ -38,22 +38,17 @@ class ProblemsView(ttk.Treeview, evt.IObserver):
 
         self["columns"] = ("filename", "time", "status")
         self["show"] = "headings"
-        self.heading(
-            "filename", text="Problem", command=self.problem_list.sort_by_file
-        )
-        self.heading(
-            "time", text="Time", command=self.problem_list.sort_by_time
-        )
+        self.heading("filename", text="Problem")
+        self.heading("time", text="Time")
         self.column("time", width=120)
-        self.heading(
-            "status", text="Status", command=self.problem_list.sort_by_status
-        )
+        self.heading("status", text="Status")
         self.column("status", anchor="center", width=40)
         # Colours to be decided (accessibility concerns)
         self.tag_configure("SKIP", background="snow2")
         self.tag_configure("CORRECT", background="PaleGreen1")
         self.tag_configure("WRONG", background="LightPink1")
         self._bind_double_click()
+        self._bind_heading_commands()
         return
 
     def _bind_double_click(self) -> None:
@@ -61,13 +56,31 @@ class ProblemsView(ttk.Treeview, evt.IObserver):
         def _click_to_prob(event: tk.Event) -> None:
             idx = self.get_idx_on_click(event)
             if idx is not None:
-                self.problem_list.go_to_idx(idx)
+                self.controller.go_to_problem(idx)
             return
         self.bind("<Double-1>", _click_to_prob)
         return
 
     def _unbind_double_click(self) -> None:
         self.unbind("<Double-1>")
+        return
+
+    def _bind_heading_commands(self) -> None:
+        self.heading("filename", command=self.controller.sort_by_file)
+        self.heading("time", command=self.controller.sort_by_time)
+        self.heading("status", command=self.controller.sort_by_status)
+        return
+
+    def disable_input(self) -> None:
+        self._unbind_double_click()
+        self.heading("filename", command="")
+        self.heading("time", command="")
+        self.heading("status", command="")
+        return
+
+    def enable_input(self) -> None:
+        self._bind_double_click()
+        self._bind_heading_commands()
         return
 
     def display_time(self, event: plist.ProbTimeEvent) -> None:
@@ -116,17 +129,11 @@ class ProblemListPane(ttk.Frame):
     """GUI frame containing view of problem list and associated
     controls.
     """
-    def __init__(self,
-            parent: tk.Widget, problem_list: plist.ProblemList,
-            *args, **kwargs
+    def __init__(self, parent: tk.Widget, controller: ProblemListController
         ) -> None:
-        super().__init__(parent, *args, **kwargs)
-        self.problem_list: plist.ProblemList = problem_list
-
-        # Display problem list as Treeview
-        self.tvw: ProblemsView = ProblemsView(
-            parent=self, problem_list=problem_list
-        )
+        ttk.Frame.__init__(self, parent)
+        self.controller: ProblemListController = controller
+        self.tvw: ProblemsView = ProblemsView(self, controller)
 
         # Make scrollbar
         self.scrollbar_tvw: ttk.Scrollbar = ttk.Scrollbar(
@@ -137,7 +144,7 @@ class ProblemListPane(ttk.Frame):
 
         self.btn_randomise: ttk.Button = ttk.Button(
             self, text="Randomise problems",
-            command=self.problem_list.randomise
+            command=self.controller.randomise
         )
 
         self.tvw.grid(row=0, column=0, sticky="NSEW")

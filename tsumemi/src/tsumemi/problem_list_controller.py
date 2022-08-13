@@ -25,9 +25,6 @@ class ProblemListController:
         self.directory: Optional[PathLike] = None
         return
 
-    def get_current_problem(self) -> Optional[plist.Problem]:
-        return self.problem_list.curr_prob
-
     def go_next_problem(self) -> Optional[plist.Problem]:
         return self.problem_list.go_to_next()
 
@@ -53,9 +50,26 @@ class ProblemListController:
         self.problem_list.clear_times()
         return
 
-    def make_problem_list_pane(self, parent: tk.Widget, *args, **kwargs
-        ) -> ProblemListPane:
-        return ProblemListPane(parent, self.problem_list, *args, **kwargs)
+    def sort_by_file(self) -> None:
+        self.problem_list.sort_by_file()
+        return
+
+    def sort_by_time(self) -> None:
+        self.problem_list.sort_by_time()
+        return
+
+    def sort_by_status(self) -> None:
+        self.problem_list.sort_by_status()
+        return
+
+    def randomise(self) -> None:
+        self.problem_list.randomise()
+        return
+
+    def make_problem_list_pane(self, parent: tk.Widget) -> ProblemListPane:
+        problem_list_pane = ProblemListPane(parent, self)
+        self.problem_list.add_observer(problem_list_pane.tvw)
+        return problem_list_pane
 
     def set_directory(self, directory: PathLike, recursive: bool = False
         ) -> Optional[plist.Problem]:
