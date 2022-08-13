@@ -34,6 +34,7 @@ class RootController(evt.IObserver):
     """
     # eventually, refactor menu labels and dialog out into a constant namespace
     def __init__(self, root: tk.Tk) -> None:
+        evt.IObserver.__init__(self)
         # Program data
         self.settings = setcon.Settings(self)
         self.skin_settings = self.settings.get_skin_settings()
@@ -83,7 +84,7 @@ class RootController(evt.IObserver):
         if directory == "":
             return
         directory = os.path.normpath(directory)
-        prob = self.main_problem_list.set_directory(directory, recursive=recursive)
+        self.main_problem_list.set_directory(directory, recursive=recursive)
         return
 
     def open_folder_recursive(self, event: Optional[tk.Event] = None) -> None:
@@ -281,7 +282,7 @@ def run():
                   background=fixed_map("background"))
 
     root = tk.Tk()
-    root_controller = RootController(root)
+    RootController(root)
     apply_theme_fix()
     root.minsize(width=400, height=200) # stopgap vs canvas overshrinking bug
     root.mainloop()
