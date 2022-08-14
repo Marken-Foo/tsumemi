@@ -5,9 +5,9 @@ from typing import TYPE_CHECKING
 from tsumemi.src.shogi.position import Position
 
 if TYPE_CHECKING:
+    from tkinter import ttk
     from tsumemi.src.shogi.notation_writer import AbstractMoveWriter
     from tsumemi.src.tsumemi.game.game_model import GameModel
-    from tsumemi.src.tsumemi.movelist.movelist_view import MovelistTreeview, MovelistVariationTvw
 
 
 class MovelistViewModel:
@@ -17,12 +17,9 @@ class MovelistViewModel:
         self.move_writer = move_writer
         return
 
-    def populate_treeview(self, tvw: MovelistTreeview) -> None:
-        displayed_nodes = (self.game.game.curr_node
-            .get_last_node()
-            .get_path_from_root()
-        )
-        sfen = self.game.game.movetree.start_pos
+    def populate_treeview(self, tvw: ttk.Treeview) -> None:
+        displayed_nodes = self.game.get_current_mainline()
+        sfen = self.game.get_initial_sfen()
         if not sfen:
             return
         pos = Position()
@@ -39,10 +36,10 @@ class MovelistViewModel:
             )
         return
 
-    def populate_variation_treeview(self, tvw: MovelistVariationTvw) -> None:
+    def populate_variation_treeview(self, tvw: ttk.Treeview) -> None:
         # Prints variations available for next move.
         pos = self.game.get_position()
-        variations = self.game.game.curr_node.variations
+        variations = self.game.get_current_variation_nodes()
         if len(variations) <= 1:
             return
         for i, node in enumerate(variations):
