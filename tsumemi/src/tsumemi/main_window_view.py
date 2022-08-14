@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     import tsumemi.src.tsumemi.timer_controller as timecon
     from tsumemi.src.tsumemi.kif_browser_gui import RootController
     from tsumemi.src.tsumemi.movelist.movelist_view import MovelistFrame
-    from tsumemi.src.tsumemi.problem_list_view import ProblemListPane
+    from tsumemi.src.tsumemi.problem_list.problem_list_view import ProblemListPane
 
 
 class MainWindowView(ttk.Frame):

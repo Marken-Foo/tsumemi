@@ -54,19 +54,18 @@ class SpeedrunController:
     def start_speedrun(self) -> None:
         self.target.go_to_file(idx=0)
         self.target.main_game.set_speedrun_mode()
+        self.target.mainframe.problem_list_pane.tvw.disable_input()
         self.target.mainframe.main_timer_view.allow_only_pause()
         self.target.main_timer.reset()
         self.start_timer()
         self.go_to_state("question")
-        self.target.mainframe.problem_list_pane.tvw.disable_input()
         return
 
     def abort_speedrun(self) -> None:
         self.stop_timer()
         self.target.mainframe.main_timer_view.allow_all()
         self.target.main_game.set_free_mode()
-        self.target.mainframe.movelist_frame.enable_display()
-        self.target.mainframe.board_frame.enable_buttons()
+        self.enable_move_navigation()
         self.target.mainframe.problem_list_pane.tvw.enable_input()
         self.go_to_state("off")
         return
@@ -117,6 +116,16 @@ class SpeedrunController:
 
     def enable_solving(self) -> None:
         self.target.mainframe.enable_move_input()
+        return
+
+    def disable_move_navigation(self) -> None:
+        self.target.mainframe.movelist_frame.disable_display()
+        self.target.mainframe.board_frame.disable_buttons()
+        return
+
+    def enable_move_navigation(self) -> None:
+        self.target.mainframe.movelist_frame.enable_display()
+        self.target.mainframe.board_frame.enable_buttons()
         return
 
     def make_nav_pane_question(self, parent: tk.Widget) -> ttk.Frame:
@@ -208,8 +217,7 @@ class SpeedrunQuestionState(SpeedrunState):
 
     def on_entry(self) -> None:
         self.controller.start_timer()
-        self.controller.target.mainframe.movelist_frame.disable_display()
-        self.controller.target.mainframe.board_frame.disable_buttons()
+        self.controller.disable_move_navigation()
         return
 
     def skip(self) -> None:
@@ -259,8 +267,7 @@ class SpeedrunAnswerState(SpeedrunState):
         self.controller.split_timer()
         self.controller.stop_timer()
         self.controller.show_solution()
-        self.controller.target.mainframe.movelist_frame.enable_display()
-        self.controller.target.mainframe.board_frame.enable_buttons()
+        self.controller.enable_move_navigation()
         return
 
     def mark_correct_and_continue(self) -> None:
@@ -281,8 +288,7 @@ class SpeedrunSolutionState(SpeedrunState):
         self.controller.split_timer()
         self.controller.stop_timer()
         self.controller.show_solution()
-        self.controller.target.mainframe.movelist_frame.enable_display()
-        self.controller.target.mainframe.board_frame.enable_buttons()
+        self.controller.enable_move_navigation()
         return
 
     def next_question(self) -> None:
