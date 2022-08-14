@@ -68,7 +68,7 @@ class ProblemListController:
 
     def make_problem_list_pane(self, parent: tk.Widget) -> ProblemListPane:
         problem_list_pane = ProblemListPane(parent, self)
-        self.problem_list.add_observer(problem_list_pane.tvw)
+        self.problem_list.add_observer(problem_list_pane.tvwfrm_problems)
         return problem_list_pane
 
     def set_directory(self,

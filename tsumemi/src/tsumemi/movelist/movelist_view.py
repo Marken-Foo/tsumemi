@@ -18,49 +18,48 @@ if TYPE_CHECKING:
 class MovelistFrame(ttk.Frame):
     def __init__(self, parent: tk.Widget, viewmodel: MovelistViewModel) -> None:
         ttk.Frame.__init__(self, parent)
-        # Movelist treeview and scrollbar
-        self.tvw = MovelistTreeview(self, viewmodel)
-        # Variation treeview and scrollbar
-        self.var_tvw = MovelistVariationTvw(self, viewmodel)
+        self.tvwfrm_movelist = MovelistTreeviewFrame(self, viewmodel)
+        self.tvwfrm_variations = VariationTreeviewFrame(self, viewmodel)
         self.frm_nav = GameNavButtonsFrame(self)
         self.bind_buttons()
 
-        self.tvw.grid(row=0, column=0, sticky="NSEW")
+        self.tvwfrm_movelist.grid(row=0, column=0, sticky="NSEW")
         self.frm_nav.grid(row=1, column=0, sticky="")
-        self.var_tvw.grid(row=2, column=0)
+        self.tvwfrm_variations.grid(row=2, column=0)
         return
 
     def bind_buttons(self) -> None:
-        if self.tvw is not None:
-            self.frm_nav.add_command_btn_far_left(
-                self.tvw.viewmodel.go_to_start)
-            self.frm_nav.add_command_btn_left(self.tvw.viewmodel.go_prev)
-            self.frm_nav.add_command_btn_right(self.tvw.viewmodel.go_next)
-            self.frm_nav.add_command_btn_far_right(self.tvw.viewmodel.go_to_end)
+        if self.tvwfrm_movelist is None:
+            return
+        viewmodel = self.tvwfrm_movelist.viewmodel
+        self.frm_nav.add_command_btn_far_left(viewmodel.go_to_start)
+        self.frm_nav.add_command_btn_left(viewmodel.go_prev)
+        self.frm_nav.add_command_btn_right(viewmodel.go_next)
+        self.frm_nav.add_command_btn_far_right(viewmodel.go_to_end)
         return
 
     def refresh_content(self) -> None:
-        if self.tvw is not None:
-            self.tvw.refresh_view()
+        if self.tvwfrm_movelist is not None:
+            self.tvwfrm_movelist.refresh_view()
             self.bind_buttons()
         return
 
     def disable_display(self) -> None:
-        self.tvw.disable()
-        self.var_tvw.disable()
+        self.tvwfrm_movelist.disable()
+        self.tvwfrm_variations.disable()
         self.frm_nav.disable()
         return
 
     def enable_display(self) -> None:
-        self.tvw.enable()
-        self.var_tvw.enable()
+        self.tvwfrm_movelist.enable()
+        self.tvwfrm_variations.enable()
         self.frm_nav.enable()
         return
 
 
-class MovelistTreeview(utils.ScrollableTreeview, evt.IObserver):
+class MovelistTreeviewFrame(utils.ScrollableTreeviewFrame, evt.IObserver):
     def __init__(self, parent: tk.Widget, viewmodel: MovelistViewModel) -> None:
-        utils.ScrollableTreeview.__init__(self, parent, show="headings")
+        utils.ScrollableTreeviewFrame.__init__(self, parent, show="headings")
         evt.IObserver.__init__(self)
         self.viewmodel = viewmodel
 
@@ -99,7 +98,7 @@ class MovelistTreeview(utils.ScrollableTreeview, evt.IObserver):
     def refresh_view(self, event: Optional[evt.Event] = None) -> None:
         # pylint: disable=unused-argument
         # (event is necessary as a callback)
-        self.tvw.delete(*self.tvw.get_children())
+        self.clear_treeview()
         self.viewmodel.populate_treeview(self.tvw)
         iid = str(self.viewmodel.game.game.curr_node.id)
         if self.tvw.exists(iid):
@@ -116,14 +115,14 @@ class MovelistTreeview(utils.ScrollableTreeview, evt.IObserver):
     def disable(self) -> None:
         self.set_callbacks({})
         self._unbind_click()
-        self.tvw.delete(*self.tvw.get_children())
+        self.clear_treeview()
         self.tvw.insert("", "end", values=("", "Hidden", ""))
         return
 
 
-class MovelistVariationTvw(utils.ScrollableTreeview, evt.IObserver):
+class VariationTreeviewFrame(utils.ScrollableTreeviewFrame, evt.IObserver):
     def __init__(self, parent: tk.Widget, viewmodel: MovelistViewModel) -> None:
-        utils.ScrollableTreeview.__init__(
+        utils.ScrollableTreeviewFrame.__init__(
             self, parent, show="headings", height=3
         )
         evt.IObserver.__init__(self)
@@ -153,7 +152,7 @@ class MovelistVariationTvw(utils.ScrollableTreeview, evt.IObserver):
     def refresh_view(self, event: Optional[evt.Event] = None) -> None:
         # pylint: disable=unused-argument
         # (event is necessary as a callback)
-        self.tvw.delete(*self.tvw.get_children())
+        self.clear_treeview()
         self.viewmodel.populate_variation_treeview(self.tvw)
         return
 
@@ -166,6 +165,6 @@ class MovelistVariationTvw(utils.ScrollableTreeview, evt.IObserver):
     def disable(self) -> None:
         self.set_callbacks({})
         self._unbind_click()
-        self.tvw.delete(*self.tvw.get_children())
+        self.clear_treeview()
         self.tvw.insert("", "end", values=("", "Hidden"))
         return

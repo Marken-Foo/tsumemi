@@ -21,8 +21,8 @@ class MovelistController:
 
     def make_movelist_view(self, parent_widget: tk.Widget) -> MovelistFrame:
         movelist_frame = MovelistFrame(parent_widget, self.viewmodel)
-        tvw = movelist_frame.tvw
-        var_tvw = movelist_frame.var_tvw
+        tvw = movelist_frame.tvwfrm_movelist
+        var_tvw = movelist_frame.tvwfrm_variations
         self.viewmodel.game.add_observer(tvw)
         self.viewmodel.game.add_observer(var_tvw)
         tvw.refresh_view()

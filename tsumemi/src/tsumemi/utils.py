@@ -8,7 +8,7 @@ if TYPE_CHECKING:
     from typing import Any
 
 
-class ScrollableTreeview(ttk.Frame):
+class ScrollableTreeviewFrame(ttk.Frame):
     """Utility GUI component for a vertically scrollable treeview.
     Implemented as a `ttk.Frame` with a `ttk.Treeview` and
     `ttk.Scrollbar` inside.
@@ -18,6 +18,9 @@ class ScrollableTreeview(ttk.Frame):
             *tvw_args: Any,
             **tvw_kwargs: Any
         ) -> None:
+        """Initialises self as a `ttk.Frame`. Extra arguments are
+        passed into `ttk.Frame.__init__` constructor.
+        """
         ttk.Frame.__init__(self, parent)
         self.tvw = ttk.Treeview(self, *tvw_args, **tvw_kwargs)
         self.vsb = ttk.Scrollbar(
@@ -36,4 +39,10 @@ class ScrollableTreeview(ttk.Frame):
         of the treeview may change.
         """
         self.tvw["yscrollcommand"] = self.vsb.set
+        return
+
+    def clear_treeview(self) -> None:
+        """Removes all nodes from internal treeview.
+        """
+        self.tvw.delete(*self.tvw.get_children())
         return
