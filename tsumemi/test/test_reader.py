@@ -1,7 +1,9 @@
 import unittest
 
-import tsumemi.src.shogi.kif as kif
-from tsumemi.src.shogi.kif import SFEN_FROM_HANDICAP, GameBuilderPVis, KifReader
+import tsumemi.src.shogi.parsing.kif as kif
+
+from tsumemi.src.shogi.parsing.kif_reader import KifReader, SFEN_FROM_HANDICAP
+from tsumemi.src.shogi.parsing.base_readers_visitors import GameBuilderPVis
 
 
 def read_file(filename, reader, visitor):

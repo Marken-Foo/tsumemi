@@ -7,7 +7,7 @@ from tsumemi.src.shogi.basetypes import KomaType
 from tsumemi.src.shogi.basetypes import KANJI_FROM_KTYPE
 
 if TYPE_CHECKING:
-    from typing import Tuple
+    from typing import Optional, Tuple
     from tsumemi.src.tsumemi.board_gui.board_canvas import BoardCanvas
     from tsumemi.src.tsumemi.img_handlers import ImgDict
 
@@ -21,7 +21,7 @@ class AbstractKomaArtist(ABC):
             ktype: KomaType,
             anchor: str = "center",
             tags: Tuple[str, ...] = ("",),
-        ) -> int:
+        ) -> Optional[int]:
         raise NotImplementedError
 
 
@@ -37,7 +37,7 @@ class ImageKomaArtist(AbstractKomaArtist):
             ktype: KomaType,
             anchor: str = "center",
             tags: Tuple[str, ...] = ("",),
-        ) -> int:
+        ) -> Optional[int]:
         if ktype == KomaType.NONE:
             return None
         img = self.koma_dict[ktype]
@@ -63,11 +63,12 @@ class TextKomaArtist(AbstractKomaArtist):
             ktype: KomaType,
             anchor: str = "center",
             tags: Tuple[str, ...] = ("",),
-        ) -> int:
+        ) -> Optional[int]:
         if ktype == KomaType.NONE:
             return None
         id_: int
-        id_ = canvas.create_text(
+        # mypy 0.971 complains no overload variant matches argument types
+        id_ = canvas.create_text( # type: ignore
             x, y, text=str(KANJI_FROM_KTYPE[ktype]),
             font=("", self._text_size),
             angle=self._text_angle,

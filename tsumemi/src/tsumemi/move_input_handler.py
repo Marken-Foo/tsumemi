@@ -30,7 +30,7 @@ class MoveInputHandler(evt.Emitter):
     Emits MoveEvents when a legal move has been successfully input.
     """
     def __init__(self, board_canvas: BoardCanvas) -> None:
-        self.observers: List[evt.IObserver] = []
+        super().__init__()
         self.position: Position
         self.focused_sq = Square.NONE
         self.focused_ktype = KomaType.NONE
@@ -48,7 +48,7 @@ class MoveInputHandler(evt.Emitter):
         board_canvas.move_input_handler = self
         self.position = board_canvas.position
         return
-    
+
     def receive_square(self,
             event: tkEvent,
             sq: Square,
@@ -67,7 +67,7 @@ class MoveInputHandler(evt.Emitter):
             self._set_state("ready")
             logger.warning(e, exc_info=True)
         return
-    
+
     def execute_promotion_choice(self,
             is_promotion: Optional[bool],
             sq: Square,
@@ -83,15 +83,15 @@ class MoveInputHandler(evt.Emitter):
             is_promotion=is_promotion, sq=sq, ktype=ktype
         )
         return
-    
+
     def enable(self) -> None:
         self._set_state("ready")
         return
-    
+
     def disable(self) -> None:
         self._set_state("disabled")
         return
-    
+
     def _set_state(self, key: str,
             sq: Square = Square.NONE,
             hand_ktype: KomaType = KomaType.NONE
@@ -113,11 +113,11 @@ class MoveInputHandler(evt.Emitter):
         # "wait_for_promotion" currently needs no action
         self.active_state = self.states[key]
         return
-    
+
     def _send_move(self, move: Move) -> None:
         self._notify_observers(MoveEvent(move))
         return
-    
+
     def _attempt_drop(self, sq: Square) -> bool:
         move = rules.create_legal_drop_given_square(
             pos=self.position,
@@ -130,7 +130,7 @@ class MoveInputHandler(evt.Emitter):
         else:
             self._send_move(move)
             return True
-    
+
     def _attempt_move(self, sq: Square) -> Optional[bool]:
         """Check if a legal move can be made. Returns True and sends
         out the move if it is, False if not.
@@ -161,14 +161,14 @@ class MoveInputHandlerState(ABC):
     """
     def __init__(self) -> None:
         return
-    
+
     @abstractmethod
     def receive_input(self, event: tkEvent, caller: MoveInputHandler,
             sq: Square, hand_ktype: KomaType = KomaType.NONE,
             hand_side: Side = Side.SENTE
         ) -> None:
         return
-    
+
     def receive_promotion(self, caller: MoveInputHandler,
             is_promotion: Optional[bool],
             sq: Square, ktype: KomaType
@@ -185,7 +185,7 @@ class DisabledState(MoveInputHandlerState):
             hand_side: Side = Side.SENTE
         ) -> None:
         return
-    
+
     def receive_promotion(self, caller: MoveInputHandler,
             is_promotion: Optional[bool],
             sq: Square, ktype: KomaType
@@ -309,7 +309,7 @@ class WaitForPromotionState(MoveInputHandlerState):
         raise RuntimeError("Unexpected input to MoveInputHandler while waiting "
             "for promotion decision"
         )
-    
+
     def receive_promotion(self, caller: MoveInputHandler,
             is_promotion: Optional[bool],
             sq: Square, ktype: KomaType

@@ -31,13 +31,13 @@ class PieceSkinSelectionController:
     def __init__(self) -> None:
         self.model = PieceSkinSelection(PIECE_SKIN_CHOICES)
         return
-    
+
     def get_piece_skin(self) -> imghand.PieceSkin:
         return self.model.get_item()
-    
+
     def get_config_string(self) -> str:
         return self.model.get_config_string()
-    
+
     def select_by_config(self, config_string: str) -> None:
         self.model.select_by_config(config_string)
         return
@@ -57,8 +57,7 @@ class PieceSkinSelectionFrame(ttk.Frame):
         super().__init__(parent)
         self.lbl_name = ttk.Label(self, text="Piece set")
         self.cmb_dropdown = PieceSkinDropdown(parent=self, controller=controller.model)
-        # mypy doesn't recognise the "add" parameter overload to bind
-        self.cmb_dropdown.bind( # type: ignore
+        self.cmb_dropdown.bind(
             "<<ComboboxSelected>>", self.set_preview, add="+"
         )
         self.preview_photoimage = ImageTk.PhotoImage(
@@ -66,13 +65,13 @@ class PieceSkinSelectionFrame(ttk.Frame):
         )
         self.lbl_preview = ttk.Label(self, font=("", 18), compound="center")
         self.lbl_preview["image"] = self.preview_photoimage
-        
+
         self.lbl_name.grid(row=0, column=0, sticky="W")
         self.cmb_dropdown.grid(row=0, column=1)
         self.lbl_preview.grid(row=0, column=2, sticky="E")
         self.set_preview(None)
         return
-    
+
     def set_preview(self, event: Optional[tk.Event]) -> None:
         skin = self.controller.get_piece_skin()
         filepath = skin.path

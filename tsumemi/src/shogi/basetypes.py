@@ -11,9 +11,9 @@ class MetaEnum(EnumMeta):
     """Override __contains__() method of enum.EnumMeta for syntactic
     sugar: `if item in Enum: ...`
     """
-    def __contains__(self, item) -> bool:
+    def __contains__(cls, item) -> bool:
         try:
-            self(item)
+            cls(item)
         except ValueError:
             return False
         return True
@@ -43,10 +43,10 @@ class Side(IntFlag):
     GOTE = 1
     SHITATE = 0
     UWATE = 1
-    
+
     def is_sente(self) -> bool:
         return not bool(self)
-    
+
     def switch(self) -> Side:
         return Side(~self & 0b1)
 
@@ -68,27 +68,25 @@ class KomaType(IntFlag):
     NG = PROMOTED + GI
     UM = PROMOTED + KA
     RY = PROMOTED + HI
-    
+
     @classmethod
     def get(cls, koma: Koma) -> KomaType:
         return KomaType(koma & 0b1111)
-    
+
     def promote(self) -> KomaType:
         return self | KomaType.PROMOTED
-    
+
     def unpromote(self) -> KomaType:
         return self & ~KomaType.PROMOTED
-    
+
     def is_promoted(self) -> bool:
         return bool((self & KomaType.PROMOTED) and (self & ~KomaType.OU))
-    
+
     def to_csa(self) -> str:
         """Return CSA name of the corresponding shogi piece type.
         """
-        if self == KomaType.NONE:
-            return " * "
-        else:
-            return self.name
+        # mypy 0.971 thinks Enum.name is Optional[str]
+        return " * " if self == KomaType.NONE else self.name # type: ignore
 
 
 class Koma(IntFlag):
@@ -127,15 +125,15 @@ class Koma(IntFlag):
     vNG = (PROMOTED + GI) | GOTE
     vUM = (PROMOTED + KA) | GOTE
     vRY = (PROMOTED + HI) | GOTE
-    
+
     @classmethod
     def make(cls, side: Side, ktype: KomaType) -> Koma:
         koma = cls(ktype)
         return koma.sente() if side == Side.SENTE else koma.gote()
-    
+
     def __str__(self) -> str:
         return self.to_csa()
-    
+
     def to_csa(self) -> str:
         """Return CSA representation of the corresponding shogi piece.
         """
@@ -145,26 +143,27 @@ class Koma(IntFlag):
             return "INVALID"
         else:
             side_ch = "-" if (self & Koma.GOTE) else "+"
-            return "".join((side_ch, (self & ~Koma.GOTE).name))
-    
+            # mypy 0.971 thinks Enum.name is Optional[str]
+            return "".join((side_ch, (self & ~Koma.GOTE).name)) # type: ignore
+
     def is_gote(self) -> bool:
         return bool(self & Koma.GOTE)
-    
+
     def gote(self) -> Koma:
         return self | Koma.GOTE
-    
+
     def sente(self) -> Koma:
         return self & ~Koma.GOTE
-    
+
     def side(self) -> Side:
         return Side.GOTE if self & Koma.GOTE else Side.SENTE
-    
+
     def promote(self) -> Koma:
         return self | Koma.PROMOTED
-    
+
     def unpromote(self) -> Koma:
         return self & ~Koma.PROMOTED
-    
+
     def is_promoted(self) -> bool:
         return bool((self & Koma.PROMOTED) and (self & ~Koma.OU))
 
@@ -265,34 +264,34 @@ class Square(IntEnum):
     b71, b72, b73, b74, b75, b76, b77, b78, b79 = range(55, 64)
     b81, b82, b83, b84, b85, b86, b87, b88, b89 = range(64, 73)
     b91, b92, b93, b94, b95, b96, b97, b98, b99 = range(73, 82)
-    
+
     def __str__(self) -> str:
         col, row = self.get_cr()
         return str(10*col+row)
-    
+
     @classmethod
     def from_cr(cls, col_num: int, row_num: int) -> Square:
         return cls(9*col_num-9+row_num)
-    
+
     @classmethod
     def from_coord(cls, coord: int) -> Square:
         return cls.from_cr(col_num=int(coord/10), row_num=coord%10)
-    
+
     def get_cr(self) -> Tuple[int, int]:
         col = (self-1)// 9 + 1
         row = (self-1) % 9 + 1
         return col, row
-    
+
     def is_board(self) -> bool:
         return self.name.startswith("b")
-    
+
     def is_hand(self) -> bool:
         return self == Square.HAND
-    
+
     def is_in_promotion_zone(self, side: Side) -> bool:
         _, row = self.get_cr()
         return row in (1, 2, 3) if side.is_sente() else row in (7, 8, 9)
-    
+
     def is_in_last_two_rows(self, side: Side) -> bool:
         _, row = self.get_cr()
         return row in (1, 2) if side.is_sente() else row in (8, 9)
@@ -300,34 +299,34 @@ class Square(IntEnum):
     def is_in_last_row(self, side: Side) -> bool:
         _, row = self.get_cr()
         return row == 1 if side.is_sente() else row == 9
-    
+
     def is_left_of(self, sq_other: Square, side: Side) -> bool:
         col_diff, _ = self._subtract_squares(sq_other)
         return col_diff > 0 if side.is_sente() else col_diff < 0
-    
+
     def is_right_of(self, sq_other: Square, side: Side) -> bool:
         return sq_other.is_left_of(self, side)
-    
+
     def is_forward_of(self, sq_other: Square, side: Side) -> bool:
         _, row_diff = self._subtract_squares(sq_other)
         return row_diff < 0 if side.is_sente() else row_diff > 0
-    
+
     def is_backward_of(self, sq_other: Square, side: Side) -> bool:
         return sq_other.is_forward_of(self, side)
-    
+
     def is_same_row(self, sq_other: Square) -> bool:
         _, row_diff = self._subtract_squares(sq_other)
         return row_diff == 0
-    
+
     def _subtract_squares(self, sq_other: Square) -> Tuple[int, int]:
         col, row = self.get_cr()
         col_other, row_other = sq_other.get_cr()
         return (col - col_other, row - row_other)
-    
+
     def is_immediately_forward_of(self, sq_other: Square, side: Side) -> bool:
         forward = -1 if side.is_sente() else 1
         return self._subtract_squares(sq_other) == (0, forward)
-    
+
     def to_japanese(self) -> str:
         col, row = self.get_cr()
         return FULL_WIDTH_NUMBER[col] + KanjiNumber(row).name
@@ -352,7 +351,7 @@ class Move:
         self.captured = captured
         self.is_drop = self.start_sq == Square.HAND
         return
-    
+
     def __eq__(self, obj: Any) -> bool:
         return (
             isinstance(obj, Move)
@@ -364,16 +363,16 @@ class Move:
             and self.captured == obj.captured
             and self.is_drop == obj.is_drop
         )
-    
+
     def __str__(self) -> str:
         return self.to_text()
-    
+
     def is_null(self) -> bool:
         return False
-    
+
     def is_pass(self) -> bool:
         return self.start_sq == self.end_sq
-    
+
     def to_text(self) -> str:
         """Return easily-parseable string representation of a Move.
         Components are:
@@ -393,7 +392,7 @@ class Move:
         promotetxt = "+" if self.is_promotion else "="
         start_sq = "00" if self.is_drop else self.start_sq
         return "".join((komatxt, str(self.end_sq), promotetxt, str(start_sq)))
-    
+
     def to_latin(self) -> str:
         return (
             SFEN_FROM_KOMA[self.koma].upper()
@@ -402,7 +401,7 @@ class Move:
             + ("" if self.is_drop else ("(" + str(self.start_sq) + ")"))
             + ("+" if self.is_promotion else "")
         )
-    
+
     def to_ja_kif(self, is_same: bool = False) -> str:
         """Return KIF format move string.
         """
@@ -421,7 +420,7 @@ class Move:
 class NullMove(Move):
     def __init__(self) -> None:
         return
-    
+
     def is_null(self) -> bool:
         return True
 
@@ -434,12 +433,12 @@ class TerminationMove(Move):
         super().__init__()
         self.end = termination
         return
-    
+
     def to_text(self) -> str:
         return self.end.name
-    
+
     def to_latin(self) -> str:
         return self.end.name
-    
+
     def to_ja_kif(self, is_same: bool = False) -> str:
         return str(self.end.value)

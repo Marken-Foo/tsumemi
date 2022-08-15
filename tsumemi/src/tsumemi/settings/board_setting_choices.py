@@ -56,8 +56,7 @@ class BoardSkinSelectionFrame(ttk.Frame):
         super().__init__(parent)
         self.lbl_name = ttk.Label(self, text="Board set")
         self.cmb_dropdown = BoardSkinDropdown(parent=self, controller=controller.model)
-        # mypy doesn't recognise the "add" parameter overload to bind
-        self.cmb_dropdown.bind( # type: ignore
+        self.cmb_dropdown.bind(
             "<<ComboboxSelected>>", self.set_preview, add="+"
         )
         self.preview_photoimage = ImageTk.PhotoImage(

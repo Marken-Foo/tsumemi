@@ -5,6 +5,8 @@ import tkinter as tk
 
 from typing import TYPE_CHECKING
 
+import tsumemi.src.tsumemi.event as evt
+
 from tsumemi.src.shogi.basetypes import KANJI_FROM_KTYPE, KomaType, Side, Square
 from tsumemi.src.shogi.basetypes import HAND_TYPES
 from tsumemi.src.tsumemi.board_gui.board_artist import BoardArtist, NUM_COLS, NUM_ROWS
@@ -15,9 +17,9 @@ from tsumemi.src.tsumemi.board_gui.komadai_artist import KomadaiArtist
 if TYPE_CHECKING:
     from PIL import ImageTk
     from typing import Optional, Tuple
-    from tsumemi.src.shogi.game import Game
     from tsumemi.src.shogi.position import Position
     from tsumemi.src.tsumemi.board_gui.koma_artist import AbstractKomaArtist
+    from tsumemi.src.tsumemi.game.game_model import GameUpdateEvent
     from tsumemi.src.tsumemi.move_input_handler import MoveInputHandler
 
 
@@ -30,12 +32,12 @@ DEFAULT_CANVAS_HEIGHT = 500
 # NUM = one-based, top right to bottom left, column-row (like JP notation)
 
 
-class BoardCanvas(tk.Canvas):
+class BoardCanvas(tk.Canvas, evt.IObserver):
     """The canvas where the shogi position is drawn. Responsible for
     drawing on itself, delegating other tasks like size calculation to
     other objects.
     """
-    def __init__(self, parent: tk.Widget, game: Game,
+    def __init__(self, parent: tk.Widget, position: Position,
             skin_settings: SkinSettings,
             width: int = DEFAULT_CANVAS_WIDTH,
             height: int = DEFAULT_CANVAS_HEIGHT,
@@ -47,10 +49,13 @@ class BoardCanvas(tk.Canvas):
         self.width: int = width
         self.height: int = height
         self.is_upside_down: bool = False
-        super().__init__(parent, width=width, height=height, *args, **kwargs)
+        tk.Canvas.__init__(
+            self, parent, width=width, height=height, *args, **kwargs
+        )
+        evt.IObserver.__init__(self)
         # Specify source of board data
         self.move_input_handler: Optional[MoveInputHandler] = None
-        self.position: Position = game.position
+        self.position: Position = position
         # Initialise measurements, used for many other things
         self.measurements = BoardMeasurements(width, height)
         # Load skins
@@ -63,6 +68,10 @@ class BoardCanvas(tk.Canvas):
         # Hand pieces would be [0, KomaType]
         self.highlighted_sq = Square.NONE
         self.highlighted_ktype = KomaType.NONE
+        return
+
+    def set_and_draw_callback(self, event: GameUpdateEvent) -> None:
+        self.set_position(event.game.get_position())
         return
 
     def set_position(self, pos: Position) -> None:
@@ -212,12 +221,14 @@ class BoardCanvas(tk.Canvas):
         callback = functools.partial(
             self._prompt_promotion_callback, sq=sq, ktype=ktype
         )
-        self.tag_bind(id_promoted, "<Button-1>",
-            functools.partial(callback, is_promotion=True)
-        )
-        self.tag_bind(id_unpromoted, "<Button-1>",
-            functools.partial(callback, is_promotion=False)
-        )
+        if id_promoted is not None:
+            self.tag_bind(id_promoted, "<Button-1>",
+                functools.partial(callback, is_promotion=True)
+            )
+        if id_unpromoted is not None:
+            self.tag_bind(id_unpromoted, "<Button-1>",
+                functools.partial(callback, is_promotion=False)
+            )
         self.tag_bind(id_cover, "<Button-1>",
             functools.partial(callback, is_promotion=None)
         )

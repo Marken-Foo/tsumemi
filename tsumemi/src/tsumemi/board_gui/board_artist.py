@@ -7,6 +7,7 @@ from tsumemi.src.shogi.basetypes import KanjiNumber, KomaType
 from tsumemi.src.tsumemi.img_handlers import BoardImgManager, BoardMeasurements, BoardSkin
 
 if TYPE_CHECKING:
+    from typing import Optional
     from PIL import ImageTk
     from tsumemi.src.tsumemi.board_gui.board_canvas import BoardCanvas
 
@@ -164,7 +165,7 @@ class BoardArtist:
             invert: bool,
             row_idx: int,
             col_idx: int,
-        ) -> int:
+        ) -> Optional[int]:
         artist = canvas.make_koma_artist(invert, False)
         return artist.draw_koma(
             canvas,
