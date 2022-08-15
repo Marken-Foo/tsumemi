@@ -25,10 +25,12 @@ class ProblemListController:
         self.directory: Optional[PathLike] = None
         return
 
-    def go_next_problem(self) -> Optional[plist.Problem]:
+    def go_next_problem(self, event: Optional[tk.Event] = None
+        ) -> Optional[plist.Problem]:
         return self.problem_list.go_to_next()
 
-    def go_prev_problem(self) -> Optional[plist.Problem]:
+    def go_prev_problem(self, event: Optional[tk.Event] = None
+        ) -> Optional[plist.Problem]:
         return self.problem_list.go_to_prev()
 
     def go_to_problem(self, idx: int = 0) -> Optional[plist.Problem]:

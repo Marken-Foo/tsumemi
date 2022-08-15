@@ -76,13 +76,11 @@ class RootController(evt.IObserver):
         self.settings.open_settings_window()
         return
 
-    def open_folder(self, event: Optional[tk.Event] = None,
-            recursive: bool = False
+    def open_folder(self,
+            event: Optional[tk.Event] = None, recursive: bool = False
         ) -> None:
         """Prompt user for a folder, open into main_problem_list.
         """
-        # pylint: disable=unused-argument
-        # (event is necessary as a callback)
         directory = filedialog.askdirectory()
         if directory == "":
             return
@@ -97,7 +95,7 @@ class RootController(evt.IObserver):
         return
 
     def open_folder_recursive(self, event: Optional[tk.Event] = None) -> None:
-        return self.open_folder(event, recursive=True)
+        return self.open_folder(recursive=True)
 
     def _list_kif_files(self, directory: PathLike
         ) -> List[PathLike]:
@@ -169,21 +167,15 @@ class RootController(evt.IObserver):
         return
 
     def go_next_file(self, event: Optional[tk.Event] = None) -> bool:
-        # pylint: disable=unused-argument
-        # (event is necessary as a callback)
         prob = self.main_problem_list.go_next_problem()
         return prob is not None
 
     def go_prev_file(self, event: Optional[tk.Event] = None) -> bool:
-        # pylint: disable=unused-argument
-        # (event is necessary as a callback)
         prob = self.main_problem_list.go_prev_problem()
         return prob is not None
 
     def go_to_file(self, event: Optional[tk.Event] = None, idx: int = 0
         ) -> bool:
-        # pylint: disable=unused-argument
-        # (event is necessary as a callback)
         prob = self.main_problem_list.go_to_problem(idx)
         return prob is not None
 
@@ -286,8 +278,8 @@ class Bindings:
         self.FREE_SHORTCUTS = {
             "<Key-h>": self.controller.mainframe.toggle_solution,
             "<Key-H>": self.controller.mainframe.toggle_solution,
-            "<Left>": self.controller.go_prev_file,
-            "<Right>": self.controller.go_next_file,
+            "<Key-Left>": self.controller.go_prev_file,
+            "<Key-Right>": self.controller.go_next_file,
         }
 
         self.SPEEDRUN_SHORTCUTS = {}
@@ -305,7 +297,7 @@ class Bindings:
         return
 
 
-def run():
+def run() -> None:
     logging.basicConfig(filename="tsumemilog.log", level=logging.WARNING)
     def apply_theme_fix():
         # Fix from pyIDM on GitHub:

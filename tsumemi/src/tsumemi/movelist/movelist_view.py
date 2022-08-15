@@ -95,9 +95,7 @@ class MovelistTreeviewFrame(utils.ScrollableTreeviewFrame, evt.IObserver):
         self.tvw.see(iid)
         return
 
-    def refresh_view(self, event: Optional[evt.Event] = None) -> None:
-        # pylint: disable=unused-argument
-        # (event is necessary as a callback)
+    def refresh_view(self, event: Optional[tk.Event] = None) -> None:
         self.clear_treeview()
         self.viewmodel.populate_treeview(self.tvw)
         iid = str(self.viewmodel.game.game.curr_node.id)
@@ -149,9 +147,7 @@ class VariationTreeviewFrame(utils.ScrollableTreeviewFrame, evt.IObserver):
         self.tvw.unbind("<Button-1>")
         return
 
-    def refresh_view(self, event: Optional[evt.Event] = None) -> None:
-        # pylint: disable=unused-argument
-        # (event is necessary as a callback)
+    def refresh_view(self, event: Optional[tk.Event] = None) -> None:
         self.clear_treeview()
         self.viewmodel.populate_variation_treeview(self.tvw)
         return

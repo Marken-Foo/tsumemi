@@ -51,6 +51,7 @@ class ProblemsTreeviewFrame(utils.ScrollableTreeviewFrame, evt.IObserver):
         self.tvw.tag_configure("WRONG", background="LightPink1")
         self._bind_double_click()
         self._bind_heading_commands()
+        self._bind_focus()
         return
 
     def _bind_double_click(self) -> None:
@@ -67,22 +68,50 @@ class ProblemsTreeviewFrame(utils.ScrollableTreeviewFrame, evt.IObserver):
         self.tvw.unbind("<Double-1>")
         return
 
+    def _bind_up_down(self, event: Optional[tk.Event] = None) -> None:
+        self.tvw.bind("<Key-Up>", self.controller.go_prev_problem)
+        self.tvw.bind("<Key-Down>", self.controller.go_next_problem)
+        return
+
+    def _unbind_up_down(self, event: Optional[tk.Event] = None) -> None:
+        self.tvw.unbind("<Key-Up>")
+        self.tvw.unbind("<Key-Down>")
+        return
+
     def _bind_heading_commands(self) -> None:
         self.tvw.heading("filename", command=self.controller.sort_by_file)
         self.tvw.heading("time", command=self.controller.sort_by_time)
         self.tvw.heading("status", command=self.controller.sort_by_status)
         return
 
-    def disable_input(self) -> None:
-        self._unbind_double_click()
+    def _unbind_heading_commands(self) -> None:
         self.tvw.heading("filename", command="")
         self.tvw.heading("time", command="")
         self.tvw.heading("status", command="")
         return
 
+    def _bind_focus(self) -> None:
+        self.tvw.bind("<FocusIn>", self._bind_up_down)
+        self.tvw.bind("<FocusOut>", self._unbind_up_down)
+        return
+
+    def _unbind_focus(self) -> None:
+        self.tvw.unbind("<FocusIn>")
+        self.tvw.unbind("<FocusOut>")
+        return
+
+    def disable_input(self) -> None:
+        self._unbind_heading_commands()
+        self._unbind_double_click()
+        # self._unbind_up_down()
+        self._unbind_focus()
+        return
+
     def enable_input(self) -> None:
-        self._bind_double_click()
         self._bind_heading_commands()
+        self._bind_double_click()
+        self._bind_up_down()
+        self._bind_focus()
         return
 
     def display_time(self, event: plist.ProbTimeEvent) -> None:
