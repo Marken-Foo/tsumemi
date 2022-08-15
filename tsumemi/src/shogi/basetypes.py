@@ -85,10 +85,8 @@ class KomaType(IntFlag):
     def to_csa(self) -> str:
         """Return CSA name of the corresponding shogi piece type.
         """
-        if self == KomaType.NONE:
-            return " * "
-        else:
-            return self.name
+        # mypy 0.971 thinks Enum.name is Optional[str]
+        return " * " if self == KomaType.NONE else self.name # type: ignore
 
 
 class Koma(IntFlag):
@@ -145,7 +143,8 @@ class Koma(IntFlag):
             return "INVALID"
         else:
             side_ch = "-" if (self & Koma.GOTE) else "+"
-            return "".join((side_ch, (self & ~Koma.GOTE).name))
+            # mypy 0.971 thinks Enum.name is Optional[str]
+            return "".join((side_ch, (self & ~Koma.GOTE).name)) # type: ignore
 
     def is_gote(self) -> bool:
         return bool(self & Koma.GOTE)

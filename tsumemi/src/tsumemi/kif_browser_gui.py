@@ -102,12 +102,14 @@ class RootController(evt.IObserver):
         """Returns a generator of full filepaths ending in `.kif` or
         `.kifu` in a directory.
         """
-        with os.scandir(directory) as itr:
+        # mypy 0.971 os.scandir() regression
+        # https://github.com/python/mypy/issues/11964
+        with os.scandir(directory) as itr: # type: ignore
             return [
                 os.path.join(directory, entry.name)
                 for entry in itr
-                if entry.name.endswith(".kif")
-                or entry.name.endswith(".kifu")
+                if entry.name.endswith(".kif") # type: ignore
+                or entry.name.endswith(".kifu") # type: ignore
             ]
 
     def _list_kif_files_recursive(self, directory: PathLike
@@ -115,12 +117,12 @@ class RootController(evt.IObserver):
         """Returns a generator of full filepaths ending in `.kif` or
         `.kifu` in a directory and all its subdirectories.
         """
-        for dirpath, _, filenames in os.walk(directory):
+        for dirpath, _, filenames in os.walk(directory): # type: ignore
             yield from (
                 os.path.join(dirpath, filename)
                 for filename in filenames
-                if filename.endswith(".kif")
-                or filename.endswith(".kifu")
+                if filename.endswith(".kif") # type: ignore
+                or filename.endswith(".kifu") # type: ignore
             )
 
     def copy_sfen_to_clipboard(self) -> None:

@@ -67,7 +67,8 @@ class TextKomaArtist(AbstractKomaArtist):
         if ktype == KomaType.NONE:
             return None
         id_: int
-        id_ = canvas.create_text(
+        # mypy 0.971 complains no overload variant matches argument types
+        id_ = canvas.create_text( # type: ignore
             x, y, text=str(KANJI_FROM_KTYPE[ktype]),
             font=("", self._text_size),
             angle=self._text_angle,

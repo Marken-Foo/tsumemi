@@ -52,20 +52,20 @@ class NotationSelectionController:
     def __init__(self) -> None:
         self.model = NotationSelection(NOTATION_CHOICES)
         return
-    
+
     def get_move_preview(self) -> str:
         move_writer = self.model.get_item()
         pos = Position()
         pos.set_koma(Koma.FU, Square.from_coord(77))
         move = pos.create_move(Square.from_coord(77), Square.from_coord(76))
         return move_writer.write_move(move, pos)
-    
+
     def get_move_writer(self) -> nwriter.AbstractMoveWriter:
         return self.model.get_item()
-    
+
     def get_config_string(self) -> str:
         return self.model.get_config_string()
-    
+
     def select_by_config(self, config_string: str) -> None:
         self.model.select_by_config(config_string)
         return
@@ -84,18 +84,17 @@ class NotationSelectionFrame(ttk.Frame):
         super().__init__(parent)
         self.lbl_name = ttk.Label(self, text="Notation system")
         self.cmb_dropdown = NotationDropdown(parent=self, controller=controller.model)
-        # mypy doesn't recognise the "add" parameter overload to bind
-        self.cmb_dropdown.bind( # type: ignore
+        self.cmb_dropdown.bind(
             "<<ComboboxSelected>>", self.set_preview, add="+"
         )
         self.lbl_preview = ttk.Label(self)
-        
+
         self.lbl_name.grid(row=0, column=0, sticky="W")
         self.cmb_dropdown.grid(row=0, column=1)
         self.lbl_preview.grid(row=0, column=2, sticky="E")
         self.set_preview(None)
         return
-    
+
     def set_preview(self, event: Optional[tk.Event]) -> None:
         self.lbl_preview["text"] = self.controller.get_move_preview()
         return
