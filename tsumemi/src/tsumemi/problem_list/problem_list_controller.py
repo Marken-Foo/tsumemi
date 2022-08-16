@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 import tsumemi.src.tsumemi.problem_list.problem_list_model as plist
 
 from tsumemi.src.tsumemi.problem_list.problem_list_view import ProblemListPane
+from tsumemi.src.tsumemi.problem_list.problem_list_viewmodel import ProblemListViewModel
 
 if TYPE_CHECKING:
     import tkinter as tk
@@ -23,14 +24,13 @@ class ProblemListController:
     def __init__(self) -> None:
         self.problem_list: plist.ProblemList = plist.ProblemList()
         self.directory: Optional[PathLike] = None
+        self.viewmodel = ProblemListViewModel(self.problem_list)
         return
 
-    def go_next_problem(self, event: Optional[tk.Event] = None
-        ) -> Optional[plist.Problem]:
+    def go_next_problem(self) -> Optional[plist.Problem]:
         return self.problem_list.go_to_next()
 
-    def go_prev_problem(self, event: Optional[tk.Event] = None
-        ) -> Optional[plist.Problem]:
+    def go_prev_problem(self) -> Optional[plist.Problem]:
         return self.problem_list.go_to_prev()
 
     def go_to_problem(self, idx: int = 0) -> Optional[plist.Problem]:
@@ -52,24 +52,8 @@ class ProblemListController:
         self.problem_list.clear_times()
         return
 
-    def sort_by_file(self) -> None:
-        self.problem_list.sort_by_file()
-        return
-
-    def sort_by_time(self) -> None:
-        self.problem_list.sort_by_time()
-        return
-
-    def sort_by_status(self) -> None:
-        self.problem_list.sort_by_status()
-        return
-
-    def randomise(self) -> None:
-        self.problem_list.randomise()
-        return
-
     def make_problem_list_pane(self, parent: tk.Widget) -> ProblemListPane:
-        problem_list_pane = ProblemListPane(parent, self)
+        problem_list_pane = ProblemListPane(parent, self.viewmodel)
         self.problem_list.add_observer(problem_list_pane.tvwfrm_problems)
         return problem_list_pane
 

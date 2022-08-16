@@ -13,18 +13,20 @@ from tsumemi.src.tsumemi import utils
 
 if TYPE_CHECKING:
     from typing import Dict, Optional
-    from tsumemi.src.tsumemi.problem_list.problem_list_controller import ProblemListController
+    from tsumemi.src.tsumemi.problem_list.problem_list_viewmodel import ProblemListViewModel
 
 
 class ProblemsTreeviewFrame(utils.ScrollableTreeviewFrame, evt.IObserver):
     """GUI class to display list of problems.
     Observes underlying problem list and updates its view as needed.
     """
-    def __init__(self, parent: tk.Widget, controller: ProblemListController
+    def __init__(self,
+            parent: tk.Widget,
+            viewmodel: ProblemListViewModel
         ) -> None:
         utils.ScrollableTreeviewFrame.__init__(self, parent)
         evt.IObserver.__init__(self)
-        self.controller = controller
+        self.viewmodel = viewmodel
         self.set_callbacks({
             plist.ProbStatusEvent: self.display_status,
             plist.ProbTimeEvent: self.display_time,
@@ -59,7 +61,7 @@ class ProblemsTreeviewFrame(utils.ScrollableTreeviewFrame, evt.IObserver):
         def _click_to_prob(event: tk.Event) -> None:
             idx = self.get_idx_on_click(event)
             if idx is not None:
-                self.controller.go_to_problem(idx)
+                self.viewmodel.go_to_problem(idx)
             return
         self.tvw.bind("<Double-1>", _click_to_prob)
         return
@@ -69,8 +71,8 @@ class ProblemsTreeviewFrame(utils.ScrollableTreeviewFrame, evt.IObserver):
         return
 
     def _bind_up_down(self, event: Optional[tk.Event] = None) -> None:
-        self.tvw.bind("<Key-Up>", self.controller.go_prev_problem)
-        self.tvw.bind("<Key-Down>", self.controller.go_next_problem)
+        self.tvw.bind("<Key-Up>", self.viewmodel.go_prev_problem)
+        self.tvw.bind("<Key-Down>", self.viewmodel.go_next_problem)
         return
 
     def _unbind_up_down(self, event: Optional[tk.Event] = None) -> None:
@@ -79,9 +81,9 @@ class ProblemsTreeviewFrame(utils.ScrollableTreeviewFrame, evt.IObserver):
         return
 
     def _bind_heading_commands(self) -> None:
-        self.tvw.heading("filename", command=self.controller.sort_by_file)
-        self.tvw.heading("time", command=self.controller.sort_by_time)
-        self.tvw.heading("status", command=self.controller.sort_by_status)
+        self.tvw.heading("filename", command=self.viewmodel.sort_by_file)
+        self.tvw.heading("time", command=self.viewmodel.sort_by_time)
+        self.tvw.heading("status", command=self.viewmodel.sort_by_status)
         return
 
     def _unbind_heading_commands(self) -> None:
@@ -118,16 +120,16 @@ class ProblemsTreeviewFrame(utils.ScrollableTreeviewFrame, evt.IObserver):
         idx = event.idx
         time = event.time
         # Set time column for item at given index
-        _id = self.tvw.get_children()[idx]
-        self.tvw.set(_id, column="time", value=str(time))
+        id_ = self.tvw.get_children()[idx]
+        self.tvw.set(id_, column="time", value=str(time))
         return
 
     def display_status(self, event: plist.ProbStatusEvent) -> None:
         idx = event.idx
         status = event.status
-        _id = self.tvw.get_children()[idx]
-        self.tvw.set(_id, column="status", value=self.status_strings[status])
-        self.tvw.item(_id, tags=[status.name]) # overrides existing tags
+        id_ = self.tvw.get_children()[idx]
+        self.tvw.set(id_, column="status", value=self.status_strings[status])
+        self.tvw.item(id_, tags=[status.name]) # overrides existing tags
         return
 
     def refresh_view(self, event: plist.ProbListEvent) -> None:
@@ -160,15 +162,16 @@ class ProblemListPane(ttk.Frame):
     """GUI frame containing view of problem list and associated
     controls.
     """
-    def __init__(self, parent: tk.Widget, controller: ProblemListController
+    def __init__(self,
+            parent: tk.Widget,
+            viewmodel: ProblemListViewModel
         ) -> None:
         ttk.Frame.__init__(self, parent)
-        self.controller: ProblemListController = controller
-        self.tvwfrm_problems = ProblemsTreeviewFrame(self, controller)
+        self.tvwfrm_problems = ProblemsTreeviewFrame(self, viewmodel)
 
         self.btn_randomise: ttk.Button = ttk.Button(
             self, text="Randomise problems",
-            command=self.controller.randomise
+            command=viewmodel.randomise
         )
 
         self.tvwfrm_problems.grid(row=0, column=0, sticky="NSEW")
