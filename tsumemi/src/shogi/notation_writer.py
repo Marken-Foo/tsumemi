@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 class MoveNotationBuilder(ABC):
     def __init__(self) -> None:
         return
-    
+
     @abstractmethod
     def build(self, move: Move, pos: Position, move_writer: AbstractMoveWriter
         ) -> str:
@@ -70,12 +70,12 @@ class AbstractMoveWriter(ABC):
         self.move_format: MoveFormat = move_format
         self.aggressive_disambiguation = False
         return
-    
+
     def get_new_instance(self) -> AbstractMoveWriter:
         if self.__class__ == AbstractMoveWriter:
             raise NotImplementedError
         return self.__class__(self.move_format)
-    
+
     def write_move(self,
             move: Move, pos: Position, is_same: bool = False
         ) -> str:
@@ -83,7 +83,7 @@ class AbstractMoveWriter(ABC):
             raise ValueError("Attempting to write notation for a NullMove")
         if isinstance(move, TerminationMove):
             return self.write_termination_move(move)
-        
+
         res = []
         for builder in self.move_format:
             if isinstance(builder, DestinationNotationBuilder):
@@ -94,7 +94,7 @@ class AbstractMoveWriter(ABC):
                 continue
             res.append(builder.build(move, pos, self))
         return "".join(res)
-    
+
     def needs_disambiguation(self,
             move: Move, ambiguous_moves: Iterable[Move]
         ) -> bool:
@@ -106,50 +106,50 @@ class AbstractMoveWriter(ABC):
                 rules.can_be_promotion(amb_move) == needs_promotion
                 for amb_move in ambiguous_moves
             ))
-    
+
     @abstractmethod
     def write_termination_move(self, move: TerminationMove) -> str:
         raise NotImplementedError
-    
+
     @abstractmethod
     def write_koma(self, koma: Koma) -> str:
         raise NotImplementedError
-    
+
     @abstractmethod
     def write_destination(self, sq: Square) -> str:
         raise NotImplementedError
-    
+
     @abstractmethod
     def write_same_destination(self, sq: Square) -> str:
         raise NotImplementedError
-    
+
     @abstractmethod
     def write_disambiguation(self, pos: Position, move: Move, ambiguous_moves: Iterable[Move]) -> str:
         raise NotImplementedError
-    
+
     def write_movetype(self, move) -> str:
         if move.start_sq.is_hand():
             return self.write_drop()
         if move.captured != Koma.NONE:
             return self.write_capture()
         return self.write_simple()
-    
+
     @abstractmethod
     def write_promotion(self, is_promotion: bool) -> str:
         raise NotImplementedError
-    
+
     @abstractmethod
     def write_coords(self, sq: Square) -> str:
         raise NotImplementedError
-    
+
     @abstractmethod
     def write_drop(self) -> str:
         raise NotImplementedError
-    
+
     @abstractmethod
     def write_capture(self) -> str:
         raise NotImplementedError
-    
+
     @abstractmethod
     def write_simple(self) -> str:
         raise NotImplementedError
@@ -158,34 +158,34 @@ class AbstractMoveWriter(ABC):
 class WesternMoveWriter(AbstractMoveWriter):
     def write_termination_move(self, move: TerminationMove) -> str:
         return move.to_latin()
-    
+
     def write_koma(self, koma: Koma) -> str:
         return SFEN_FROM_KOMA[koma].upper()
-    
+
     def write_destination(self, sq: Square) -> str:
         return self.write_coords(sq)
-    
+
     def write_same_destination(self, sq: Square) -> str:
         return ""
-    
+
     def write_disambiguation(self,
             pos: Position, move: Move, ambiguous_moves: Iterable[Move]
         ) -> str:
         start_sq = move.start_sq
         return self.write_coords(start_sq)
-    
+
     def write_promotion(self, is_promotion: bool) -> str:
         return "+" if is_promotion else "="
-    
+
     def write_coords(self, sq: Square) -> str:
         return str(sq)
-    
+
     def write_drop(self) -> str:
         return "*"
-    
+
     def write_capture(self) -> str:
         return "x"
-    
+
     def write_simple(self) -> str:
         return "-"
 
@@ -193,7 +193,7 @@ class WesternMoveWriter(AbstractMoveWriter):
 class KitaoKawasakiMoveWriter(WesternMoveWriter):
     def write_koma(self, koma: Koma) -> str:
         return KANJI_NOTATION_FROM_KTYPE[KomaType.get(koma)]
-    
+
     def write_disambiguation(self,
             pos: Position, move: Move, ambiguous_moves: Iterable[Move]
         ) -> str:
@@ -204,35 +204,35 @@ class KitaoKawasakiMoveWriter(WesternMoveWriter):
 class JapaneseMoveWriter(AbstractMoveWriter):
     def write_termination_move(self, move: TerminationMove) -> str:
         return move.to_ja_kif()
-    
+
     def write_koma(self, koma: Koma) -> str:
         return KANJI_NOTATION_FROM_KTYPE[KomaType.get(koma)]
-    
+
     def write_destination(self, sq: Square) -> str:
         return self.write_coords(sq)
-    
+
     def write_same_destination(self, sq: Square) -> str:
         return "同"
-    
+
     def write_disambiguation(self,
             pos: Position, move: Move, ambiguous_moves: Iterable[Move]
         ) -> str:
         return _disambiguate_japanese_move(
             pos, move, ambiguous_moves, self.aggressive_disambiguation
         )
-    
+
     def write_promotion(self, is_promotion: bool) -> str:
         return "成" if is_promotion else "不成"
-    
+
     def write_coords(self, sq: Square) -> str:
         return sq.to_japanese()
-    
+
     def write_drop(self) -> str:
         return "打"
-    
+
     def write_capture(self) -> str:
         return ""
-    
+
     def write_simple(self) -> str:
         return ""
 
@@ -249,13 +249,13 @@ class IrohaMoveWriter(JapaneseMoveWriter):
         "柳", "桜", "松", "楓", "雨", "露", "霜", "雪", "山",
         "谷", "川", "海", "里", "村", "森", "竹", "草", "石",
     )
-    
+
     def write_destination(self, sq: Square) -> str:
         return self.write_coords(sq)
-    
+
     def write_same_destination(self, sq: Square) -> str:
         return self.write_destination(sq)
-    
+
     def write_coords(self, sq: Square) -> str:
         return IrohaMoveWriter.IROHA_SQUARES[sq-1]
 
