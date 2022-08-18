@@ -59,7 +59,9 @@ class MovelistFrame(ttk.Frame):
 
 class MovelistTreeviewFrame(utils.ScrollableTreeviewFrame, evt.IObserver):
     def __init__(self, parent: tk.Widget, viewmodel: MovelistViewModel) -> None:
-        utils.ScrollableTreeviewFrame.__init__(self, parent, show="headings")
+        utils.ScrollableTreeviewFrame.__init__(
+            self, parent, show="headings", selectmode="browse"
+        )
         evt.IObserver.__init__(self)
         self.viewmodel = viewmodel
 
@@ -95,7 +97,7 @@ class MovelistTreeviewFrame(utils.ScrollableTreeviewFrame, evt.IObserver):
         self.tvw.see(iid)
         return
 
-    def refresh_view(self, event: Optional[tk.Event] = None) -> None:
+    def refresh_view(self, _event: Optional[tk.Event] = None) -> None:
         self.clear_treeview()
         self.viewmodel.populate_treeview(self.tvw)
         iid = str(self.viewmodel.game.game.curr_node.id)
@@ -147,7 +149,7 @@ class VariationTreeviewFrame(utils.ScrollableTreeviewFrame, evt.IObserver):
         self.tvw.unbind("<Button-1>")
         return
 
-    def refresh_view(self, event: Optional[tk.Event] = None) -> None:
+    def refresh_view(self, _event: Optional[tk.Event] = None) -> None:
         self.clear_treeview()
         self.viewmodel.populate_variation_treeview(self.tvw)
         return

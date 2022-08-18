@@ -16,11 +16,11 @@ class ProblemListViewModel:
         self.problem_list = problem_list
         return
 
-    def go_next_problem(self, event: Optional[tk.Event] = None
+    def go_next_problem(self, _event: Optional[tk.Event] = None
         ) -> Optional[Problem]:
         return self.problem_list.go_to_next()
 
-    def go_prev_problem(self, event: Optional[tk.Event] = None
+    def go_prev_problem(self, _event: Optional[tk.Event] = None
         ) -> Optional[Problem]:
         return self.problem_list.go_to_prev()
 

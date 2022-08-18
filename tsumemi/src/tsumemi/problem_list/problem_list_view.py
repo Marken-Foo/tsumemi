@@ -24,10 +24,13 @@ class ProblemsTreeviewFrame(utils.ScrollableTreeviewFrame, evt.IObserver):
             parent: tk.Widget,
             viewmodel: ProblemListViewModel
         ) -> None:
-        utils.ScrollableTreeviewFrame.__init__(self, parent)
+        utils.ScrollableTreeviewFrame.__init__(
+            self, parent, selectmode="none"
+        )
         evt.IObserver.__init__(self)
         self.viewmodel = viewmodel
         self.set_callbacks({
+            plist.ProbSelectedEvent: self.go_to_problem,
             plist.ProbStatusEvent: self.display_status,
             plist.ProbTimeEvent: self.display_time,
             plist.ProbListEvent: self.refresh_view,
@@ -56,12 +59,22 @@ class ProblemsTreeviewFrame(utils.ScrollableTreeviewFrame, evt.IObserver):
         self._bind_focus()
         return
 
+    def _bind_click(self) -> None:
+        def _click_to_highlight(event: tk.Event) -> None:
+            iid = self._get_iid_on_click(event)
+            if iid:
+                self.set_focus(iid)
+            return
+        self.tvw.bind("<Button-1>", _click_to_highlight)
+        return
+
     def _bind_double_click(self) -> None:
         # Bind double click to go to problem
         def _click_to_prob(event: tk.Event) -> None:
-            idx = self.get_idx_on_click(event)
-            if idx is not None:
-                self.viewmodel.go_to_problem(idx)
+            iid = self._get_iid_on_click(event)
+            if iid:
+                self.set_focus(iid)
+                self.viewmodel.go_to_problem(self.tvw.index(iid))
             return
         self.tvw.bind("<Double-1>", _click_to_prob)
         return
@@ -70,12 +83,12 @@ class ProblemsTreeviewFrame(utils.ScrollableTreeviewFrame, evt.IObserver):
         self.tvw.unbind("<Double-1>")
         return
 
-    def _bind_up_down(self, event: Optional[tk.Event] = None) -> None:
+    def _bind_up_down(self, _event: Optional[tk.Event] = None) -> None:
         self.tvw.bind("<Key-Up>", self.viewmodel.go_prev_problem)
         self.tvw.bind("<Key-Down>", self.viewmodel.go_next_problem)
         return
 
-    def _unbind_up_down(self, event: Optional[tk.Event] = None) -> None:
+    def _unbind_up_down(self, _event: Optional[tk.Event] = None) -> None:
         self.tvw.unbind("<Key-Up>")
         self.tvw.unbind("<Key-Down>")
         return
@@ -102,10 +115,16 @@ class ProblemsTreeviewFrame(utils.ScrollableTreeviewFrame, evt.IObserver):
         self.tvw.unbind("<FocusOut>")
         return
 
+    def set_focus(self, iid: str) -> None:
+        self.tvw.focus(iid)
+        self.tvw.selection_set(iid)
+        self.tvw.see(iid)
+        return
+
     def disable_input(self) -> None:
         self._unbind_heading_commands()
         self._unbind_double_click()
-        # self._unbind_up_down()
+        self._unbind_up_down()
         self._unbind_focus()
         return
 
@@ -120,16 +139,25 @@ class ProblemsTreeviewFrame(utils.ScrollableTreeviewFrame, evt.IObserver):
         idx = event.idx
         time = event.time
         # Set time column for item at given index
-        id_ = self.tvw.get_children()[idx]
+        id_ = self._idx_to_iid(idx)
         self.tvw.set(id_, column="time", value=str(time))
         return
 
     def display_status(self, event: plist.ProbStatusEvent) -> None:
         idx = event.idx
         status = event.status
-        id_ = self.tvw.get_children()[idx]
+        id_ = self._idx_to_iid(idx)
         self.tvw.set(id_, column="status", value=self.status_strings[status])
         self.tvw.item(id_, tags=[status.name]) # overrides existing tags
+        return
+
+    def go_to_problem(self, event: plist.ProbSelectedEvent) -> None:
+        idx = event.sender.curr_prob_idx
+        if idx is None:
+            return
+        id_ = self._idx_to_iid(idx)
+        self.tvw.focus(id_)
+        self.tvw.selection_set(id_)
         return
 
     def refresh_view(self, event: plist.ProbListEvent) -> None:
@@ -142,20 +170,22 @@ class ProblemsTreeviewFrame(utils.ScrollableTreeviewFrame, evt.IObserver):
                 else problem.time.to_hms_str(places=1)
             )
             status_str = self.status_strings[problem.status]
+            tag_list = [problem.status.name]
             self.tvw.insert(
                 "", "end",
                 values=(filename, time_str, status_str),
-                tags=[problem.status.name]
+                tags=tag_list
             )
         self.refresh_vsb()
         return
 
-    def get_idx_on_click(self, event: tk.Event) -> Optional[int]:
-        if self.tvw.identify_region(event.x, event.y) == "cell":
-            idx = self.tvw.index(self.tvw.identify_row(event.y))
-            assert isinstance(idx, int) # tkinter missing stub?
-            return idx
-        return None
+    def _idx_to_iid(self, idx: int) -> str:
+        return self.tvw.get_children()[idx]
+
+    def _get_iid_on_click(self, event: tk.Event) -> str:
+        iid = self.tvw.identify("item", event.x, event.y)
+        assert isinstance(iid, str) # tkinter missing stub?
+        return iid
 
 
 class ProblemListPane(ttk.Frame):
