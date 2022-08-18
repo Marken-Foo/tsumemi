@@ -9,60 +9,74 @@ from tsumemi.src.shogi.basetypes import Koma, KomaType, TerminationMove
 from tsumemi.src.shogi.basetypes import KANJI_NOTATION_FROM_KTYPE, SFEN_FROM_KOMA
 
 if TYPE_CHECKING:
-    from typing import Dict, Iterable
+    from typing import Callable, Iterable
     from tsumemi.src.shogi.basetypes import Move, Side, Square
     from tsumemi.src.shogi.position import Position
-    MoveFormat = Iterable[MoveNotationBuilder]
+    MoveFormat = Iterable["MoveNotationBuilder"]
+    MoveNotationBuilder = Callable[[Move, Position, "AbstractMoveWriter"], str]
 
 
-class MoveNotationBuilder(ABC):
-    def __init__(self) -> None:
-        return
-
-    @abstractmethod
-    def build(self, move: Move, pos: Position, move_writer: AbstractMoveWriter
-        ) -> str:
-        raise NotImplementedError
+def _write_koma(move: Move, _pos: Position, move_writer: AbstractMoveWriter
+    ) -> str:
+    """MoveNotationBuilder function.
+    """
+    return move_writer.write_koma(move.koma)
 
 
-class KomaNotationBuilder(MoveNotationBuilder):
-    def build(self, move: Move, pos: Position, move_writer: AbstractMoveWriter
-        ) -> str:
-        return move_writer.write_koma(move.koma)
+def _write_disambiguation(
+        move: Move, pos: Position, move_writer: AbstractMoveWriter
+    ) -> str:
+    """MoveNotationBuilder function.
+    """
+    ambiguous_moves = rules.get_ambiguous_moves(pos, move)
+    needs_disambiguation = move_writer.needs_disambiguation(
+        move, ambiguous_moves
+    )
+    if not needs_disambiguation:
+        return ""
+    return move_writer.write_disambiguation(pos, move, ambiguous_moves)
 
 
-class DisambiguationNotationBuilder(MoveNotationBuilder):
-    def build(self, move: Move, pos: Position, move_writer: AbstractMoveWriter
-        ) -> str:
-        ambiguous_moves = rules.get_ambiguous_moves(pos, move)
-        needs_disambiguation = move_writer.needs_disambiguation(
-            move, ambiguous_moves
-        )
-        if needs_disambiguation:
-            return move_writer.write_disambiguation(pos, move, ambiguous_moves)
-        else:
-            return ""
+def _write_movetype(move: Move, _pos: Position, move_writer: AbstractMoveWriter
+    ) -> str:
+    """MoveNotationBuilder function.
+    """
+    return move_writer.write_movetype(move)
 
 
-class MovetypeNotationBuilder(MoveNotationBuilder):
-    def build(self, move: Move, pos: Position, move_writer: AbstractMoveWriter
-        ) -> str:
-        return move_writer.write_movetype(move)
+def _write_destination(
+        move: Move, _pos: Position, move_writer: AbstractMoveWriter
+    ) -> str:
+    """MoveNotationBuilder function.
+    """
+    return move_writer.write_destination(move.end_sq)
 
 
-class DestinationNotationBuilder(MoveNotationBuilder):
-    def build(self, move: Move, pos: Position, move_writer: AbstractMoveWriter
-        ) -> str:
-        return move_writer.write_destination(move.end_sq)
+def _write_promotion(move: Move, _pos: Position, move_writer: AbstractMoveWriter
+    ) -> str:
+    """MoveNotationBuilder function.
+    """
+    if rules.can_be_promotion(move):
+        return move_writer.write_promotion(move.is_promotion)
+    return ""
 
 
-class PromotionNotationBuilder(MoveNotationBuilder):
-    def build(self, move: Move, pos: Position, move_writer: AbstractMoveWriter
-        ) -> str:
-        if rules.can_be_promotion(move):
-            return move_writer.write_promotion(move.is_promotion)
-        else:
-            return ""
+WESTERN_MOVE_FORMAT: MoveFormat = (
+    _write_koma,
+    _write_disambiguation,
+    _write_movetype,
+    _write_destination,
+    _write_promotion,
+)
+
+
+JAPANESE_MOVE_FORMAT: MoveFormat = (
+    _write_destination,
+    _write_koma,
+    _write_movetype,
+    _write_disambiguation,
+    _write_promotion,
+)
 
 
 class AbstractMoveWriter(ABC):
@@ -86,13 +100,14 @@ class AbstractMoveWriter(ABC):
 
         res = []
         for builder in self.move_format:
-            if isinstance(builder, DestinationNotationBuilder):
-                if is_same:
-                    res.append(self.write_same_destination(move.end_sq))
-                else:
-                    res.append(self.write_destination(move.end_sq))
+            if builder is not _write_destination:
+                res.append(builder(move, pos, self))
                 continue
-            res.append(builder.build(move, pos, self))
+            if is_same:
+                res.append(self.write_same_destination(move.end_sq))
+            else:
+                res.append(self.write_destination(move.end_sq))
+            continue
         return "".join(res)
 
     def needs_disambiguation(self,
@@ -100,12 +115,11 @@ class AbstractMoveWriter(ABC):
         ) -> bool:
         if self.aggressive_disambiguation:
             return bool(list(ambiguous_moves))
-        else:
-            needs_promotion = rules.can_be_promotion(move)
-            return any((
-                rules.can_be_promotion(amb_move) == needs_promotion
-                for amb_move in ambiguous_moves
-            ))
+        needs_promotion = rules.can_be_promotion(move)
+        return any((
+            rules.can_be_promotion(amb_move) == needs_promotion
+            for amb_move in ambiguous_moves
+        ))
 
     @abstractmethod
     def write_termination_move(self, move: TerminationMove) -> str:
@@ -124,10 +138,12 @@ class AbstractMoveWriter(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def write_disambiguation(self, pos: Position, move: Move, ambiguous_moves: Iterable[Move]) -> str:
+    def write_disambiguation(self,
+            pos: Position, move: Move, ambiguous_moves: Iterable[Move]
+        ) -> str:
         raise NotImplementedError
 
-    def write_movetype(self, move) -> str:
+    def write_movetype(self, move: Move) -> str:
         if move.start_sq.is_hand():
             return self.write_drop()
         if move.captured != Koma.NONE:
@@ -218,7 +234,7 @@ class JapaneseMoveWriter(AbstractMoveWriter):
             pos: Position, move: Move, ambiguous_moves: Iterable[Move]
         ) -> str:
         return _disambiguate_japanese_move(
-            pos, move, ambiguous_moves, self.aggressive_disambiguation
+            move, ambiguous_moves, self.aggressive_disambiguation
         )
 
     def write_promotion(self, is_promotion: bool) -> str:
@@ -261,7 +277,6 @@ class IrohaMoveWriter(JapaneseMoveWriter):
 
 
 def _disambiguate_japanese_move(
-        pos: Position,
         move: Move,
         ambiguous_moves: Iterable[Move],
         aggressive_disambiguation: bool,
@@ -323,22 +338,3 @@ def _is_leftmost(sq: Square, sqs: Iterable[Square], side: Side) -> bool:
 
 def _is_rightmost(sq: Square, sqs: Iterable[Square], side: Side) -> bool:
     return all((sq.is_right_of(sq_other, side) for sq_other in sqs))
-
-
-
-WESTERN_MOVE_FORMAT: MoveFormat = (
-    KomaNotationBuilder(),
-    DisambiguationNotationBuilder(),
-    MovetypeNotationBuilder(),
-    DestinationNotationBuilder(),
-    PromotionNotationBuilder(),
-)
-
-
-JAPANESE_MOVE_FORMAT: MoveFormat = (
-    DestinationNotationBuilder(),
-    KomaNotationBuilder(),
-    MovetypeNotationBuilder(),
-    DisambiguationNotationBuilder(),
-    PromotionNotationBuilder(),
-)
