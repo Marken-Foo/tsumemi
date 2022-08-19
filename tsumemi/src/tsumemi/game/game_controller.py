@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     import tkinter as tk
     from typing import Tuple
     import tsumemi.src.tsumemi.img_handlers as imghand
-    from tsumemi.src.shogi.notation_writer import AbstractMoveWriter
+    from tsumemi.src.shogi.notation import AbstractMoveWriter
 
 
 class GameEndEvent(evt.Event):

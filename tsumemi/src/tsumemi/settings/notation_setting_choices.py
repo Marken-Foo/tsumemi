@@ -5,9 +5,9 @@ import tkinter as tk
 from tkinter import ttk
 from typing import TYPE_CHECKING
 
-import tsumemi.src.shogi.notation_writer as nwriter
 import tsumemi.src.tsumemi.settings.setting_choices as setc
 
+from tsumemi.src.shogi import notation
 from tsumemi.src.shogi.basetypes import Koma, Square
 from tsumemi.src.shogi.position import Position
 
@@ -15,36 +15,36 @@ if TYPE_CHECKING:
     from typing import List, Optional
 
 
-class NotationChoice(setc.Choice[nwriter.AbstractMoveWriter]):
-    def get_item(self) -> nwriter.AbstractMoveWriter:
+class NotationChoice(setc.Choice[notation.AbstractMoveWriter]):
+    def get_item(self) -> notation.AbstractMoveWriter:
         return self.item.get_new_instance()
 
 
 NOTATION_CHOICES: List[NotationChoice] = [
     NotationChoice(
-        nwriter.IrohaMoveWriter(nwriter.JAPANESE_MOVE_FORMAT),
+        notation.IrohaMoveWriter(notation.JAPANESE_MOVE_FORMAT),
         "Iroha",
         "IROHA",
     ),
     NotationChoice(
-        nwriter.JapaneseMoveWriter(nwriter.JAPANESE_MOVE_FORMAT),
+        notation.JapaneseMoveWriter(notation.JAPANESE_MOVE_FORMAT),
         "Japanese",
         "JAPANESE",
     ),
     NotationChoice(
-        nwriter.KitaoKawasakiMoveWriter(nwriter.WESTERN_MOVE_FORMAT),
+        notation.KitaoKawasakiMoveWriter(notation.WESTERN_MOVE_FORMAT),
         "Kitao-Kawasaki",
         "KITAO_KAWASAKI",
     ),
     NotationChoice(
-        nwriter.WesternMoveWriter(nwriter.WESTERN_MOVE_FORMAT),
+        notation.WesternMoveWriter(notation.WESTERN_MOVE_FORMAT),
         "Western (numbers)",
         "WESTERN",
     ),
 ]
 
 
-class NotationSelection(setc.Selection[nwriter.AbstractMoveWriter]):
+class NotationSelection(setc.Selection[notation.AbstractMoveWriter]):
     pass
 
 
@@ -60,7 +60,7 @@ class NotationSelectionController:
         move = pos.create_move(Square.from_coord(77), Square.from_coord(76))
         return move_writer.write_move(move, pos)
 
-    def get_move_writer(self) -> nwriter.AbstractMoveWriter:
+    def get_move_writer(self) -> notation.AbstractMoveWriter:
         return self.model.get_item()
 
     def get_config_string(self) -> str:
@@ -71,7 +71,7 @@ class NotationSelectionController:
         return
 
 
-class NotationDropdown(setc.Dropdown[nwriter.AbstractMoveWriter]):
+class NotationDropdown(setc.Dropdown[notation.AbstractMoveWriter]):
     pass
 
 

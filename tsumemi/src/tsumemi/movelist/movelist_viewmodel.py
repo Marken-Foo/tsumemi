@@ -6,7 +6,7 @@ from tsumemi.src.shogi.position import Position
 
 if TYPE_CHECKING:
     from tkinter import ttk
-    from tsumemi.src.shogi.notation_writer import AbstractMoveWriter
+    from tsumemi.src.shogi.notation import AbstractMoveWriter
     from tsumemi.src.tsumemi.game.game_model import GameModel
 
 

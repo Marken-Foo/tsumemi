@@ -7,7 +7,7 @@ from tsumemi.src.shogi.basetypes import NullMove
 if TYPE_CHECKING:
     from typing import Any, Callable, Generator, Iterator, List
     from tsumemi.src.shogi.basetypes import Move
-    from tsumemi.src.shogi.notation_writer import AbstractMoveWriter
+    from tsumemi.src.shogi.notation import AbstractMoveWriter
     from tsumemi.src.shogi.position import Position
 
 
