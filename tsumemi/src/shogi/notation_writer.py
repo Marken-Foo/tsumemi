@@ -3,8 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
-import tsumemi.src.shogi.rules as rules
-
+from tsumemi.src.shogi import rules
 from tsumemi.src.shogi.basetypes import Koma, KomaType, TerminationMove
 from tsumemi.src.shogi.basetypes import KANJI_NOTATION_FROM_KTYPE, SFEN_FROM_KOMA
 
@@ -39,7 +38,8 @@ def _write_disambiguation(
 
 def _write_movetype(move: Move, _pos: Position, move_writer: AbstractMoveWriter
     ) -> str:
-    """MoveNotationBuilder function.
+    """MoveNotationBuilder function. Writes whether a move is a drop,
+    capture, or normal move.
     """
     return move_writer.write_movetype(move)
 
@@ -50,6 +50,14 @@ def _write_destination(
     """MoveNotationBuilder function.
     """
     return move_writer.write_destination(move.end_sq)
+
+
+def _write_same_destination(
+        move: Move, _pos: Position, move_writer: AbstractMoveWriter
+    ) -> str:
+    """MoveNotationBuilder function.
+    """
+    return move_writer.write_same_destination(move.end_sq)
 
 
 def _write_promotion(move: Move, _pos: Position, move_writer: AbstractMoveWriter
@@ -80,8 +88,18 @@ JAPANESE_MOVE_FORMAT: MoveFormat = (
 
 
 class AbstractMoveWriter(ABC):
+    """Abstract base class for a MoveWriter. Writes shogi moves
+    given a Move and Position.
+    """
     def __init__(self, move_format: MoveFormat) -> None:
+        """Equips the move writer with a move format to follow, and
+        specify if it is to aggressively disambiguate every move.
+        """
         self.move_format: MoveFormat = move_format
+        self.same_move_format: MoveFormat = tuple(
+            _write_same_destination if func is _write_destination else func
+            for func in self.move_format
+        )
         self.aggressive_disambiguation = False
         return
 
@@ -93,26 +111,28 @@ class AbstractMoveWriter(ABC):
     def write_move(self,
             move: Move, pos: Position, is_same: bool = False
         ) -> str:
+        """Writes a shogi move as a string, given the move and the
+        position it occurred in. `is_same` specifies if the move is
+        to be written as though the prior move had the same
+        destination square.
+        """
         if move.is_null():
             raise ValueError("Attempting to write notation for a NullMove")
         if isinstance(move, TerminationMove):
             return self.write_termination_move(move)
+        if is_same:
+            return "".join((
+                func(move, pos, self) for func in self.same_move_format
+            ))
+        return "".join((func(move, pos, self) for func in self.move_format))
 
-        res = []
-        for builder in self.move_format:
-            if builder is not _write_destination:
-                res.append(builder(move, pos, self))
-                continue
-            if is_same:
-                res.append(self.write_same_destination(move.end_sq))
-            else:
-                res.append(self.write_destination(move.end_sq))
-            continue
-        return "".join(res)
 
     def needs_disambiguation(self,
             move: Move, ambiguous_moves: Iterable[Move]
         ) -> bool:
+        """Given a move and a list of potentially ambiguous moves
+        (same end square), identify if the move needs disambiguation.
+        """
         if self.aggressive_disambiguation:
             return bool(list(ambiguous_moves))
         needs_promotion = rules.can_be_promotion(move)
@@ -144,6 +164,9 @@ class AbstractMoveWriter(ABC):
         raise NotImplementedError
 
     def write_movetype(self, move: Move) -> str:
+        """Writes whether the given move is a drop, capture, or
+        normal move.
+        """
         if move.start_sq.is_hand():
             return self.write_drop()
         if move.captured != Koma.NONE:
@@ -281,42 +304,53 @@ def _disambiguate_japanese_move(
         ambiguous_moves: Iterable[Move],
         aggressive_disambiguation: bool,
     ) -> str:
-    origin_squares = set((
+    """Returns the Japanese kanji (may be more than one) which
+    disambiguate a shogi move, given the move and a list of moves it
+    could be confused with.
+    """
+    origin_squares = {
         amb_move.start_sq for amb_move in ambiguous_moves
         if (aggressive_disambiguation)
         or rules.can_be_promotion(amb_move) == rules.can_be_promotion(move)
-    ))
-    general_pieces = set((
-        KomaType.GI, KomaType.KI, KomaType.TO,
-        KomaType.NY, KomaType.NK, KomaType.NG
-    ))
+    }
     side = move.koma.side()
     start_sq = move.start_sq
     end_sq = move.end_sq
-    # sugu is special case
-    if KomaType.get(move.koma) in general_pieces:
-        if end_sq.is_immediately_forward_of(start_sq, side):
-            return "直"
+    # 直 is only used by general-like pieces in normal shogi
+    if (_is_move_by_general(move)
+        and end_sq.is_immediately_forward_of(start_sq, side)
+        ):
+        return "直"
+    # if piece is the leftmost/rightmost of its kind, 左/右 suffices
     if _is_leftmost(start_sq, origin_squares, side):
         return "左"
     elif _is_rightmost(start_sq, origin_squares, side):
         return "右"
+    # if piece is neither leftmost nor rightmost, see if it stayed on
+    # the same rank, advanced, or retreated
     elif end_sq.is_same_row(start_sq):
         sqs = [sq for sq in origin_squares if end_sq.is_same_row(sq)]
         return _disambiguate_character(start_sq, sqs, side) + "寄"
     elif end_sq.is_forward_of(start_sq, side):
-        sqs = []
-        for sq in origin_squares:
-            if end_sq.is_forward_of(sq, side) and not (
-                KomaType.get(move.koma) in general_pieces
+        def cond(sq: Square) -> bool:
+            return end_sq.is_forward_of(sq, side) and not (
+                _is_move_by_general(move)
                 and end_sq.is_immediately_forward_of(sq, side)
-            ):
-                sqs.append(sq)
+            )
+        sqs = [sq for sq in origin_squares if cond(sq)]
         return _disambiguate_character(start_sq, sqs, side) + "上"
     elif end_sq.is_backward_of(start_sq, side):
         sqs = [sq for sq in origin_squares if end_sq.is_backward_of(sq, side)]
         return _disambiguate_character(start_sq, sqs, side) + "引"
     raise ValueError(f"Disambiguation failed unexpectedly on move: {str(move)}")
+
+
+def _is_move_by_general(move: Move) -> bool:
+    general_pieces = {
+        KomaType.GI, KomaType.KI, KomaType.TO,
+        KomaType.NY, KomaType.NK, KomaType.NG
+    }
+    return KomaType.get(move.koma) in general_pieces
 
 
 def _disambiguate_character(
