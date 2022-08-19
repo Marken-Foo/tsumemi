@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     import tkinter as tk
     from typing import Tuple
     import tsumemi.src.tsumemi.img_handlers as imghand
-    from tsumemi.src.shogi.notation import AbstractMoveWriter
+    from tsumemi.src.tsumemi.notation_writer import NotationWriter
 
 
 class GameEndEvent(evt.Event):
@@ -33,12 +33,12 @@ class WrongMoveEvent(evt.Event):
 
 
 class GameController(evt.Emitter, evt.IObserver):
-    def __init__(self, move_writer: AbstractMoveWriter) -> None:
+    def __init__(self, notation_writer: NotationWriter) -> None:
         evt.Emitter.__init__(self)
         evt.IObserver.__init__(self)
         self.game: GameModel = GameModel()
         self.movelist_controller: MovelistController = MovelistController(
-            self.game, move_writer
+            self.game, notation_writer
         )
         self.set_free_mode()
         return

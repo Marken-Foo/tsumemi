@@ -7,16 +7,16 @@ from tsumemi.src.tsumemi.movelist.movelist_view import MovelistFrame
 
 if TYPE_CHECKING:
     import tkinter as tk
-    from tsumemi.src.shogi.notation import AbstractMoveWriter
     from tsumemi.src.tsumemi.game.game_model import GameModel
+    from tsumemi.src.tsumemi.notation_writer import NotationWriter
 
 
 class MovelistController:
     def __init__(self,
             game: GameModel,
-            move_writer: AbstractMoveWriter
+            notation_writer: NotationWriter
         ) -> None:
-        self.viewmodel = MovelistViewModel(game, move_writer)
+        self.viewmodel = MovelistViewModel(game, notation_writer)
         return
 
     def make_movelist_view(self, parent_widget: tk.Widget) -> MovelistFrame:
@@ -27,7 +27,3 @@ class MovelistController:
         self.viewmodel.game.add_observer(var_tvw)
         tvw.refresh_view()
         return movelist_frame
-
-    def update_move_writer(self, move_writer: AbstractMoveWriter) -> None:
-        self.viewmodel.move_writer = move_writer
-        return

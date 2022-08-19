@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 
 import tsumemi.src.tsumemi.event as evt
 import tsumemi.src.tsumemi.game.game_controller as gamecon
+import tsumemi.src.tsumemi.notation_writer as nwriter
 import tsumemi.src.tsumemi.problem_list.problem_list_model as plist
 import tsumemi.src.tsumemi.problem_list.problem_list_controller as plistcon
 import tsumemi.src.tsumemi.settings.settings_controller as setcon
@@ -39,8 +40,10 @@ class RootController(evt.IObserver):
         # Program data
         self.settings = setcon.Settings(self)
         self.skin_settings = self.settings.get_skin_settings()
-        self.move_writer = self.settings.notation_controller.get_move_writer()
-        self.main_game = gamecon.GameController(self.move_writer)
+        self.notation_writer = nwriter.NotationWriter(
+            self.settings.notation_controller.get_move_writer()
+        )
+        self.main_game = gamecon.GameController(self.notation_writer)
         self.main_timer = timecon.TimerController()
         self.main_problem_list = plistcon.ProblemListController()
 
@@ -153,7 +156,7 @@ class RootController(evt.IObserver):
         game = kif.read_kif(filepath)
         if game is None:
             return # file unreadable, error out
-        move_string_list = game.get_mainline_notation(self.move_writer)
+        move_string_list = self.notation_writer.write_mainline(game)
         self.mainframe.set_solution("　".join(move_string_list))
         game.go_to_start()
         self.main_game.set_game(game)
@@ -161,7 +164,7 @@ class RootController(evt.IObserver):
 
     def refresh_solution_text(self) -> None:
         game = self.main_game.game
-        move_string_list = game.game.get_mainline_notation(self.move_writer)
+        move_string_list = self.notation_writer.write_mainline(game.game)
         self.mainframe.set_solution("　".join(move_string_list))
         # force view to update
         self.mainframe.toggle_solution()
@@ -244,8 +247,7 @@ class RootController(evt.IObserver):
     def apply_notation_settings(self, move_writer: notation.AbstractMoveWriter
         ) -> None:
         # GUI callback
-        self.move_writer = move_writer
-        self.main_game.movelist_controller.update_move_writer(move_writer)
+        self.notation_writer.change_move_writer(move_writer)
         self.refresh_solution_text()
         self.mainframe.movelist_frame.refresh_content()
         return

@@ -6,15 +6,15 @@ from tsumemi.src.shogi.position import Position
 
 if TYPE_CHECKING:
     from tkinter import ttk
-    from tsumemi.src.shogi.notation import AbstractMoveWriter
+    from tsumemi.src.tsumemi.notation_writer import NotationWriter
     from tsumemi.src.tsumemi.game.game_model import GameModel
 
 
 class MovelistViewModel:
-    def __init__(self, game: GameModel, move_writer: AbstractMoveWriter
+    def __init__(self, game: GameModel, notation_writer: NotationWriter
         ) -> None:
         self.game = game
-        self.move_writer = move_writer
+        self.notation_writer = notation_writer
         return
 
     def populate_treeview(self, tvw: ttk.Treeview) -> None:
@@ -27,7 +27,7 @@ class MovelistViewModel:
 
         for node in displayed_nodes:
             move_num = node.movenum
-            move_str = node.write_move(self.move_writer, pos)
+            move_str = self.notation_writer.write_node(node, pos)
             pos.make_move(node.move)
             variation_indicator = "+" if len(node.parent.variations) > 1 else ""
             tvw.insert(
@@ -43,7 +43,7 @@ class MovelistViewModel:
         if len(variations) <= 1:
             return
         for i, node in enumerate(variations):
-            move_str = node.write_move(self.move_writer, pos)
+            move_str = self.notation_writer.write_node(node, pos)
             tvw.insert("", "end", iid=str(node.id), values=(str(i+1), move_str))
         return
 
