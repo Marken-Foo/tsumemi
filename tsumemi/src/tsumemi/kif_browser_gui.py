@@ -18,14 +18,13 @@ import tsumemi.src.tsumemi.speedrun_controller as speedcon
 import tsumemi.src.tsumemi.timer_controller as timecon
 
 from tsumemi.src.shogi.parsing import kif
-from tsumemi.src.tsumemi import files, timer
+from tsumemi.src.tsumemi import files, skins, timer
 from tsumemi.src.tsumemi.main_window_view import MainWindowView
 from tsumemi.src.tsumemi.menubar import Menubar
 from tsumemi.src.tsumemi.statistics_window import StatisticsDialog
 
 if TYPE_CHECKING:
     from typing import Callable, Optional
-    import tsumemi.src.tsumemi.img_handlers as imghand
     from tsumemi.src.shogi import notation
     from tsumemi.src.shogi.game import Game
 
@@ -211,7 +210,7 @@ class RootController(evt.IObserver):
         return
 
     #=== GUI display methods
-    def apply_skin_settings(self, settings: imghand.SkinSettings) -> None:
+    def apply_skin_settings(self, settings: skins.SkinSettings) -> None:
         self.skin_settings = settings
         self.mainframe.apply_skins(settings)
         return

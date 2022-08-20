@@ -5,11 +5,11 @@ import os
 
 from typing import TYPE_CHECKING
 
-import tsumemi.src.tsumemi.img_handlers as imghand
 import tsumemi.src.tsumemi.settings.board_setting_choices as bchoices
 import tsumemi.src.tsumemi.settings.notation_setting_choices as nchoices
 import tsumemi.src.tsumemi.settings.piece_setting_choices as pchoices
 
+from tsumemi.src.tsumemi import skins
 from tsumemi.src.tsumemi.settings.settings_window import SettingsWindow
 
 if TYPE_CHECKING:
@@ -37,7 +37,7 @@ class Settings:
     def __init__(self, controller: RootController) -> None:
         self.controller = controller
         self.config = configparser.ConfigParser(dict_type=dict)
-        self.skin_settings: imghand.SkinSettings
+        self.skin_settings: skins.SkinSettings
         self.notation_controller = nchoices.NotationSelectionController()
         self.board_skin_controller = bchoices.BoardSkinSelectionController()
         self.piece_skin_controller = pchoices.PieceSkinSelectionController()
@@ -92,11 +92,11 @@ class Settings:
         self.controller.apply_notation_settings(move_writer)
         return
 
-    def get_skin_settings(self) -> imghand.SkinSettings:
+    def get_skin_settings(self) -> skins.SkinSettings:
         piece_skin = self.piece_skin_controller.get_piece_skin()
         board_skin = self.board_skin_controller.get_board_skin()
         komadai_skin = self.komadai_skin_controller.get_board_skin()
-        return imghand.SkinSettings(piece_skin, board_skin, komadai_skin)
+        return skins.SkinSettings(piece_skin, board_skin, komadai_skin)
 
     def update_board_skin_settings(self) -> None:
         self.config["skins"]["board"] = (

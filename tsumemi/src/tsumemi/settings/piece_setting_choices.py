@@ -7,23 +7,24 @@ from tkinter import ttk
 from typing import TYPE_CHECKING
 from PIL import Image, ImageTk
 
-import tsumemi.src.tsumemi.img_handlers as imghand
 import tsumemi.src.tsumemi.settings.setting_choices as setc
+
+from tsumemi.src.tsumemi import skins
 
 if TYPE_CHECKING:
     from typing import List, Optional
 
 
-class PieceSkinChoice(setc.Choice[imghand.PieceSkin]):
+class PieceSkinChoice(setc.Choice[skins.PieceSkin]):
     pass
 
 
 PIECE_SKIN_CHOICES: List[PieceSkinChoice] = [
-    PieceSkinChoice(skin, skin.desc, skin.name) for skin in imghand.PieceSkin
+    PieceSkinChoice(skin, skin.desc, skin.name) for skin in skins.PieceSkin
 ]
 
 
-class PieceSkinSelection(setc.Selection[imghand.PieceSkin]):
+class PieceSkinSelection(setc.Selection[skins.PieceSkin]):
     pass
 
 
@@ -32,7 +33,7 @@ class PieceSkinSelectionController:
         self.model = PieceSkinSelection(PIECE_SKIN_CHOICES)
         return
 
-    def get_piece_skin(self) -> imghand.PieceSkin:
+    def get_piece_skin(self) -> skins.PieceSkin:
         return self.model.get_item()
 
     def get_config_string(self) -> str:
@@ -43,7 +44,7 @@ class PieceSkinSelectionController:
         return
 
 
-class PieceSkinDropdown(setc.Dropdown[imghand.PieceSkin]):
+class PieceSkinDropdown(setc.Dropdown[skins.PieceSkin]):
     pass
 
 
@@ -72,7 +73,7 @@ class PieceSkinSelectionFrame(ttk.Frame):
         self.set_preview(None)
         return
 
-    def set_preview(self, event: Optional[tk.Event]) -> None:
+    def set_preview(self, _event: Optional[tk.Event]) -> None:
         skin = self.controller.get_piece_skin()
         filepath = skin.path
         if filepath:

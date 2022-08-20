@@ -16,7 +16,7 @@ from tsumemi.src.tsumemi.movelist.movelist_controller import MovelistController
 if TYPE_CHECKING:
     import tkinter as tk
     from typing import Tuple
-    import tsumemi.src.tsumemi.img_handlers as imghand
+    from tsumemi.src.tsumemi import skins
     from tsumemi.src.tsumemi.notation_writer import NotationWriter
 
 
@@ -45,7 +45,7 @@ class GameController(evt.Emitter, evt.IObserver):
 
     def make_board_canvas(self,
             parent: tk.Widget,
-            skin_settings: imghand.SkinSettings
+            skin_settings: skins.SkinSettings
         ) -> bc.BoardCanvas:
         """Creates a BoardCanvas to display the game.
         """
@@ -63,7 +63,7 @@ class GameController(evt.Emitter, evt.IObserver):
 
     def make_navigable_view(self,
             parent: tk.Widget,
-            skin_settings: imghand.SkinSettings
+            skin_settings: skins.SkinSettings
         ) -> Tuple[NavigableGameFrame, bc.BoardCanvas]:
         nav_game_frame = NavigableGameFrame(parent)
         board_canvas = self.make_board_canvas(nav_game_frame, skin_settings)

@@ -9,9 +9,10 @@ import tsumemi.src.tsumemi.event as evt
 
 from tsumemi.src.shogi.basetypes import HAND_TYPES, KANJI_FROM_KTYPE, KomaType, Side
 from tsumemi.src.shogi.square import Square
+from tsumemi.src.tsumemi.skins import BoardSkin, PieceSkin, SkinSettings
 from tsumemi.src.tsumemi.board_gui.board_artist import BoardArtist, NUM_COLS, NUM_ROWS
 from tsumemi.src.tsumemi.board_gui.board_meas import BoardMeasurements
-from tsumemi.src.tsumemi.img_handlers import SkinSettings, BoardSkin, KomaImgManager, KomadaiImgManager, PieceSkin
+from tsumemi.src.tsumemi.img_handlers import KomaImgManager, KomadaiImgManager
 from tsumemi.src.tsumemi.board_gui.koma_artist import ImageKomaArtist, TextKomaArtist
 from tsumemi.src.tsumemi.board_gui.komadai_artist import KomadaiArtist
 

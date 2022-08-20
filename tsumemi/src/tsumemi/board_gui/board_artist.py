@@ -6,12 +6,13 @@ from typing import TYPE_CHECKING
 from tsumemi.src.shogi.basetypes import KomaType
 from tsumemi.src.shogi.square import KanjiNumber
 from tsumemi.src.tsumemi.board_gui.board_meas import BoardMeasurements
-from tsumemi.src.tsumemi.img_handlers import BoardImgManager, BoardSkin
+from tsumemi.src.tsumemi.img_handlers import BoardImgManager
 
 if TYPE_CHECKING:
     from typing import Optional
     from PIL import ImageTk
     from tsumemi.src.tsumemi.board_gui.board_canvas import BoardCanvas
+    from tsumemi.src.tsumemi.skins import BoardSkin
 
 
 # Shogi board dimensions in squares

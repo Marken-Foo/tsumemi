@@ -9,8 +9,8 @@ if TYPE_CHECKING:
     from typing import Callable, Optional
     import tsumemi.src.tsumemi.board_gui.board_canvas as bc
     import tsumemi.src.tsumemi.game.game_controller as gamecon
-    import tsumemi.src.tsumemi.img_handlers as imghand
     import tsumemi.src.tsumemi.timer_controller as timecon
+    from tsumemi.src.tsumemi import skins
     from tsumemi.src.tsumemi.kif_browser_gui import RootController
     from tsumemi.src.tsumemi.movelist.movelist_view import MovelistFrame
     from tsumemi.src.tsumemi.problem_list.problem_list_view import ProblemListPane
@@ -82,7 +82,7 @@ class MainWindowView(ttk.Frame):
         )
         return
 
-    def apply_skins(self, settings: imghand.SkinSettings) -> None:
+    def apply_skins(self, settings: skins.SkinSettings) -> None:
         piece_skin, board_skin, komadai_skin = settings.get()
         self.board_canvas.apply_piece_skin(piece_skin)
         self.board_canvas.apply_board_skin(board_skin)
