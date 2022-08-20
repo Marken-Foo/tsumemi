@@ -278,7 +278,7 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
         y_sq = self.measurements.y_sq
         x = x_sq(col_idx+0.5) if "x" in centering.lower() else x_sq(col_idx)
         y = y_sq(row_idx+0.5) if "y" in centering.lower() else y_sq(row_idx)
-        return x, y
+        return int(x), int(y)
 
     def make_koma_artist(self, invert: bool, komadai: bool
         ) -> AbstractKomaArtist:

@@ -162,7 +162,7 @@ class KomaImgManager(ImgManager):
             kpc_w = measurements.komadai_piece_size
             return kpc_w, kpc_w
         def _board_piece_size() -> Tuple[int, int]:
-            sq_w = measurements.sq_w
+            sq_w = int(measurements.sq_w)
             return sq_w, sq_w
         self.upright = ImgSizingDict(_board_piece_size)
         self.inverted = ImgSizingDict(_board_piece_size)
