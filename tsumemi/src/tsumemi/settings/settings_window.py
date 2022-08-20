@@ -10,12 +10,13 @@ from tsumemi.src.tsumemi.settings.notation_setting_choices import NotationSelect
 from tsumemi.src.tsumemi.settings.piece_setting_choices import PieceSkinSelectionFrame
 
 if TYPE_CHECKING:
+    from typing import Any
     from tsumemi.src.tsumemi.settings.settings_controller import Settings
 
 
 class OptionsFrame(ttk.Frame):
     def __init__(self, parent: SettingsWindow) -> None:
-        super().__init__(parent)
+        ttk.Frame.__init__(self, parent)
 
         self.frm_board_options = ttk.LabelFrame(self, text="Board appearance")
         self.frm_board_options.grid(row=0, column=0, sticky="EW")
@@ -51,7 +52,7 @@ class OptionsFrame(ttk.Frame):
 
 
 class SettingsWindow(tk.Toplevel):
-    def __init__(self, controller: Settings, *args, **kwargs) -> None:
+    def __init__(self, controller: Settings, *args: Any, **kwargs: Any) -> None:
         self.controller = controller
         super().__init__(*args, **kwargs)
 

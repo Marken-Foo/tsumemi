@@ -13,12 +13,12 @@ if TYPE_CHECKING:
 
 class KomadaiArtist:
     def __init__(self,
-            x_anchor: int,
-            y_anchor: int,
+            x_anchor: float,
+            y_anchor: float,
             canvas: BoardCanvas,
             hand: HandRepresentation,
             is_sente: bool,
-            align="top",
+            align: str = "top",
         ) -> None:
         self.is_sente = is_sente
         is_text = canvas.is_text()
@@ -47,8 +47,10 @@ class KomadaiArtist:
             2 * char_height if not self.hand_counts
             else len(self.hand_counts)*(self.symbol_size + self.pad) - self.pad
         ))
-        self.x_anchor: int = x_anchor
-        self.y_anchor: int = y_anchor - self.height if align == "bottom" else y_anchor
+        self.x_anchor: int = int(x_anchor)
+        self.y_anchor: int = int(
+            y_anchor - self.height if align == "bottom" else y_anchor
+        )
         return
 
     def draw_all_komadai_koma(self, canvas: BoardCanvas) -> None:

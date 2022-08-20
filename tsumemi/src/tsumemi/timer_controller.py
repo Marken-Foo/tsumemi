@@ -6,10 +6,11 @@ from tkinter import ttk
 from typing import TYPE_CHECKING
 
 import tsumemi.src.tsumemi.event as evt
-import tsumemi.src.tsumemi.timer as timer
+
+from tsumemi.src.tsumemi import timer
 
 if TYPE_CHECKING:
-    from typing import Optional
+    from typing import Any, Optional
 
 
 class TimerController:
@@ -20,7 +21,8 @@ class TimerController:
         self.clock: timer.Timer = timer.Timer()
         return
 
-    def make_timer_pane(self, parent: tk.Widget, *args, **kwargs) -> TimerPane:
+    def make_timer_pane(self, parent: tk.Widget, *args: Any, **kwargs: Any
+        ) -> TimerPane:
         return TimerPane(parent, self.clock, *args, **kwargs)
 
     def start(self) -> None:
@@ -39,7 +41,8 @@ class TimerController:
 class TimerDisplay(ttk.Label, evt.IObserver):
     """GUI class to display a stopwatch/timer.
     """
-    def __init__(self, parent: tk.Widget, clock: timer.Timer, *args, **kwargs
+    def __init__(self,
+            parent: tk.Widget, clock: timer.Timer, *args: Any, **kwargs: Any
         ) -> None:
         super().__init__(parent, *args, **kwargs)
         self.clock: timer.Timer = clock
@@ -60,12 +63,12 @@ class TimerDisplay(ttk.Label, evt.IObserver):
             font=("TkDefaultFont", 48)
         )
 
-    def _on_start(self, event: evt.Event) -> None:
+    def _on_start(self, _event: timer.TimerEvent) -> None:
         self.is_running = True
         self.refresh()
         return
 
-    def _on_stop(self, event: evt.Event) -> None:
+    def _on_stop(self, _event: timer.TimerEvent) -> None:
         self.is_running = False
         self.refresh()
         return
@@ -80,7 +83,8 @@ class TimerDisplay(ttk.Label, evt.IObserver):
 class TimerPane(ttk.Frame):
     """GUI frame containing a timer display and associated controls.
     """
-    def __init__(self, parent: tk.Widget, clock: timer.Timer, *args, **kwargs
+    def __init__(self,
+            parent: tk.Widget, clock: timer.Timer, *args: Any, **kwargs: Any
         ) -> None:
         super().__init__(parent, *args, **kwargs)
         self.timer_display: TimerDisplay = TimerDisplay(

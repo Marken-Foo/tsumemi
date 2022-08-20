@@ -9,7 +9,7 @@ from tsumemi.src.shogi.basetypes import Koma, Side
 from tsumemi.src.shogi.position_internals import Dir
 
 if TYPE_CHECKING:
-    from typing import Callable, Iterable, Generator
+    from typing import Any, Callable, Iterable, Generator
     from tsumemi.src.shogi.position_internals import MailboxBoard
     Steps = Generator[int, None, None]
     IdxIterable = Iterable[int]
@@ -57,7 +57,7 @@ def filter_for_valid_dests(
     @functools.wraps(dest_idx_generator)
     def wrapper_filter_for_valid_dests(
             board: MailboxBoard, start_idx: int, side: Side,
-            *args, **kwargs
+            *args: Any, **kwargs: Any
         ) -> IdxIterable:
         dest_idxs = dest_idx_generator(
             board=board, start_idx=start_idx, side=side, *args, **kwargs

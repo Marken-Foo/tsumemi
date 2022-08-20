@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 import tsumemi.src.tsumemi.event as evt
 
 if TYPE_CHECKING:
-    from typing import List, Iterator, Optional, Tuple
+    from typing import Any, Iterator, List, Optional, Tuple
 
 
 def _two_digits(num: float) -> str:
@@ -20,47 +20,43 @@ def _two_digits(num: float) -> str:
 
 
 class Time:
-    def __init__(self, time: float) -> None:
-        self.seconds: float = time
+    def __init__(self, time_: float) -> None:
+        self.seconds: float = time_
         return
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         if isinstance(other, Time):
             return self.seconds == other.seconds
-        else:
-            raise TypeError(f"Types Time and {type(other)} cannot be compared")
+        raise TypeError(f"Types Time and {type(other)} cannot be compared")
 
-    def __ne__(self, other):
+    def __ne__(self, other: Any) -> bool:
         return not self.__eq__(other)
 
-    def __gt__(self, other):
+    def __gt__(self, other: Any) -> bool:
         if isinstance(other, Time):
             return self.seconds > other.seconds
-        else:
-            raise TypeError(f"Types Time and {type(other)} cannot be compared")
+        raise TypeError(f"Types Time and {type(other)} cannot be compared")
 
-    def __lt__(self, other):
+    def __lt__(self, other: Any) -> bool:
         if isinstance(other, Time):
             return self.seconds < other.seconds
-        else:
-            raise TypeError(f"Types Time and {type(other)} cannot be compared")
+        raise TypeError(f"Types Time and {type(other)} cannot be compared")
 
-    def __ge__(self, other):
+    def __ge__(self, other: Any) -> bool:
         return self.__gt__(other) or self.__eq__(other)
 
-    def __le__(self, other):
+    def __le__(self, other: Any) -> bool:
         return self.__lt__(other) or self.__eq__(other)
 
-    def __add__(self, other):
+    def __add__(self, other: Any) -> Time:
         if isinstance(other, Time):
             return Time(self.seconds + other.seconds)
-        else:
-            raise TypeError(f"Types Time and {type(other)} cannot be added")
+        raise TypeError(f"Types Time and {type(other)} cannot be added")
 
-    def __radd__(self, other):
+    def __radd__(self, other: Any) -> Time:
         return self.__add__(other)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.to_hms_str()
 
     def to_hms(self) -> Tuple[int, int, float]:
@@ -69,27 +65,30 @@ class Time:
         seconds = self.seconds % 60
         return (hours, minutes, seconds)
 
-    def to_hms_str(self, places: int=1) -> str:
+    def to_hms_str(self, places: int = 1) -> str:
         hms = list(self.to_hms())
         hms[2] = round(hms[2], places)
         return ":".join([_two_digits(i) for i in hms])
 
 
-class TimerStartEvent(evt.Event):
+class TimerEvent(evt.Event):
     def __init__(self, clock: Timer) -> None:
+        evt.Event.__init__(self)
         self.clock: Timer = clock
         return
 
 
-class TimerStopEvent(evt.Event):
-    def __init__(self, clock: Timer) -> None:
-        self.clock: Timer = clock
-        return
+class TimerStartEvent(TimerEvent):
+    pass
 
 
-class TimerSplitEvent(evt.Event):
+class TimerStopEvent(TimerEvent):
+    pass
+
+
+class TimerSplitEvent(TimerEvent):
     def __init__(self, clock: Timer, lap_time: Time) -> None:
-        self.clock: Timer = clock
+        TimerEvent.__init__(self, clock)
         self.time: Time = lap_time
         return
 
@@ -181,7 +180,7 @@ class Timer(evt.Emitter):
     functions. Emits events to be observed by GUI displays of
     the timer (or for other purposes)."""
     def __init__(self) -> None:
-        super().__init__()
+        evt.Emitter.__init__(self)
         self.clock = SplitTimer()
         return
 
@@ -196,9 +195,9 @@ class Timer(evt.Emitter):
     def split(self) -> Optional[Time]:
         reading: Optional[float] = self.clock.split()
         if reading is not None:
-            time = Time(reading)
-            self._notify_observers(TimerSplitEvent(self, time))
-            return time
+            time_ = Time(reading)
+            self._notify_observers(TimerSplitEvent(self, time_))
+            return time_
         return None
 
     def start(self) -> None:

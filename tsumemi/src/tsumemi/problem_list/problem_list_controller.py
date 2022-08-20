@@ -96,7 +96,7 @@ class ProblemListStats:
     of the problems inside the problem list it refers to.
     """
     def __init__(self,
-            problem_list = plist.ProblemList,
+            problem_list: plist.ProblemList,
             directory: PathLike = ""
         ) -> None:
         self.problem_list: plist.ProblemList = problem_list

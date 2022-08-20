@@ -195,6 +195,7 @@ class SpeedrunController:
 
 class SpeedrunState(evt.IObserver):
     def __init__(self, controller: SpeedrunController) -> None:
+        evt.IObserver.__init__(self)
         self.controller = controller
         return
 
@@ -208,7 +209,6 @@ class SpeedrunState(evt.IObserver):
 class SpeedrunQuestionState(SpeedrunState):
     def __init__(self, controller: SpeedrunController) -> None:
         SpeedrunState.__init__(self, controller)
-        evt.IObserver.__init__(self)
         self.set_callbacks({
             gamecon.GameEndEvent: self._mark_correct,
             gamecon.WrongMoveEvent: self._mark_wrong,
@@ -227,12 +227,12 @@ class SpeedrunQuestionState(SpeedrunState):
             self.controller.go_to_state("question")
         return
 
-    def _mark_correct(self, event: evt.Event) -> None:
+    def _mark_correct(self, _event: evt.Event) -> None:
         self.controller.mark_correct()
         self.controller.go_to_state("solution")
         return
 
-    def _mark_wrong(self, event: evt.Event) -> None:
+    def _mark_wrong(self, _event: evt.Event) -> None:
         self.controller.mark_wrong()
         self.controller.go_to_state("solution")
         return
@@ -241,7 +241,7 @@ class SpeedrunQuestionState(SpeedrunState):
         self.controller.go_to_state("answer")
         return
 
-    def pause(self):
+    def pause(self) -> None:
         self.controller.go_to_state("pause")
         return
 

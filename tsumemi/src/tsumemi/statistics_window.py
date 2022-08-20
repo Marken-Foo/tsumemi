@@ -7,15 +7,16 @@ import tkinter as tk
 from tkinter import ttk
 from typing import TYPE_CHECKING
 
-import tsumemi.src.tsumemi.timer as timer
+from tsumemi.src.tsumemi import timer
 
 if TYPE_CHECKING:
+    from typing import Any
     import tsumemi.src.tsumemi.problem_list.problem_list_controller as plistcon
 
 
 class StatisticsDialog(tk.Toplevel):
     def __init__(self, stats: plistcon.ProblemListStats,
-            *args, **kwargs
+            *args: Any, **kwargs: Any
         ) -> None:
         """Dialog box generating and displaying solving statistics.
         """

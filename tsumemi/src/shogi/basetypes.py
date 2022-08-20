@@ -4,14 +4,14 @@ from enum import Enum, EnumMeta, IntFlag
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Dict, Set, Tuple
+    from typing import Any, Dict, Set, Tuple
 
 
 class MetaEnum(EnumMeta):
     """Override __contains__() method of enum.EnumMeta for syntactic
     sugar: `if item in Enum: ...`
     """
-    def __contains__(cls, item) -> bool:
+    def __contains__(cls: Any, item: Any) -> bool:
         try:
             cls(item)
         except ValueError:

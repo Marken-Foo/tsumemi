@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import os
 
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import TYPE_CHECKING
 from PIL import Image, ImageTk
 
@@ -28,13 +28,13 @@ class ImgSizingDict:
     references to the images so they will not be garbage-collected,
     and also allows resizing on the fly.
     """
-    def __init__(self, update_func: Callable[[], Tuple[int, int]]) -> None:
+    def __init__(self, update_func: Callable[[], Tuple[float, float]]) -> None:
         """Create ImgSizingDict. `update_func` is a Callable
         returning a tuple of the `(width, height)` that the resized
         images should be.
         """
         self.update_func = update_func
-        self.width, self.height = update_func()
+        self.width, self.height = map(int, update_func())
         self.raws: Dict[Union[str, KomaType], Image.Image] = {}
         self.images: Dict[Any, ImageTk.PhotoImage] = {}
         return
@@ -77,7 +77,7 @@ class ImgSizingDict:
         return
 
     def update_sizes(self) -> None:
-        self.width, self.height = self.update_func()
+        self.width, self.height = map(int, self.update_func())
         return
 
 
@@ -102,10 +102,6 @@ class ImgManager(ABC):
             imgdict.resize_images()
         return
 
-    @abstractmethod
-    def load(self, skin):
-        pass
-
 
 class KomaImgManager(ImgManager):
     """Handles storing and sizing of images for pieces.
@@ -117,8 +113,8 @@ class KomaImgManager(ImgManager):
         def _komadai_piece_size() -> Tuple[int, int]:
             kpc_w = measurements.komadai_piece_size
             return kpc_w, kpc_w
-        def _board_piece_size() -> Tuple[int, int]:
-            sq_w = int(measurements.sq_w)
+        def _board_piece_size() -> Tuple[float, float]:
+            sq_w = measurements.sq_w
             return sq_w, sq_w
         self.imgdicts = {
             "upright": ImgSizingDict(_board_piece_size),
@@ -159,7 +155,8 @@ class KomaImgManager(ImgManager):
         self.skin = skin
         return
 
-    def get_dict(self, invert=False, komadai=False) -> ImgSizingDict:
+    def get_dict(self, invert: bool = False, komadai: bool = False
+        ) -> ImgSizingDict:
         if not invert and not komadai:
             return self.imgdicts["upright"]
         elif invert and not komadai:
@@ -177,12 +174,12 @@ class BoardImgManager(ImgManager):
             measurements: BoardMeasurements, skin: BoardSkin
         ) -> None:
         ImgManager.__init__(self, measurements, skin)
-        def _board_sq_size():
+        def _board_sq_size() -> Tuple[float, float]:
             sq_w = measurements.sq_w
             sq_h = measurements.sq_h
             # +1 pixel to avoid gaps when tiling image
             return sq_w+1, sq_h+1
-        def _board_size():
+        def _board_size() -> Tuple[float, float]:
             # for a 9x9 board
             sq_w = measurements.sq_w
             sq_h = measurements.sq_h
