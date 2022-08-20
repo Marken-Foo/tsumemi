@@ -4,8 +4,9 @@ import re
 
 from typing import TYPE_CHECKING
 
-from tsumemi.src.shogi.basetypes import Koma, KomaType, Move, Side, Square
+from tsumemi.src.shogi.basetypes import Koma, KomaType, Side, Square
 from tsumemi.src.shogi.basetypes import KOMA_FROM_SFEN
+from tsumemi.src.shogi.move import Move
 from tsumemi.src.shogi.position_internals import HandRepresentation, MailboxBoard
 
 if TYPE_CHECKING:

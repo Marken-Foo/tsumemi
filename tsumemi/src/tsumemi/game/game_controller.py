@@ -6,8 +6,8 @@ import tsumemi.src.tsumemi.board_gui.board_canvas as bc
 import tsumemi.src.tsumemi.event as evt
 import tsumemi.src.tsumemi.move_input_handler as mih
 
-from tsumemi.src.shogi.basetypes import TerminationMove
 from tsumemi.src.shogi.game import Game
+from tsumemi.src.shogi.move import TerminationMove
 from tsumemi.src.tsumemi.game.game_model import GameModel, GameUpdateEvent
 from tsumemi.src.tsumemi.game.game_nav_btns_view import GameNavButtonsFrame
 from tsumemi.src.tsumemi.game.game_navigation_view import NavigableGameFrame

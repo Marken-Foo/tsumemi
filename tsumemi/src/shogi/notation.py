@@ -4,12 +4,14 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 from tsumemi.src.shogi import rules
-from tsumemi.src.shogi.basetypes import Koma, KomaType, TerminationMove
+from tsumemi.src.shogi.basetypes import Koma, KomaType
 from tsumemi.src.shogi.basetypes import KANJI_NOTATION_FROM_KTYPE, SFEN_FROM_KOMA
+from tsumemi.src.shogi.move import TerminationMove
 
 if TYPE_CHECKING:
     from typing import Callable, Iterable
-    from tsumemi.src.shogi.basetypes import Move, Side, Square
+    from tsumemi.src.shogi.basetypes import Side, Square
+    from tsumemi.src.shogi.move import Move
     from tsumemi.src.shogi.position import Position
     MoveFormat = Iterable["MoveNotationBuilder"]
     MoveNotationBuilder = Callable[[Move, Position, "AbstractMoveWriter"], str]

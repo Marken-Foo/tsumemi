@@ -8,7 +8,8 @@ from typing import TYPE_CHECKING
 import tsumemi.src.shogi.rules as rules
 import tsumemi.src.tsumemi.event as evt
 
-from tsumemi.src.shogi.basetypes import Koma, KomaType, Move, Side, Square
+from tsumemi.src.shogi.basetypes import Koma, KomaType, Side, Square
+from tsumemi.src.shogi.move import Move
 
 if TYPE_CHECKING:
     from tkinter import Event as tkEvent

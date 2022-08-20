@@ -5,9 +5,10 @@ from typing import TYPE_CHECKING
 
 from tsumemi.src.shogi.parsing.base_readers_visitors import ParserVisitor, Reader
 from tsumemi.src.shogi.basetypes import GameTermination, KanjiNumber, Koma
-from tsumemi.src.shogi.basetypes import Move, Side, Square, TerminationMove
+from tsumemi.src.shogi.basetypes import Side, Square
 from tsumemi.src.shogi.basetypes import HAND_TYPES, KTYPE_FROM_KANJI
 from tsumemi.src.shogi.game import Game
+from tsumemi.src.shogi.move import Move, TerminationMove
 
 if TYPE_CHECKING:
     import typing

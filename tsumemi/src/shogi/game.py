@@ -7,8 +7,8 @@ from tsumemi.src.shogi.position import Position
 
 if TYPE_CHECKING:
     from typing import Generator, Iterable, List, Optional
-    from tsumemi.src.shogi.basetypes import Move
     from tsumemi.src.shogi.gametree import MoveNode
+    from tsumemi.src.shogi.move import Move
     from tsumemi.src.shogi.notation import AbstractMoveWriter
 
 

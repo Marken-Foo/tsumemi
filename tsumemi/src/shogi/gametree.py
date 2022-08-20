@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from typing import NewType, TYPE_CHECKING
 
-from tsumemi.src.shogi.basetypes import NullMove
+from tsumemi.src.shogi.move import NullMove
 
 if TYPE_CHECKING:
     from typing import Any, Callable, Generator, Iterator, List
-    from tsumemi.src.shogi.basetypes import Move
+    from tsumemi.src.shogi.move import Move
     from tsumemi.src.shogi.notation import AbstractMoveWriter
     from tsumemi.src.shogi.position import Position
 

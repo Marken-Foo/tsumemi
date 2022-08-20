@@ -6,8 +6,9 @@ from typing import TYPE_CHECKING
 
 import tsumemi.src.shogi.destination_generation as destgen
 
-from tsumemi.src.shogi.basetypes import Koma, KomaType, Move, NullMove
+from tsumemi.src.shogi.basetypes import Koma, KomaType
 from tsumemi.src.shogi.basetypes import HAND_TYPES, KOMA_TYPES
+from tsumemi.src.shogi.move import Move, NullMove
 from tsumemi.src.shogi.position_internals import MailboxBoard
 
 if TYPE_CHECKING:
@@ -22,7 +23,7 @@ if TYPE_CHECKING:
 def can_be_promotion(move: Move) -> bool:
     ktype = KomaType.get(move.koma)
     _, promotion_constrainer = MOVEGEN_FUNCTIONS[ktype]
-    komatype_can_promote = (promotion_constrainer == constrain_unpromotable)
+    komatype_can_promote = (promotion_constrainer is constrain_unpromotable)
     return not move.is_drop and not komatype_can_promote and (
         move.end_sq.is_in_promotion_zone(move.side)
         or move.start_sq.is_in_promotion_zone(move.side)

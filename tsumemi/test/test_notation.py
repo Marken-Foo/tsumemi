@@ -2,7 +2,8 @@ import unittest
 
 import itertools
 
-from tsumemi.src.shogi.basetypes import GameTermination, KomaType, Side, Square, TerminationMove
+from tsumemi.src.shogi.basetypes import GameTermination, KomaType, Side, Square
+from tsumemi.src.shogi.move import TerminationMove
 from tsumemi.src.shogi.notation import JapaneseMoveWriter, WesternMoveWriter
 from tsumemi.src.shogi.notation import JAPANESE_MOVE_FORMAT, WESTERN_MOVE_FORMAT
 from tsumemi.src.shogi.position import Position

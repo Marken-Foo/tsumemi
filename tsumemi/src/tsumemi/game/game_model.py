@@ -8,8 +8,8 @@ from tsumemi.src.shogi.game import Game
 
 if TYPE_CHECKING:
     from typing import Iterator, List
-    from tsumemi.src.shogi.basetypes import Move
     from tsumemi.src.shogi.gametree import MoveNode
+    from tsumemi.src.shogi.move import Move
     from tsumemi.src.shogi.position import Position
 
 

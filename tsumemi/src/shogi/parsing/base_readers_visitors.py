@@ -7,7 +7,7 @@ from tsumemi.src.shogi.game import Game
 if TYPE_CHECKING:
     import typing
     from typing import Sequence
-    from tsumemi.src.shogi.basetypes import Move
+    from tsumemi.src.shogi.move import Move
 
 
 class ParserVisitor:
