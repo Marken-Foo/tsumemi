@@ -19,19 +19,19 @@ class TimerController:
     def __init__(self) -> None:
         self.clock: timer.Timer = timer.Timer()
         return
-    
+
     def make_timer_pane(self, parent: tk.Widget, *args, **kwargs) -> TimerPane:
         return TimerPane(parent, self.clock, *args, **kwargs)
-    
+
     def start(self) -> None:
         return self.clock.start()
-    
+
     def stop(self) -> None:
         return self.clock.stop()
-    
+
     def reset(self) -> None:
         return self.clock.reset()
-    
+
     def split(self) -> Optional[timer.Time]:
         return self.clock.split()
 
@@ -59,17 +59,17 @@ class TimerDisplay(ttk.Label, evt.IObserver):
             foreground="light sky blue",
             font=("TkDefaultFont", 48)
         )
-    
+
     def _on_start(self, event: evt.Event) -> None:
         self.is_running = True
         self.refresh()
         return
-        
+
     def _on_stop(self, event: evt.Event) -> None:
         self.is_running = False
         self.refresh()
         return
-    
+
     def refresh(self) -> None:
         self.time_str.set(str(self.clock.read()))
         if self.is_running:
@@ -87,7 +87,7 @@ class TimerPane(ttk.Frame):
             parent=self,
             clock=clock
         )
-        
+
         self.timer_display.grid(
             row=0, column=0, columnspan=3
         )
@@ -107,12 +107,12 @@ class TimerPane(ttk.Frame):
         self.btn_reset.grid(row=1, column=1)
         self.btn_split.grid(row=1, column=2)
         return
-    
+
     def allow_only_pause(self) -> None:
         self.btn_reset.config(state="disabled")
         self.btn_split.config(state="disabled")
         return
-    
+
     def allow_all(self) -> None:
         self.btn_reset.config(state="normal")
         self.btn_split.config(state="normal")
