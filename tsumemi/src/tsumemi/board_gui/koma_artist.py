@@ -9,7 +9,7 @@ from tsumemi.src.shogi.basetypes import KANJI_FROM_KTYPE
 if TYPE_CHECKING:
     from typing import Optional, Tuple
     from tsumemi.src.tsumemi.board_gui.board_canvas import BoardCanvas
-    from tsumemi.src.tsumemi.img_handlers import ImgDict
+    from tsumemi.src.tsumemi.img_handlers import ImgSizingDict
 
 
 class AbstractKomaArtist(ABC):
@@ -26,8 +26,8 @@ class AbstractKomaArtist(ABC):
 
 
 class ImageKomaArtist(AbstractKomaArtist):
-    def __init__(self, koma_dict: ImgDict) -> None:
-        self.koma_dict: ImgDict = koma_dict
+    def __init__(self, koma_dict: ImgSizingDict) -> None:
+        self.koma_dict: ImgSizingDict = koma_dict
         return
 
     def draw_koma(self,

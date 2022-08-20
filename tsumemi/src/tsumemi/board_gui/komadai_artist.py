@@ -5,9 +5,10 @@ from typing import TYPE_CHECKING
 from tsumemi.src.shogi.basetypes import HAND_TYPES
 
 if TYPE_CHECKING:
+    from typing import Optional
     from tsumemi.src.shogi.basetypes import KomaType
     from tsumemi.src.shogi.position_internals import HandRepresentation
-    from tsumemi.src.tsumemi.board_canvas import BoardCanvas
+    from tsumemi.src.tsumemi.board_gui.board_canvas import BoardCanvas
 
 
 class KomadaiArtist:
@@ -42,10 +43,10 @@ class KomadaiArtist:
                 self.hand_counts[ktype] = count
 
         self.width: int = 2 * self.piece_size
-        self.height: int = self.mochigoma_heading_size + (
+        self.height: int = int(self.mochigoma_heading_size + (
             2 * char_height if not self.hand_counts
             else len(self.hand_counts)*(self.symbol_size + self.pad) - self.pad
-        )
+        ))
         self.x_anchor: int = x_anchor
         self.y_anchor: int = y_anchor - self.height if align == "bottom" else y_anchor
         return
@@ -97,10 +98,10 @@ class KomadaiArtist:
             y_offset: float,
             ktype: KomaType,
             count: int,
-        ) -> int:
+        ) -> Optional[int]:
         # returns the id of the koma drawing
         self._draw_komadai_focus_tile(canvas, y_offset, ktype)
-        id_: int = self._draw_komadai_koma(canvas, y_offset, ktype)
+        id_: Optional[int] = self._draw_komadai_koma(canvas, y_offset, ktype)
         self._draw_komadai_koma_count(canvas, y_offset, count)
         return id_
 
@@ -126,9 +127,9 @@ class KomadaiArtist:
             canvas: BoardCanvas,
             y_offset: float,
             ktype: KomaType,
-        ) -> int:
+        ) -> Optional[int]:
         artist = canvas.make_koma_artist(invert=False, komadai=True)
-        id_: int = artist.draw_koma(
+        id_: Optional[int] = artist.draw_koma(
             canvas,
             self.x_anchor-(self.width/5),
             self.y_anchor+y_offset,
