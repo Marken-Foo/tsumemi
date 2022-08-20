@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from tsumemi.src.shogi.basetypes import Koma, KomaType, KanjiNumber, Square, SFEN_FROM_KOMA, KANJI_NOTATION_FROM_KTYPE
+from tsumemi.src.shogi.basetypes import Koma, KomaType, SFEN_FROM_KOMA, KANJI_NOTATION_FROM_KTYPE
+from tsumemi.src.shogi.square import KanjiNumber, Square
 
 if TYPE_CHECKING:
     from typing import Any, List
@@ -18,7 +19,8 @@ class Move:
             start_sq: Square = Square.NONE,
             end_sq: Square = Square.NONE,
             is_promotion: bool = False,
-            koma: Koma = Koma.NONE, captured: Koma = Koma.NONE
+            koma: Koma = Koma.NONE,
+            captured: Koma = Koma.NONE
         ) -> None:
         self.start_sq = start_sq
         self.end_sq = end_sq

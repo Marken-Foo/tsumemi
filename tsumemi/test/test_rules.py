@@ -1,6 +1,6 @@
 import unittest
 
-from tsumemi.src.shogi.basetypes import Koma, KomaType, Side, Square
+from tsumemi.src.shogi.basetypes import KomaType, Side
 from tsumemi.src.shogi.position import Position
 import tsumemi.src.shogi.rules as rules
 

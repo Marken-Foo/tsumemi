@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING
 
 import tsumemi.src.tsumemi.event as evt
 
-from tsumemi.src.shogi.basetypes import KANJI_FROM_KTYPE, KomaType, Side, Square
-from tsumemi.src.shogi.basetypes import HAND_TYPES
+from tsumemi.src.shogi.basetypes import HAND_TYPES, KANJI_FROM_KTYPE, KomaType, Side
+from tsumemi.src.shogi.square import Square
 from tsumemi.src.tsumemi.board_gui.board_artist import BoardArtist, NUM_COLS, NUM_ROWS
 from tsumemi.src.tsumemi.img_handlers import SkinSettings, BoardMeasurements, BoardSkin, KomaImgManager, KomadaiImgManager, PieceSkin
 from tsumemi.src.tsumemi.board_gui.koma_artist import ImageKomaArtist, TextKomaArtist
@@ -234,7 +234,7 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
         )
         return
 
-    def _prompt_promotion_callback(self, event: tk.Event,
+    def _prompt_promotion_callback(self, _event: tk.Event,
             sq: Square, ktype: KomaType,
             is_promotion: Optional[bool]
         ) -> None:

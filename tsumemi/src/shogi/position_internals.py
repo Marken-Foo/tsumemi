@@ -4,8 +4,9 @@ from enum import IntEnum
 
 from typing import TYPE_CHECKING
 
-from tsumemi.src.shogi.basetypes import Koma, Side, Square
+from tsumemi.src.shogi.basetypes import Koma, Side
 from tsumemi.src.shogi.basetypes import HAND_TYPES, KOMA_TYPES, SFEN_FROM_KOMA
+from tsumemi.src.shogi.square import Square
 
 if TYPE_CHECKING:
     from typing import Dict, List, Set

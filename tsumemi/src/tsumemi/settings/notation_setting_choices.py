@@ -8,8 +8,9 @@ from typing import TYPE_CHECKING
 import tsumemi.src.tsumemi.settings.setting_choices as setc
 
 from tsumemi.src.shogi import notation
-from tsumemi.src.shogi.basetypes import Koma, Square
+from tsumemi.src.shogi.basetypes import Koma
 from tsumemi.src.shogi.position import Position
+from tsumemi.src.shogi.square import Square
 
 if TYPE_CHECKING:
     from typing import List, Optional

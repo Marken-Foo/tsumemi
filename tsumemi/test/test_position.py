@@ -1,8 +1,9 @@
 import unittest
 
-from tsumemi.src.shogi.basetypes import Koma, KomaType, Side, Square
+from tsumemi.src.shogi.basetypes import Koma, KomaType, Side
 from tsumemi.src.shogi.move import Move
 from tsumemi.src.shogi.position import HandRepresentation, Position
+from tsumemi.src.shogi.square import Square
 
 
 class TestPositionMethods(unittest.TestCase):

@@ -3,7 +3,8 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
-from tsumemi.src.shogi.basetypes import KanjiNumber, KomaType
+from tsumemi.src.shogi.basetypes import KomaType
+from tsumemi.src.shogi.square import KanjiNumber
 from tsumemi.src.tsumemi.img_handlers import BoardImgManager, BoardMeasurements, BoardSkin
 
 if TYPE_CHECKING:

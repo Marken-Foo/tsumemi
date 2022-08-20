@@ -13,8 +13,9 @@ from tsumemi.src.shogi.position_internals import MailboxBoard
 
 if TYPE_CHECKING:
     from typing import Callable, Dict, Iterable, List, Tuple, Union
-    from tsumemi.src.shogi.basetypes import Side, Square
+    from tsumemi.src.shogi.basetypes import Side
     from tsumemi.src.shogi.position import Position
+    from tsumemi.src.shogi.square import Square
     DestGen = Callable[[MailboxBoard, int, Side], destgen.IdxIterable]
     PromConstrTuple = Union[Tuple[bool], Tuple[bool, bool]]
     PromConstr = Callable[[Side, Square, Square], PromConstrTuple]
