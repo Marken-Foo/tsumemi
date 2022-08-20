@@ -119,39 +119,38 @@ class KomaImgManager(ImgManager):
 
     def load(self, skin: PieceSkin) -> None:
         filepath = skin.path
-        if filepath:
-            for ktype in KomaType:
-                if ktype == KomaType.NONE:
-                    continue
-                filename = "0" + ktype.to_csa() + ".png"
-                img_path = os.path.join(filepath, filename)
-                img = Image.open(img_path)
-                self.upright.add_image(ktype, img)
-                self.komadai_upright.add_image(ktype, img)
-                # upside-down image
-                filename = "1" + ktype.to_csa() + ".png"
-                img_path = os.path.join(filepath, filename)
-                img = Image.open(img_path)
-                self.inverted.add_image(ktype, img)
-                self.komadai_inverted.add_image(ktype, img)
+        if not filepath:
             self.skin = skin
             return
-        else:
-            # skin without images
-            self.skin = skin
-            return
+        for ktype in KomaType:
+            if ktype == KomaType.NONE:
+                continue
+            filename = "0" + ktype.to_csa() + ".png"
+            img_path = os.path.join(filepath, filename)
+            img = Image.open(img_path)
+            self.upright.add_image(ktype, img)
+            self.komadai_upright.add_image(ktype, img)
+            # upside-down image
+            filename = "1" + ktype.to_csa() + ".png"
+            img_path = os.path.join(filepath, filename)
+            img = Image.open(img_path)
+            self.inverted.add_image(ktype, img)
+            self.komadai_inverted.add_image(ktype, img)
+        self.skin = skin
+        return
 
     def resize_images(self) -> None:
-        if self.skin.path:
-            imgdicts = (
-                self.upright,
-                self.inverted,
-                self.komadai_upright,
-                self.komadai_inverted
-            )
-            for imgdict in imgdicts:
-                imgdict.update_sizes()
-                imgdict.resize_images()
+        if not self.skin.path:
+            return
+        imgdicts = (
+            self.upright,
+            self.inverted,
+            self.komadai_upright,
+            self.komadai_inverted
+        )
+        for imgdict in imgdicts:
+            imgdict.update_sizes()
+            imgdict.resize_images()
         return
 
     def get_dict(self, invert=False, komadai=False) -> ImgDict:
@@ -195,29 +194,28 @@ class BoardImgManager(ImgManager):
 
     def load(self, skin: BoardSkin) -> None:
         filepath = skin.path
-        if filepath:
-            img = Image.open(filepath)
-            self.tile_sized.add_image("board", img)
-            self.skin = skin # after loading, in case anything goes wrong
-            return
-        else:
-            # skin without images
+        if not filepath:
+            # Skin without images
             self.skin = skin
             return
+        img = Image.open(filepath)
+        self.tile_sized.add_image("board", img)
+        self.skin = skin # after loading, in case anything goes wrong
+        return
 
     def resize_images(self) -> None:
-        if self.skin.path:
-            imgdicts = (self.tile_sized, self.board_sized)
-            for imgdict in imgdicts:
-                imgdict.update_sizes()
-                imgdict.resize_images()
+        if not self.skin.path:
+            return
+        imgdicts = (self.tile_sized, self.board_sized)
+        for imgdict in imgdicts:
+            imgdict.update_sizes()
+            imgdict.resize_images()
         return
 
     def get_dict(self, board_sized: bool = False) -> ImgDict:
         if board_sized:
             return self.board_sized.get_dict()
-        else:
-            return self.tile_sized.get_dict()
+        return self.tile_sized.get_dict()
 
 
 class KomadaiImgManager(ImgManager):
@@ -242,11 +240,12 @@ class KomadaiImgManager(ImgManager):
         return
 
     def resize_images(self) -> None:
-        if self.skin.path:
-            imgdicts = (self.komadai_piece_sized,)
-            for imgdict in imgdicts:
-                imgdict.update_sizes()
-                imgdict.resize_images()
+        if not self.skin.path:
+            return
+        imgdicts = (self.komadai_piece_sized,)
+        for imgdict in imgdicts:
+            imgdict.update_sizes()
+            imgdict.resize_images()
         return
 
     def get_dict(self) -> ImgDict:
