@@ -12,7 +12,7 @@ from tsumemi.src.shogi.square import Square
 from tsumemi.src.tsumemi.skins import BoardSkin, PieceSkin, SkinSettings
 from tsumemi.src.tsumemi.board_gui.board_artist import BoardArtist, NUM_COLS, NUM_ROWS
 from tsumemi.src.tsumemi.board_gui.board_meas import BoardMeasurements
-from tsumemi.src.tsumemi.img_handlers import KomaImgManager, KomadaiImgManager
+from tsumemi.src.tsumemi.board_gui.img_handlers import KomaImgManager, KomadaiImgManager
 from tsumemi.src.tsumemi.board_gui.koma_artist import ImageKomaArtist, TextKomaArtist
 from tsumemi.src.tsumemi.board_gui.komadai_artist import KomadaiArtist
 

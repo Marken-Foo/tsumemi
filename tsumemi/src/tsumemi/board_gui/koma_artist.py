@@ -9,7 +9,7 @@ from tsumemi.src.shogi.basetypes import KANJI_FROM_KTYPE
 if TYPE_CHECKING:
     from typing import Optional, Tuple
     from tsumemi.src.tsumemi.board_gui.board_canvas import BoardCanvas
-    from tsumemi.src.tsumemi.img_handlers import ImgSizingDict
+    from tsumemi.src.tsumemi.board_gui.img_handlers import ImgSizingDict
 
 
 class AbstractKomaArtist(ABC):
