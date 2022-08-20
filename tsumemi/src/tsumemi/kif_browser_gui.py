@@ -18,16 +18,16 @@ import tsumemi.src.tsumemi.speedrun_controller as speedcon
 import tsumemi.src.tsumemi.timer_controller as timecon
 
 from tsumemi.src.shogi.parsing import kif
-from tsumemi.src.tsumemi import timer
+from tsumemi.src.tsumemi import files, timer
 from tsumemi.src.tsumemi.main_window_view import MainWindowView
 from tsumemi.src.tsumemi.menubar import Menubar
 from tsumemi.src.tsumemi.statistics_window import StatisticsDialog
 
 if TYPE_CHECKING:
-    from typing import Callable, Generator, List, Optional, Union
+    from typing import Callable, Optional
     import tsumemi.src.tsumemi.img_handlers as imghand
     from tsumemi.src.shogi import notation
-    PathLike = Union[str, os.PathLike]
+    from tsumemi.src.shogi.game import Game
 
 
 class RootController(evt.IObserver):
@@ -49,7 +49,9 @@ class RootController(evt.IObserver):
 
         self.speedrun_controller = speedcon.SpeedrunController(self)
 
-        self.main_game.add_observer(self.speedrun_controller._speedrun_states["question"])
+        self.main_game.add_observer(
+            self.speedrun_controller._speedrun_states["question"]
+        )
         self.main_timer.clock.add_observer(self)
         self.main_problem_list.problem_list.add_observer(self)
         self.set_callbacks({
@@ -80,53 +82,22 @@ class RootController(evt.IObserver):
         return
 
     def open_folder(self,
-            event: Optional[tk.Event] = None, recursive: bool = False
+            _event: Optional[tk.Event] = None, recursive: bool = False
         ) -> None:
         """Prompt user for a folder, open into main_problem_list.
         """
         directory = filedialog.askdirectory()
-        if directory == "":
+        if not directory:
             return
         directory = os.path.normpath(directory)
-        kif_files = (
-            self._list_kif_files_recursive(directory) if recursive
-            else self._list_kif_files(directory)
-        )
+        kif_files = files.get_kif_files(directory, recursive)
         self.main_problem_list.set_directory(
             directory, kif_files
         )
         return
 
-    def open_folder_recursive(self, event: Optional[tk.Event] = None) -> None:
+    def open_folder_recursive(self, _event: Optional[tk.Event] = None) -> None:
         return self.open_folder(recursive=True)
-
-    def _list_kif_files(self, directory: PathLike
-        ) -> List[PathLike]:
-        """Returns a generator of full filepaths ending in `.kif` or
-        `.kifu` in a directory.
-        """
-        # mypy 0.971 os.scandir() regression
-        # https://github.com/python/mypy/issues/11964
-        with os.scandir(directory) as itr: # type: ignore
-            return [
-                os.path.join(directory, entry.name)
-                for entry in itr
-                if entry.name.endswith(".kif") # type: ignore
-                or entry.name.endswith(".kifu") # type: ignore
-            ]
-
-    def _list_kif_files_recursive(self, directory: PathLike
-        ) -> Generator[PathLike, None, None]:
-        """Returns a generator of full filepaths ending in `.kif` or
-        `.kifu` in a directory and all its subdirectories.
-        """
-        for dirpath, _, filenames in os.walk(directory): # type: ignore
-            yield from (
-                os.path.join(dirpath, filename)
-                for filename in filenames
-                if filename.endswith(".kif") # type: ignore
-                or filename.endswith(".kifu") # type: ignore
-            )
 
     def copy_sfen_to_clipboard(self) -> None:
         sfen = self.main_game.get_current_sfen()
@@ -139,47 +110,49 @@ class RootController(evt.IObserver):
         """Display the given problem in the GUI and enable move input.
         """
         self._read_problem(prob)
-        window_title = "tsumemi - " + str(prob.filepath)
         self.mainframe.refresh_main_board()
         self.mainframe.refresh_move_list()
         self.mainframe.enable_move_input()
         self.mainframe.hide_solution()
-        self.root.title(window_title)
+        self.root.title("tsumemi - " + str(prob.filepath))
         return
 
     def _read_problem(self, prob: plist.Problem) -> None:
         """Read the problem data from file into the program.
         """
-        filepath = prob.filepath
-        if filepath is None:
-            return # error out?
-        game = kif.read_kif(filepath)
+        game = self.game_from_problem(prob)
         if game is None:
-            return # file unreadable, error out
-        move_string_list = self.notation_writer.write_mainline(game)
-        self.mainframe.set_solution("　".join(move_string_list))
-        game.go_to_start()
+            return
+        self.mainframe.set_solution(self.solution_str_from_game(game))
         self.main_game.set_game(game)
         return
 
+    def game_from_problem(self, prob: plist.Problem) -> Optional[Game]:
+        filepath = prob.filepath
+        if filepath is None:
+            return None
+        return kif.read_kif(filepath)
+
+    def solution_str_from_game(self, game: Game) -> str:
+        return "　".join(self.notation_writer.write_mainline(game))
+
     def refresh_solution_text(self) -> None:
-        game = self.main_game.game
-        move_string_list = self.notation_writer.write_mainline(game.game)
-        self.mainframe.set_solution("　".join(move_string_list))
+        game = self.main_game.game.game
+        self.mainframe.set_solution(self.solution_str_from_game(game))
         # force view to update
         self.mainframe.toggle_solution()
         self.mainframe.toggle_solution()
         return
 
-    def go_next_file(self, event: Optional[tk.Event] = None) -> bool:
+    def go_next_file(self, _event: Optional[tk.Event] = None) -> bool:
         prob = self.main_problem_list.go_next_problem()
         return prob is not None
 
-    def go_prev_file(self, event: Optional[tk.Event] = None) -> bool:
+    def go_prev_file(self, _event: Optional[tk.Event] = None) -> bool:
         prob = self.main_problem_list.go_prev_problem()
         return prob is not None
 
-    def go_to_file(self, event: Optional[tk.Event] = None, idx: int = 0
+    def go_to_file(self, _event: Optional[tk.Event] = None, idx: int = 0
         ) -> bool:
         prob = self.main_problem_list.go_to_problem(idx)
         return prob is not None
@@ -210,7 +183,7 @@ class RootController(evt.IObserver):
             filetypes=(("Comma-separated values", ".csv"),),
             initialfile=f"tsume-speedrun-{datetimestr}",
         )
-        if directory == "":
+        if not directory:
             return
         self.main_problem_list.export_as_csv(directory)
         return
@@ -239,14 +212,12 @@ class RootController(evt.IObserver):
 
     #=== GUI display methods
     def apply_skin_settings(self, settings: imghand.SkinSettings) -> None:
-        # GUI callback
         self.skin_settings = settings
         self.mainframe.apply_skins(settings)
         return
 
     def apply_notation_settings(self, move_writer: notation.AbstractMoveWriter
         ) -> None:
-        # GUI callback
         self.notation_writer.change_move_writer(move_writer)
         self.refresh_solution_text()
         self.mainframe.movelist_frame.refresh_content()
@@ -254,23 +225,20 @@ class RootController(evt.IObserver):
 
     #=== Observer callbacks
     def _on_split(self, event: timer.TimerSplitEvent) -> None:
-        # Observer callback
-        time = event.time
-        if self.main_timer.clock == event.clock:
-            self.main_problem_list.set_time(time)
+        if self.main_timer.clock is event.clock:
+            self.main_problem_list.set_time(event.time)
         return
 
     def _on_prob_selected(self, event: plist.ProbSelectedEvent) -> None:
-        # Observer callback
-        if event.sender == self.main_problem_list.problem_list:
+        if event.sender is self.main_problem_list.problem_list:
             self.show_problem(event.problem)
         return
 
 
 class Bindings:
     # Just to group all shortcut bindings together for convenience.
-    def __init__(self, controller):
-        self.controller = controller
+    def __init__(self, controller: RootController):
+        self.controller: RootController = controller
 
         self.MASTER_SHORTCUTS = {
             "<Control-o>": self.controller.open_folder,
@@ -285,8 +253,6 @@ class Bindings:
             "<Key-Left>": self.controller.go_prev_file,
             "<Key-Right>": self.controller.go_next_file,
         }
-
-        self.SPEEDRUN_SHORTCUTS = {}
 
     @staticmethod
     def bind_shortcuts(target, shortcuts):
