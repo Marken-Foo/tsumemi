@@ -7,6 +7,7 @@ from tkinter import messagebox
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from typing import Any
     from tsumemi.src.tsumemi.kif_browser_gui import RootController
 
 
@@ -16,7 +17,7 @@ class Menubar(tk.Menu):
     def __init__(self,
             parent: tk.Tk,
             controller: RootController,
-            *args, **kwargs
+            *args: Any, **kwargs: Any
         ) -> None:
         self.controller = controller
         super().__init__(parent, *args, **kwargs)

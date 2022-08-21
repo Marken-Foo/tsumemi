@@ -6,7 +6,7 @@ from tkinter import font, ttk
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Callable, Optional
+    from typing import Any, Callable, Optional
     import tsumemi.src.tsumemi.board_gui.board_canvas as bc
     import tsumemi.src.tsumemi.game.game_controller as gamecon
     import tsumemi.src.tsumemi.timer_controller as timecon
@@ -223,7 +223,7 @@ class MainWindowView(ttk.Frame):
 class SolutionLabel(tk.Label):
     """Label to display, show, and hide problem solutions.
     """
-    def __init__(self, parent: tk.Widget, *args, **kwargs) -> None:
+    def __init__(self, parent: tk.Widget, *args: Any, **kwargs: Any) -> None:
         super().__init__(parent, *args, **kwargs)
         self.is_solution_shown: bool = True
         self.solution_text: str = "Open a folder of problems to display."

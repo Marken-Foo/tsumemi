@@ -24,7 +24,7 @@ from tsumemi.src.tsumemi.menubar import Menubar
 from tsumemi.src.tsumemi.statistics_window import StatisticsDialog
 
 if TYPE_CHECKING:
-    from typing import Callable, Optional
+    from typing import Any, Callable, List, Mapping, Optional
     from tsumemi.src.shogi import notation
     from tsumemi.src.shogi.game import Game
 
@@ -72,7 +72,9 @@ class RootController(evt.IObserver):
 
         # Keyboard shortcuts
         self.bindings = Bindings(self)
-        self.bindings.bind_shortcuts(self.root, self.bindings.MASTER_SHORTCUTS)
+        # mypy bug, function vs Callable[..., Any]
+        # See https://github.com/python/mypy/issues/10740
+        self.bindings.bind_shortcuts(self.root, self.bindings.MASTER_SHORTCUTS) # type: ignore[arg-type]
         self.bindings.bind_shortcuts(self.root, self.bindings.FREE_SHORTCUTS)
         return
 
@@ -254,13 +256,17 @@ class Bindings:
         }
 
     @staticmethod
-    def bind_shortcuts(target, shortcuts):
+    def bind_shortcuts(
+            target: tk.Tk, shortcuts: Mapping[str, Callable[..., Any]]
+        ) -> None:
         for keypress, command in shortcuts.items():
             target.bind(keypress, command)
         return
 
     @staticmethod
-    def unbind_shortcuts(target, shortcuts):
+    def unbind_shortcuts(
+            target: tk.Tk, shortcuts: Mapping[str, Callable[..., Any]]
+        ) -> None:
         for keypress in shortcuts.keys():
             target.unbind(keypress)
         return
@@ -268,19 +274,20 @@ class Bindings:
 
 def run() -> None:
     logging.basicConfig(filename="tsumemilog.log", level=logging.WARNING)
-    def apply_theme_fix():
+    def apply_theme_fix() -> None:
         # Fix from pyIDM on GitHub:
         # https://github.com/pyIDM/PyIDM/issues/128#issuecomment-655477524
         # fix for table colors in tkinter 8.6.9,
         # call style.map twice to work properly
         style = ttk.Style()
-        def fixed_map(option):
+        def fixed_map(option: str) -> List[Any]:
             return [elm for elm in style.map('Treeview', query_opt=option)
                     if elm[:2] != ("!disabled", "!selected")]
         style.map('Treeview', foreground=fixed_map("foreground"),
                   background=fixed_map("background"))
         style.map('Treeview', foreground=fixed_map("foreground"),
                   background=fixed_map("background"))
+        return
 
     root = tk.Tk()
     RootController(root)

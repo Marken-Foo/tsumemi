@@ -113,7 +113,7 @@ class BoardArtist:
         board_img = self.board_img_cache.get_dict()["board"]
         self._update_board_tile_images(canvas, board_img)
         return
-    
+
     def apply_skin(self, canvas: BoardCanvas, skin: BoardSkin) -> None:
         canvas.itemconfig(self.board_rect, fill=skin.colour)
         self.board_img_cache.load(skin)

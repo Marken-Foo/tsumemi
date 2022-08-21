@@ -8,11 +8,12 @@ from enum import Enum
 from typing import TYPE_CHECKING
 
 import tsumemi.src.tsumemi.event as evt
-import tsumemi.src.tsumemi.timer as timer
+
+from tsumemi.src.tsumemi import timer
 
 if TYPE_CHECKING:
     import os
-    from typing import Any, Iterable, List, Optional, Union
+    from typing import Any, Callable, Iterable, Iterator, List, Optional, Union
     PathLike = Union[str, os.PathLike]
 
 
@@ -22,7 +23,7 @@ class ProblemStatus(Enum):
     WRONG = 2
     SKIP = 3
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
 
 
@@ -77,28 +78,30 @@ class ProblemList(evt.Emitter):
     solve time and status.
     """
     @staticmethod
-    def natural_sort_key(_str: str, _nsre=re.compile(r'(\d+)')
+    def natural_sort_key(
+            _str: str,
+            _nsre: re.Pattern[str] = re.compile(r'(\d+)')
         ) -> List[Union[int, str]]:
         return [int(c) if c.isdigit() else c.lower() for c in _nsre.split(_str)]
 
     @staticmethod
-    def _file_key(prob) -> List[Union[int, str]]:
-        return ProblemList.natural_sort_key(prob.filepath)
+    def _file_key(prob: Problem) -> List[Union[int, str]]:
+        return ProblemList.natural_sort_key(str(prob.filepath))
 
     def __init__(self, problems: Optional[List[Problem]] = None) -> None:
-        super().__init__()
+        evt.Emitter.__init__(self)
         self.problems: List[Problem] = [] if problems is None else problems
         self.curr_prob: Optional[Problem] = None
         self.curr_prob_idx: Optional[int] = None
         return
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Problem]:
         return self.problems.__iter__()
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.problems)
 
-    def clear(self, suppress=False) -> None:
+    def clear(self, suppress: bool = False) -> None:
         self.problems = []
         self.curr_prob = None
         self.curr_prob_idx = None
@@ -106,14 +109,14 @@ class ProblemList(evt.Emitter):
             self._notify_observers(ProbListEvent(self))
         return
 
-    def clear_statuses(self, suppress=False) -> None:
+    def clear_statuses(self, suppress: bool = False) -> None:
         for prob in self.problems:
             prob.status = ProblemStatus.NONE
         if not suppress:
             self._notify_observers(ProbListEvent(self))
         return
 
-    def clear_times(self, suppress=False) -> None:
+    def clear_times(self, suppress: bool = False) -> None:
         for prob in self.problems:
             prob.time = None
         if not suppress:
@@ -123,7 +126,8 @@ class ProblemList(evt.Emitter):
     def is_empty(self) -> bool:
         return not bool(self.problems)
 
-    def add_problem(self, new_problem: Problem,
+    def add_problem(self,
+            new_problem: Problem,
             suppress: bool = False
         ) -> None:
         self.problems.append(new_problem)
@@ -131,7 +135,8 @@ class ProblemList(evt.Emitter):
             self._notify_observers(ProbListEvent(self))
         return
 
-    def add_problems(self, new_problems: Iterable[Problem],
+    def add_problems(self,
+            new_problems: Iterable[Problem],
             suppress: bool = False
         ) -> None:
         self.problems.extend(new_problems)
@@ -207,7 +212,8 @@ class ProblemList(evt.Emitter):
             else self.go_to_idx(self.curr_prob_idx - 1))
 
     #=== Sorting methods
-    def sort(self, key, suppress=False) -> None:
+    def sort(self, key: Callable[[Problem], Any], suppress: bool = False
+        ) -> None:
         """Sort problem list in place, keeping focus on the same
         problem before and after the sort."""
         old_prob = self.curr_prob
@@ -240,7 +246,10 @@ class ProblemList(evt.Emitter):
         self._notify_observers(ProbListEvent(self))
         return
 
-    def _set_active_problem(self, prob) -> bool:
+    def _set_active_problem(self, prob: Optional[Problem]) -> bool:
+        if prob is None:
+            self.curr_prob = None
+            return True
         if prob not in self.problems:
             return False
         idx = self.problems.index(prob)

@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 class MoveEvent(evt.Event):
     def __init__(self, move: Move) -> None:
+        evt.Event.__init__(self)
         self.move = move
         return
 
@@ -65,9 +66,9 @@ class MoveInputHandler(evt.Emitter):
                 event=event, caller=self,
                 sq=sq, hand_ktype=hand_ktype, hand_side=hand_side
             )
-        except RuntimeError as e:
+        except RuntimeError as exc:
             self._set_state("ready")
-            logger.warning(e, exc_info=True)
+            logger.warning(exc, exc_info=True)
         return
 
     def execute_promotion_choice(self,
@@ -136,7 +137,8 @@ class MoveInputHandler(evt.Emitter):
     def _attempt_move(self, sq: Square) -> Optional[bool]:
         """Check if a legal move can be made. Returns True and sends
         out the move if it is, False if not.
-        Returns None if more information is needed (e.g. choice of promotion/nonpromotion.
+        Returns None if more information is needed (e.g. choice of
+        promotion/nonpromotion.
         """
         mvlist: List[Move] = rules.create_legal_moves_given_squares(
             pos=self.position,
@@ -322,12 +324,12 @@ class WaitForPromotionState(MoveInputHandlerState):
             return
         else:
             # Promotion choice is made, yes or no
-            mv = Move(
+            move = Move(
                 start_sq=caller.focused_sq, end_sq=sq,
                 koma=Koma.make(caller.position.turn, ktype),
                 captured=caller.position.get_koma(sq),
                 is_promotion=is_promotion
             )
-            caller._send_move(mv)
+            caller._send_move(move)
             caller._set_state("ready")
             return

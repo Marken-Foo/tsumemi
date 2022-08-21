@@ -6,10 +6,11 @@ from tkinter import ttk
 from typing import TYPE_CHECKING
 
 import tsumemi.src.tsumemi.event as evt
-import tsumemi.src.tsumemi.timer as timer
+
+from tsumemi.src.tsumemi import timer
 
 if TYPE_CHECKING:
-    from typing import Optional
+    from typing import Any, Optional
 
 
 class TimerController:
@@ -19,19 +20,20 @@ class TimerController:
     def __init__(self) -> None:
         self.clock: timer.Timer = timer.Timer()
         return
-    
-    def make_timer_pane(self, parent: tk.Widget, *args, **kwargs) -> TimerPane:
+
+    def make_timer_pane(self, parent: tk.Widget, *args: Any, **kwargs: Any
+        ) -> TimerPane:
         return TimerPane(parent, self.clock, *args, **kwargs)
-    
+
     def start(self) -> None:
         return self.clock.start()
-    
+
     def stop(self) -> None:
         return self.clock.stop()
-    
+
     def reset(self) -> None:
         return self.clock.reset()
-    
+
     def split(self) -> Optional[timer.Time]:
         return self.clock.split()
 
@@ -39,7 +41,8 @@ class TimerController:
 class TimerDisplay(ttk.Label, evt.IObserver):
     """GUI class to display a stopwatch/timer.
     """
-    def __init__(self, parent: tk.Widget, clock: timer.Timer, *args, **kwargs
+    def __init__(self,
+            parent: tk.Widget, clock: timer.Timer, *args: Any, **kwargs: Any
         ) -> None:
         super().__init__(parent, *args, **kwargs)
         self.clock: timer.Timer = clock
@@ -59,17 +62,17 @@ class TimerDisplay(ttk.Label, evt.IObserver):
             foreground="light sky blue",
             font=("TkDefaultFont", 48)
         )
-    
-    def _on_start(self, event: evt.Event) -> None:
+
+    def _on_start(self, _event: timer.TimerEvent) -> None:
         self.is_running = True
         self.refresh()
         return
-        
-    def _on_stop(self, event: evt.Event) -> None:
+
+    def _on_stop(self, _event: timer.TimerEvent) -> None:
         self.is_running = False
         self.refresh()
         return
-    
+
     def refresh(self) -> None:
         self.time_str.set(str(self.clock.read()))
         if self.is_running:
@@ -80,14 +83,15 @@ class TimerDisplay(ttk.Label, evt.IObserver):
 class TimerPane(ttk.Frame):
     """GUI frame containing a timer display and associated controls.
     """
-    def __init__(self, parent: tk.Widget, clock: timer.Timer, *args, **kwargs
+    def __init__(self,
+            parent: tk.Widget, clock: timer.Timer, *args: Any, **kwargs: Any
         ) -> None:
         super().__init__(parent, *args, **kwargs)
         self.timer_display: TimerDisplay = TimerDisplay(
             parent=self,
             clock=clock
         )
-        
+
         self.timer_display.grid(
             row=0, column=0, columnspan=3
         )
@@ -107,12 +111,12 @@ class TimerPane(ttk.Frame):
         self.btn_reset.grid(row=1, column=1)
         self.btn_split.grid(row=1, column=2)
         return
-    
+
     def allow_only_pause(self) -> None:
         self.btn_reset.config(state="disabled")
         self.btn_split.config(state="disabled")
         return
-    
+
     def allow_all(self) -> None:
         self.btn_reset.config(state="normal")
         self.btn_split.config(state="normal")

@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     PathLike = Union[str, os.PathLike]
 
 
-def get_kif_files(directory: PathLike, recursive=bool
+def get_kif_files(directory: PathLike, recursive: bool
     ) -> Generator[PathLike, None, None]:
     """Returns an iterable of full filepaths of KIF files in a
     given directory.

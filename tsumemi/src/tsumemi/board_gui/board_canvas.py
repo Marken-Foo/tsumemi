@@ -18,8 +18,9 @@ from tsumemi.src.tsumemi.board_gui.komadai_artist import KomadaiArtist
 
 if TYPE_CHECKING:
     from PIL import ImageTk
-    from typing import Optional, Tuple
+    from typing import Any, Optional, Tuple
     from tsumemi.src.shogi.position import Position
+    from tsumemi.src.shogi.position_internals import HandRepresentation
     from tsumemi.src.tsumemi.board_gui.koma_artist import AbstractKomaArtist
     from tsumemi.src.tsumemi.game.game_model import GameUpdateEvent
     from tsumemi.src.tsumemi.move_input_handler import MoveInputHandler
@@ -43,7 +44,7 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
             skin_settings: SkinSettings,
             width: int = DEFAULT_CANVAS_WIDTH,
             height: int = DEFAULT_CANVAS_HEIGHT,
-            *args, **kwargs
+            *args: Any, **kwargs: Any
         ) -> None:
         """Initialise self with reference to a Game, allowing self to
         display board positions from the Game (purely a view).
@@ -127,7 +128,7 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
             self._highlight_square(sq)
         return
 
-    def draw(self):
+    def draw(self) -> None:
         """Draw complete board with komadai and pieces.
         """
         # Clear board display - could also keep board and just redraw pieces
@@ -191,7 +192,13 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
         )
         return id_
 
-    def draw_komadai(self, x, y, hand, sente=True, align="top"):
+    def draw_komadai(self,
+            x: float,
+            y: float,
+            hand: HandRepresentation,
+            sente: bool = True, 
+            align: str = "top",
+        ) -> None:
         """Draw komadai with pieces given by hand argument, anchored
         at canvas position (x,y). "Anchoring" north or south achieved
         with align="top" or "bottom".
@@ -199,7 +206,9 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
         artist = KomadaiArtist(x, y, self, hand, sente, align)
         # Draw the komadai base
         komadai_base = artist.draw_komadai_base(self)
-        self.itemconfig(komadai_base, fill=self.komadai_img_cache.skin.colour)
+        skin = self.komadai_img_cache.skin
+        assert isinstance(skin, BoardSkin)
+        self.itemconfig(komadai_base, fill=skin.colour)
         artist.draw_komadai_header_text(self)
         artist.draw_all_komadai_koma(self)
         self._add_all_komadai_koma_onclick_callbacks()
@@ -273,7 +282,7 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
         row_idx = self._row_num_to_idx(row_num)
         return col_idx, row_idx
 
-    def idxs_to_xy(self, col_idx: int, row_idx: int, centering=""
+    def idxs_to_xy(self, col_idx: int, row_idx: int, centering: str = ""
         ) -> Tuple[int, int]:
         x_sq = self.measurements.x_sq
         y_sq = self.measurements.y_sq
