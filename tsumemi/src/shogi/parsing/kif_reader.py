@@ -36,7 +36,7 @@ SFEN_FROM_HANDICAP: Dict[str, str] = {
 }
 
 
-KIF_MOVELINE_REGEX: re.Pattern = re.compile(
+KIF_MOVELINE_REGEX: re.Pattern[str] = re.compile(
     r"(?P<movenum>\d*)"
     r"\s*"
     r"(?P<move>[　\S]+)"
@@ -49,7 +49,7 @@ KIF_MOVELINE_REGEX: re.Pattern = re.compile(
 )
 
 
-KIF_MOVE_REGEX: re.Pattern = re.compile(
+KIF_MOVE_REGEX: re.Pattern[str] = re.compile(
     r"(?P<sq_dest>(?:(?:同　)|(?:\d[一二三四五六七八九])))"
     r"(?P<koma>成?[歩香桂銀金角飛玉と龍竜馬全圭杏])"
     r"(?P<drop_prom>[打成])?"
@@ -57,7 +57,7 @@ KIF_MOVE_REGEX: re.Pattern = re.compile(
 )
 
 
-KIF_VARIATION_REGEX: re.Pattern = re.compile(
+KIF_VARIATION_REGEX: re.Pattern[str] = re.compile(
     r"変化：(?P<movenum>\d+)手"
 )
 
