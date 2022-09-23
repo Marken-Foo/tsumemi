@@ -10,16 +10,21 @@ if TYPE_CHECKING:
     import tsumemi.src.tsumemi.board_gui.board_canvas as bc
     import tsumemi.src.tsumemi.game.game_controller as gamecon
     import tsumemi.src.tsumemi.timer_controller as timecon
-    from tsumemi.src.tsumemi import skins
     from tsumemi.src.tsumemi.kif_browser_gui import RootController
+    from tsumemi.src.tsumemi.main_window_view_controller import MainWindowViewController
     from tsumemi.src.tsumemi.movelist.movelist_view import MovelistFrame
     from tsumemi.src.tsumemi.problem_list.problem_list_view import ProblemListPane
 
 
 class MainWindowView(ttk.Frame):
-    def __init__(self, root: tk.Tk, root_controller: RootController) -> None:
+    def __init__(self,
+            root: tk.Tk,
+            root_controller: RootController,
+            viewcon: MainWindowViewController,
+        ) -> None:
         ttk.Frame.__init__(self, root)
         self.controller: RootController = root_controller
+        self.viewcon = viewcon
         # grid itself to the window it is in
         self.grid(row=0, column=0, sticky="NSEW", padx=10, pady=10)
         self.pwn_main = tk.PanedWindow(
@@ -65,13 +70,13 @@ class MainWindowView(ttk.Frame):
             justify="left",
             wraplength=600,
         )
-        self.nav_control_pane = ttk.Frame(self.pane_2)
-        self.nav_controls = ttk.Frame(self.nav_control_pane)
+        self.frm_nav_control = ttk.Frame(self.pane_2)
+        self.nav_controls = ttk.Frame(self.frm_nav_control)
         want_upside_down = tk.BooleanVar(value=False)
         self.chk_upside_down = ttk.Checkbutton(
-            self.nav_control_pane,
+            self.frm_nav_control,
             text="Upside-down mode",
-            command=lambda: self.controller.mainframe.flip_main_board(want_upside_down.get()),
+            command=lambda: self.viewcon.flip_main_board(want_upside_down.get()),
             variable=want_upside_down, onvalue=True, offvalue=False
         )
         self.pane_2.grid_columnconfigure(0, weight=1)
@@ -80,10 +85,10 @@ class MainWindowView(ttk.Frame):
         self.pane_2.grid_rowconfigure(2, weight=0)
         self.board_frame.grid(row=0, column=0, sticky="NSEW", padx=5, pady=5)
         self.lbl_solution.grid(row=1, column=0, sticky="W", padx=5, pady=5)
-        self.nav_control_pane.grid(row=2, column=0, sticky="NSEW")
-        self.nav_control_pane.grid_columnconfigure(0, weight=1)
-        self.nav_control_pane.grid_rowconfigure(0, weight=1)
-        self.update_nav_control_pane(self.make_nav_pane_normal)
+        self.frm_nav_control.grid(row=2, column=0, sticky="NSEW")
+        self.frm_nav_control.grid_columnconfigure(0, weight=1)
+        self.frm_nav_control.grid_rowconfigure(0, weight=1)
+        self.update_nav_control_pane()
         self._grid_nav_control_pane(self.nav_controls)
 
         # Pane 3
@@ -111,63 +116,7 @@ class MainWindowView(ttk.Frame):
         self.speedrun_frame.grid(row=2, column=0)
         return
 
-    def apply_skins(self, settings: skins.SkinSettings) -> None:
-        piece_skin, board_skin, komadai_skin = settings.get()
-        self.board_canvas.apply_piece_skin(piece_skin)
-        self.board_canvas.apply_board_skin(board_skin)
-        self.board_canvas.apply_komadai_skin(komadai_skin)
-        self.refresh_main_board()
-        return
-
-    def refresh_main_board(self) -> None:
-        self.board_canvas.draw()
-        return
-
-    def flip_main_board(self, want_upside_down: bool) -> None:
-        self.board_canvas.flip_board(want_upside_down)
-        return
-
-    def refresh_move_list(self) -> None:
-        self.movelist_frame.refresh_content()
-        return
-
-    def disable_move_input(self) -> None:
-        move_input_handler = self.board_canvas.move_input_handler
-        if move_input_handler is not None:
-            move_input_handler.disable()
-        return
-
-    def enable_move_input(self) -> None:
-        move_input_handler = self.board_canvas.move_input_handler
-        if move_input_handler is not None:
-            move_input_handler.enable()
-        return
-
-    def hide_solution(self) -> None:
-        self.lbl_solution.hide_solution()
-        return
-
-    def show_solution(self) -> None:
-        self.lbl_solution.show_solution()
-        return
-
-    def toggle_solution(self, _event: Optional[tk.Event] = None) -> None:
-        self.lbl_solution.toggle_solution()
-        return
-
-    def set_solution(self, solution_text: str) -> None:
-        self.lbl_solution.set_solution_text(solution_text)
-        return
-
-    def set_btns_allow_abort_speedrun(self) -> None:
-        self.speedrun_frame.allow_abort_speedrun()
-        return
-
-    def set_btns_allow_start_speedrun(self) -> None:
-        self.speedrun_frame.allow_start_speedrun()
-        return
-
-    def make_nav_pane_normal(self, parent: tk.Widget) -> ttk.Frame:
+    def _make_nav_pane_normal(self, parent: tk.Widget) -> ttk.Frame:
         nav = ttk.Frame(parent)
         btn_prev = ttk.Button(nav,
             text="< Prev",
@@ -179,7 +128,7 @@ class MainWindowView(ttk.Frame):
         )
         btn_toggle_solution = ttk.Button(nav,
             text="Show/hide solution",
-            command=self.toggle_solution
+            command=self.viewcon.toggle_solution
         )
         btn_toggle_solution.grid(
             row=0, column=1, sticky="S",
@@ -208,9 +157,15 @@ class MainWindowView(ttk.Frame):
         return
 
     def update_nav_control_pane(self,
-            nav_pane_constructor: Callable[[tk.Widget], ttk.Frame]
+            nav_pane_constructor: Optional[Callable[[tk.Widget], ttk.Frame]] = None
         ) -> None:
-        new_nav_controls = nav_pane_constructor(self.nav_control_pane)
+        """Sets the nav control pane to a new instance, created by
+        the constructor passed in. If no controller is passed in,
+        defaults to a normal nav pane.
+        """
+        if nav_pane_constructor is None:
+            nav_pane_constructor = self._make_nav_pane_normal
+        new_nav_controls = nav_pane_constructor(self.frm_nav_control)
         self._grid_nav_control_pane(new_nav_controls)
         self.nav_controls.grid_forget()
         self.nav_controls = new_nav_controls
@@ -241,12 +196,12 @@ class SpeedrunFrame(ttk.Frame):
         self.btn_abort_speedrun.config(state="disabled")
         return
 
-    def allow_start_speedrun(self):
+    def allow_start_speedrun(self) -> None:
         self.btn_speedrun.config(state="normal")
         self.btn_abort_speedrun.config(state="disabled")
         return
 
-    def allow_abort_speedrun(self):
+    def allow_abort_speedrun(self) -> None:
         self.btn_speedrun.config(state="disabled")
         self.btn_abort_speedrun.config(state="normal")
         return
