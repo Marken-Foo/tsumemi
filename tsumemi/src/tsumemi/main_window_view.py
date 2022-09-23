@@ -70,14 +70,9 @@ class MainWindowView(ttk.Frame):
             justify="left",
             wraplength=600,
         )
-        self.frm_nav_control = ttk.Frame(self.pane_2)
-        self.nav_controls = ttk.Frame(self.frm_nav_control)
-        want_upside_down = tk.BooleanVar(value=False)
-        self.chk_upside_down = ttk.Checkbutton(
-            self.frm_nav_control,
-            text="Upside-down mode",
-            command=lambda: self.viewcon.flip_main_board(want_upside_down.get()),
-            variable=want_upside_down, onvalue=True, offvalue=False
+        self.frm_nav_control = NavControlFrame(
+            self.pane_2,
+            self.viewcon.flip_main_board
         )
         self.pane_2.grid_columnconfigure(0, weight=1)
         self.pane_2.grid_rowconfigure(0, weight=4)
@@ -89,7 +84,6 @@ class MainWindowView(ttk.Frame):
         self.frm_nav_control.grid_columnconfigure(0, weight=1)
         self.frm_nav_control.grid_rowconfigure(0, weight=1)
         self.update_nav_control_pane()
-        self._grid_nav_control_pane(self.nav_controls)
 
         # Pane 3
         self.main_timer_view: timecon.TimerPane = (
@@ -144,18 +138,6 @@ class MainWindowView(ttk.Frame):
         )
         return nav
 
-    def _grid_nav_control_pane(self, pane: ttk.Frame) -> None:
-        pane.grid_columnconfigure(0, weight=1)
-        pane.grid_rowconfigure(0, weight=0)
-        pane.grid_rowconfigure(0, weight=0)
-        pane.grid(
-            row=0, column=0
-        )
-        self.chk_upside_down.grid(
-            row=1, column=0
-        )
-        return
-
     def update_nav_control_pane(self,
             nav_pane_constructor: Optional[Callable[[tk.Widget], ttk.Frame]] = None
         ) -> None:
@@ -166,9 +148,39 @@ class MainWindowView(ttk.Frame):
         if nav_pane_constructor is None:
             nav_pane_constructor = self._make_nav_pane_normal
         new_nav_controls = nav_pane_constructor(self.frm_nav_control)
-        self._grid_nav_control_pane(new_nav_controls)
+        self.frm_nav_control.set_new_nav_controls(new_nav_controls)
+        return
+
+
+class NavControlFrame(ttk.Frame):
+    """Frame containing navigation controls during a speedrun.
+    """
+    def __init__(self, parent: tk.Widget, flip_board: Callable[[bool], None]
+        ) -> None:
+        ttk.Frame.__init__(self, parent)
+        self.nav_controls = ttk.Frame(self)
+        want_upside_down = tk.BooleanVar(value=False)
+        self.chk_upside_down = ttk.Checkbutton(
+            self,
+            text="Upside-down mode",
+            command=lambda: flip_board(want_upside_down.get()),
+            variable=want_upside_down, onvalue=True, offvalue=False
+        )
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(0, weight=0)
+        self.grid_rowconfigure(1, weight=0)
+        self.regrid()
+        return
+
+    def set_new_nav_controls(self, pane: ttk.Frame) -> None:
         self.nav_controls.grid_forget()
-        self.nav_controls = new_nav_controls
+        self.nav_controls = pane
+        self.regrid()
+        return
+
+    def regrid(self) -> None:
+        self.nav_controls.grid(row=0, column=0)
+        self.chk_upside_down.grid(row=1, column=0)
         return
 
 
