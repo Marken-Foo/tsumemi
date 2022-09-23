@@ -19,22 +19,26 @@ class MainWindowViewController:
     def __init__(self, root: tk.Tk, root_controller: RootController) -> None:
         self.controller = root_controller
         self.view = MainWindowView(root, root_controller, self)
+        self.board_canvas = self.view.board_canvas
+        self.problems_view = self.view.problem_list_pane.tvwfrm_problems
+        self.solution_view = self.view.lbl_solution
+        self.timer_view = self.view.main_timer_view
         return
 
     def apply_skins(self, settings: skins.SkinSettings) -> None:
         piece_skin, board_skin, komadai_skin = settings.get()
-        self.view.board_canvas.apply_piece_skin(piece_skin)
-        self.view.board_canvas.apply_board_skin(board_skin)
-        self.view.board_canvas.apply_komadai_skin(komadai_skin)
+        self.board_canvas.apply_piece_skin(piece_skin)
+        self.board_canvas.apply_board_skin(board_skin)
+        self.board_canvas.apply_komadai_skin(komadai_skin)
         self.refresh_main_board()
         return
 
     def refresh_main_board(self) -> None:
-        self.view.board_canvas.draw()
+        self.board_canvas.draw()
         return
 
     def flip_main_board(self, want_upside_down: bool) -> None:
-        self.view.board_canvas.flip_board(want_upside_down)
+        self.board_canvas.flip_board(want_upside_down)
         return
 
     def refresh_move_list(self) -> None:
@@ -42,21 +46,21 @@ class MainWindowViewController:
         return
 
     def disable_problem_list_input(self) -> None:
-        self.view.problem_list_pane.tvwfrm_problems.disable_input()
+        self.problems_view.disable_input()
         return
 
     def enable_problem_list_input(self) -> None:
-        self.view.problem_list_pane.tvwfrm_problems.enable_input()
+        self.problems_view.enable_input()
         return
 
     def disable_move_input(self) -> None:
-        move_input_handler = self.view.board_canvas.move_input_handler
+        move_input_handler = self.board_canvas.move_input_handler
         if move_input_handler is not None:
             move_input_handler.disable()
         return
 
     def enable_move_input(self) -> None:
-        move_input_handler = self.view.board_canvas.move_input_handler
+        move_input_handler = self.board_canvas.move_input_handler
         if move_input_handler is not None:
             move_input_handler.enable()
         return
@@ -72,27 +76,27 @@ class MainWindowViewController:
         return
 
     def hide_solution(self) -> None:
-        self.view.lbl_solution.hide_solution()
+        self.solution_view.hide_solution()
         return
 
     def show_solution(self) -> None:
-        self.view.lbl_solution.show_solution()
+        self.solution_view.show_solution()
         return
 
     def toggle_solution(self, _event: Optional[tk.Event] = None) -> None:
-        self.view.lbl_solution.toggle_solution()
+        self.solution_view.toggle_solution()
         return
 
     def set_solution(self, solution_text: str) -> None:
-        self.view.lbl_solution.set_solution_text(solution_text)
+        self.solution_view.set_solution_text(solution_text)
         return
 
     def allow_only_pause_timer(self) -> None:
-        self.view.main_timer_view.allow_only_pause()
+        self.timer_view.allow_only_pause()
         return
 
     def allow_all_timer(self) -> None:
-        self.view.main_timer_view.allow_all()
+        self.timer_view.allow_all()
         return
 
     def set_btns_allow_abort_speedrun(self) -> None:
