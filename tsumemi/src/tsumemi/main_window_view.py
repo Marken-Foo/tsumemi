@@ -22,7 +22,12 @@ class MainWindowView(ttk.Frame):
         self.controller: RootController = root_controller
         # grid itself to the window it is in
         self.grid(row=0, column=0, sticky="NSEW", padx=10, pady=10)
-        self.pwn_main = tk.PanedWindow(self, orient="horizontal", sashrelief="groove", sashwidth=5)
+        self.pwn_main = tk.PanedWindow(
+            self,
+            orient="horizontal",
+            sashrelief="groove",
+            sashwidth=5
+        )
         self.pane_1 = ttk.Frame(self.pwn_main)
         self.pane_2 = ttk.Frame(self.pwn_main)
         self.pane_3 = ttk.Frame(self.pwn_main)
@@ -72,7 +77,7 @@ class MainWindowView(ttk.Frame):
         self.pane_2.grid_columnconfigure(0, weight=1)
         self.pane_2.grid_rowconfigure(0, weight=4)
         self.pane_2.grid_rowconfigure(1, weight=1)
-        self.pane_2.grid_rowconfigure(2, weight=1)
+        self.pane_2.grid_rowconfigure(2, weight=0)
         self.board_frame.grid(row=0, column=0, sticky="NSEW", padx=5, pady=5)
         self.lbl_solution.grid(row=1, column=0, sticky="W", padx=5, pady=5)
         self.nav_control_pane.grid(row=2, column=0, sticky="NSEW")
@@ -92,21 +97,11 @@ class MainWindowView(ttk.Frame):
             .main_problem_list
             .make_problem_list_pane(parent=self.pane_3)
         )
-        self.speedrun_frame = ttk.Frame(self.pane_3)
-        self.btn_speedrun: ttk.Button = ttk.Button(
-            self.speedrun_frame,
-            text="Start speedrun",
-            command=self.controller.start_speedrun
+        self.speedrun_frame = SpeedrunFrame(
+            self.pane_3,
+            self.controller.start_speedrun,
+            self.controller.abort_speedrun,
         )
-        self.btn_abort_speedrun: ttk.Button = ttk.Button(
-            self.speedrun_frame,
-            text="Abort speedrun",
-            command=self.controller.abort_speedrun
-        )
-        self.btn_speedrun.grid(row=0, column=0)
-        self.btn_abort_speedrun.grid(row=0, column=1)
-        self.btn_abort_speedrun.config(state="disabled")
-
         self.pane_3.grid_columnconfigure(0, weight=1)
         self.pane_3.grid_rowconfigure(0, weight=4)
         self.pane_3.grid_rowconfigure(1, weight=1)
@@ -156,12 +151,20 @@ class MainWindowView(ttk.Frame):
         self.lbl_solution.show_solution()
         return
 
-    def toggle_solution(self, event: Optional[tk.Event] = None) -> None:
+    def toggle_solution(self, _event: Optional[tk.Event] = None) -> None:
         self.lbl_solution.toggle_solution()
         return
 
     def set_solution(self, solution_text: str) -> None:
         self.lbl_solution.set_solution_text(solution_text)
+        return
+
+    def set_btns_allow_abort_speedrun(self) -> None:
+        self.speedrun_frame.allow_abort_speedrun()
+        return
+
+    def set_btns_allow_start_speedrun(self) -> None:
+        self.speedrun_frame.allow_start_speedrun()
         return
 
     def make_nav_pane_normal(self, parent: tk.Widget) -> ttk.Frame:
@@ -214,11 +217,46 @@ class MainWindowView(ttk.Frame):
         return
 
 
+class SpeedrunFrame(ttk.Frame):
+    """Frame containing speedrun controls.
+    """
+    def __init__(self,
+            parent: tk.Widget,
+            start_speedrun: Callable[[], None],
+            abort_speedrun: Callable[[], None],
+        ) -> None:
+        ttk.Frame.__init__(self, parent)
+        self.btn_speedrun: ttk.Button = ttk.Button(
+            self,
+            text="Start speedrun",
+            command=start_speedrun
+        )
+        self.btn_abort_speedrun: ttk.Button = ttk.Button(
+            self,
+            text="Abort speedrun",
+            command=abort_speedrun
+        )
+        self.btn_speedrun.grid(row=0, column=0)
+        self.btn_abort_speedrun.grid(row=0, column=1)
+        self.btn_abort_speedrun.config(state="disabled")
+        return
+
+    def allow_start_speedrun(self):
+        self.btn_speedrun.config(state="normal")
+        self.btn_abort_speedrun.config(state="disabled")
+        return
+
+    def allow_abort_speedrun(self):
+        self.btn_speedrun.config(state="disabled")
+        self.btn_abort_speedrun.config(state="normal")
+        return
+
+
 class SolutionLabel(tk.Label):
     """Label to display, show, and hide problem solutions.
     """
     def __init__(self, parent: tk.Widget, *args: Any, **kwargs: Any) -> None:
-        super().__init__(parent, *args, **kwargs)
+        tk.Label.__init__(self, parent, *args, **kwargs)
         self.is_solution_shown: bool = True
         self.solution_text: str = "Open a folder of problems to display."
         self.textvar: tk.StringVar = tk.StringVar(value=self.solution_text)
@@ -244,7 +282,7 @@ class SolutionLabel(tk.Label):
         self.is_solution_shown = True
         return
 
-    def toggle_solution(self, event: Optional[tk.Event] = None) -> None:
+    def toggle_solution(self, _event: Optional[tk.Event] = None) -> None:
         if self.is_solution_shown:
             self.hide_solution()
         else:

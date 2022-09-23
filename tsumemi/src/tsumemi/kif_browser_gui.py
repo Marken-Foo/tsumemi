@@ -191,16 +191,18 @@ class RootController(evt.IObserver):
     #=== Speedrun controller commands
     def start_speedrun(self) -> None:
         self.speedrun_controller.start_speedrun()
-        self.mainframe.btn_speedrun.config(state="disabled")
-        self.mainframe.btn_abort_speedrun.config(state="normal")
+        self.mainframe.set_btns_allow_abort_speedrun()
+        # self.mainframe.btn_speedrun.config(state="disabled")
+        # self.mainframe.btn_abort_speedrun.config(state="normal")
         self.bindings.unbind_shortcuts(self.root, self.bindings.FREE_SHORTCUTS)
         return
 
     def abort_speedrun(self) -> None:
         self.speedrun_controller.abort_speedrun()
         self.update_nav_control_pane(self.mainframe.make_nav_pane_normal)
-        self.mainframe.btn_speedrun.config(state="normal")
-        self.mainframe.btn_abort_speedrun.config(state="disabled")
+        self.mainframe.set_btns_allow_start_speedrun()
+        # self.mainframe.btn_speedrun.config(state="normal")
+        # self.mainframe.btn_abort_speedrun.config(state="disabled")
         self.bindings.bind_shortcuts(self.root, self.bindings.FREE_SHORTCUTS)
         return
 
