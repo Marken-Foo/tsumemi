@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import functools
 import tkinter as tk
 
 from tkinter import font, ttk
@@ -110,45 +111,17 @@ class MainWindowView(ttk.Frame):
         self.speedrun_frame.grid(row=2, column=0)
         return
 
-    def _make_nav_pane_normal(self, parent: tk.Widget) -> ttk.Frame:
-        nav = ttk.Frame(parent)
-        btn_prev = ttk.Button(nav,
-            text="< Prev",
-            command=self.controller.go_prev_file
-        )
-        btn_prev.grid(
-            row=0, column=0, sticky="E",
-            padx=5, pady=5
-        )
-        btn_toggle_solution = ttk.Button(nav,
-            text="Show/hide solution",
-            command=self.viewcon.toggle_solution
-        )
-        btn_toggle_solution.grid(
-            row=0, column=1, sticky="S",
-            padx=5, pady=5
-        )
-        btn_next = ttk.Button(nav,
-            text="Next >",
-            command=self.controller.go_next_file
-        )
-        btn_next.grid(
-            row=0, column=2, sticky="W",
-            padx=5, pady=5
-        )
-        return nav
-
     def update_nav_control_pane(self,
             nav_pane_constructor: Optional[Callable[[tk.Widget], ttk.Frame]] = None
         ) -> None:
-        """Sets the nav control pane to a new instance, created by
-        the constructor passed in. If no controller is passed in,
-        defaults to a normal nav pane.
-        """
         if nav_pane_constructor is None:
-            nav_pane_constructor = self._make_nav_pane_normal
-        new_nav_controls = nav_pane_constructor(self.frm_nav_control)
-        self.frm_nav_control.set_new_nav_controls(new_nav_controls)
+            nav_pane_constructor = functools.partial(
+                self.frm_nav_control.make_nav_pane_normal,
+                callable_prev=self.controller.go_prev_file,
+                callable_toggle_solution=self.viewcon.toggle_solution,
+                callable_next=self.controller.go_next_file,
+            )
+        self.frm_nav_control.set_new_nav_controls(nav_pane_constructor)
         return
 
 
@@ -172,9 +145,16 @@ class NavControlFrame(ttk.Frame):
         self.regrid()
         return
 
-    def set_new_nav_controls(self, pane: ttk.Frame) -> None:
+    def set_new_nav_controls(self,
+            nav_pane_constructor: Callable[[tk.Widget], ttk.Frame]
+        ) -> None:
+        """Sets the nav control pane to a new instance, created by
+        the constructor passed in. If no controller is passed in,
+        defaults to a normal nav pane.
+        """
+        new_nav_controls = nav_pane_constructor(self)
         self.nav_controls.grid_forget()
-        self.nav_controls = pane
+        self.nav_controls = new_nav_controls
         self.regrid()
         return
 
@@ -182,6 +162,39 @@ class NavControlFrame(ttk.Frame):
         self.nav_controls.grid(row=0, column=0)
         self.chk_upside_down.grid(row=1, column=0)
         return
+
+    def make_nav_pane_normal(self,
+            parent: tk.Widget,
+            callable_prev: Callable[[], None],
+            callable_toggle_solution: Callable[[], None],
+            callable_next: Callable[[], None],
+        ) -> ttk.Frame:
+        nav = ttk.Frame(parent)
+        btn_prev = ttk.Button(nav,
+            text="< Prev",
+            command=callable_prev,
+        )
+        btn_toggle_solution = ttk.Button(nav,
+            text="Show/hide solution",
+            command=callable_toggle_solution,
+        )
+        btn_next = ttk.Button(nav,
+            text="Next >",
+            command=callable_next,
+        )
+        btn_prev.grid(
+            row=0, column=0, sticky="E",
+            padx=5, pady=5,
+        )
+        btn_toggle_solution.grid(
+            row=0, column=1, sticky="S",
+            padx=5, pady=5,
+        )
+        btn_next.grid(
+            row=0, column=2, sticky="W",
+            padx=5, pady=5,
+        )
+        return nav
 
 
 class SpeedrunFrame(ttk.Frame):
