@@ -5,7 +5,9 @@ from typing import TYPE_CHECKING
 from tsumemi.src.shogi.position import Position
 
 if TYPE_CHECKING:
+    import tkinter as tk
     from tkinter import ttk
+    from typing import Optional
     from tsumemi.src.tsumemi.notation_writer import NotationWriter
     from tsumemi.src.tsumemi.game.game_model import GameModel
 
@@ -59,10 +61,10 @@ class MovelistViewModel:
         self.game.go_to_end()
         return
 
-    def go_next(self) -> None:
+    def go_next(self, _event: Optional[tk.Event] = None) -> None:
         self.game.go_next_move()
         return
 
-    def go_prev(self) -> None:
+    def go_prev(self, _event: Optional[tk.Event] = None) -> None:
         self.game.go_prev_move()
         return

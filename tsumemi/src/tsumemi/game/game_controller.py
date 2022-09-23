@@ -8,7 +8,7 @@ import tsumemi.src.tsumemi.move_input_handler as mih
 
 from tsumemi.src.shogi.game import Game
 from tsumemi.src.shogi.move import TerminationMove
-from tsumemi.src.tsumemi.game.game_model import GameModel, GameUpdateEvent
+from tsumemi.src.tsumemi.game.game_model import GameModel, GameStepEvent, GameUpdateEvent
 from tsumemi.src.tsumemi.game.game_nav_btns_view import GameNavButtonsFrame
 from tsumemi.src.tsumemi.game.game_navigation_view import NavigableGameFrame
 from tsumemi.src.tsumemi.movelist.movelist_controller import MovelistController
@@ -51,6 +51,9 @@ class GameController(evt.Emitter, evt.IObserver):
         """
         board_canvas = bc.BoardCanvas(
             parent, self.game.get_position(), skin_settings, bg="white"
+        )
+        board_canvas.add_callback(
+            GameStepEvent, board_canvas.set_and_draw_callback
         )
         board_canvas.add_callback(
             GameUpdateEvent, board_canvas.set_and_draw_callback

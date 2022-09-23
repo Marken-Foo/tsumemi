@@ -54,8 +54,8 @@ class SpeedrunController:
     def start_speedrun(self) -> None:
         self.target.go_to_file(idx=0)
         self.target.main_game.set_speedrun_mode()
-        self.target.mainframe.problem_list_pane.tvwfrm_problems.disable_input()
-        self.target.mainframe.main_timer_view.allow_only_pause()
+        self.target.main_viewcon.disable_problem_list_input()
+        self.target.main_viewcon.allow_only_pause_timer()
         self.target.main_timer.reset()
         self.start_timer()
         self.go_to_state("question")
@@ -63,10 +63,10 @@ class SpeedrunController:
 
     def abort_speedrun(self) -> None:
         self.stop_timer()
-        self.target.mainframe.main_timer_view.allow_all()
+        self.target.main_viewcon.allow_all_timer()
         self.target.main_game.set_free_mode()
         self.enable_move_navigation()
-        self.target.mainframe.problem_list_pane.tvwfrm_problems.enable_input()
+        self.target.main_viewcon.enable_problem_list_input()
         self.go_to_state("off")
         return
 
@@ -83,7 +83,7 @@ class SpeedrunController:
         return has_next
 
     def show_solution(self) -> None:
-        self.target.mainframe.show_solution()
+        self.target.main_viewcon.show_solution()
         return
 
     def start_timer(self) -> None:
@@ -111,21 +111,19 @@ class SpeedrunController:
         return
 
     def disable_solving(self) -> None:
-        self.target.mainframe.disable_move_input()
+        self.target.main_viewcon.disable_move_input()
         return
 
     def enable_solving(self) -> None:
-        self.target.mainframe.enable_move_input()
+        self.target.main_viewcon.enable_move_input()
         return
 
     def disable_move_navigation(self) -> None:
-        self.target.mainframe.movelist_frame.disable_display()
-        self.target.mainframe.board_frame.disable_buttons()
+        self.target.main_viewcon.disable_move_navigation()
         return
 
     def enable_move_navigation(self) -> None:
-        self.target.mainframe.movelist_frame.enable_display()
-        self.target.mainframe.board_frame.enable_buttons()
+        self.target.main_viewcon.enable_move_navigation()
         return
 
     def make_nav_pane_question(self, parent: tk.Widget) -> ttk.Frame:

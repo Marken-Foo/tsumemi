@@ -196,6 +196,13 @@ class BoardArtist:
         self.highlight_layer.update_tile(canvas, img, row_idx, col_idx)
         return
 
+    def highlight_square_2(self,
+            canvas: BoardCanvas, row_idx: int, col_idx: int
+        ) -> None:
+        img = self.board_img_cache.get_dict()["highlight2"]
+        self.highlight_layer.update_tile(canvas, img, row_idx, col_idx)
+        return
+
     def _draw_board_base_layer(self, canvas: BoardCanvas) -> int:
         id_: int = canvas.create_rectangle(
             *canvas.idxs_to_xy(0, 0),

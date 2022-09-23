@@ -19,7 +19,7 @@ import tsumemi.src.tsumemi.timer_controller as timecon
 
 from tsumemi.src.shogi.parsing import kif
 from tsumemi.src.tsumemi import files, skins, timer
-from tsumemi.src.tsumemi.main_window_view import MainWindowView
+from tsumemi.src.tsumemi.views import main_window_view_controller as mainviewcon
 from tsumemi.src.tsumemi.menubar import Menubar
 from tsumemi.src.tsumemi.statistics_window import StatisticsDialog
 
@@ -67,8 +67,7 @@ class RootController(evt.IObserver):
 
         self.menubar: Menubar = Menubar(parent=self.root, controller=self)
 
-        self.mainframe: MainWindowView = MainWindowView(root, self)
-        self.mainframe.grid_items_normal()
+        self.main_viewcon = mainviewcon.MainWindowViewController(root, self)
 
         # Keyboard shortcuts
         self.bindings = Bindings(self)
@@ -111,10 +110,10 @@ class RootController(evt.IObserver):
         """Display the given problem in the GUI and enable move input.
         """
         self._read_problem(prob)
-        self.mainframe.refresh_main_board()
-        self.mainframe.refresh_move_list()
-        self.mainframe.enable_move_input()
-        self.mainframe.hide_solution()
+        self.main_viewcon.refresh_main_board()
+        self.main_viewcon.refresh_move_list()
+        self.main_viewcon.enable_move_input()
+        self.main_viewcon.hide_solution()
         self.root.title("tsumemi - " + str(prob.filepath))
         return
 
@@ -124,7 +123,7 @@ class RootController(evt.IObserver):
         game = self.game_from_problem(prob)
         if game is None:
             return
-        self.mainframe.set_solution(self.solution_str_from_game(game))
+        self.main_viewcon.set_solution(self.solution_str_from_game(game))
         self.main_game.set_game(game)
         return
 
@@ -139,10 +138,10 @@ class RootController(evt.IObserver):
 
     def refresh_solution_text(self) -> None:
         game = self.main_game.game.game
-        self.mainframe.set_solution(self.solution_str_from_game(game))
+        self.main_viewcon.set_solution(self.solution_str_from_game(game))
         # force view to update
-        self.mainframe.toggle_solution()
-        self.mainframe.toggle_solution()
+        self.main_viewcon.toggle_solution()
+        self.main_viewcon.toggle_solution()
         return
 
     def go_next_file(self, _event: Optional[tk.Event] = None) -> bool:
@@ -192,36 +191,34 @@ class RootController(evt.IObserver):
     #=== Speedrun controller commands
     def start_speedrun(self) -> None:
         self.speedrun_controller.start_speedrun()
-        self.mainframe.btn_speedrun.config(state="disabled")
-        self.mainframe.btn_abort_speedrun.config(state="normal")
+        self.main_viewcon.set_btns_allow_abort_speedrun()
         self.bindings.unbind_shortcuts(self.root, self.bindings.FREE_SHORTCUTS)
         return
 
     def abort_speedrun(self) -> None:
         self.speedrun_controller.abort_speedrun()
-        self.update_nav_control_pane(self.mainframe.make_nav_pane_normal)
-        self.mainframe.btn_speedrun.config(state="normal")
-        self.mainframe.btn_abort_speedrun.config(state="disabled")
+        self.main_viewcon.set_normal_nav_pane()
+        self.main_viewcon.set_btns_allow_start_speedrun()
         self.bindings.bind_shortcuts(self.root, self.bindings.FREE_SHORTCUTS)
         return
 
     def update_nav_control_pane(self,
             nav_pane_constructor: Callable[[tk.Widget], ttk.Frame]
         ) -> None:
-        self.mainframe.update_nav_control_pane(nav_pane_constructor)
+        self.main_viewcon.set_nav_pane(nav_pane_constructor)
         return
 
     #=== GUI display methods
     def apply_skin_settings(self, settings: skins.SkinSettings) -> None:
         self.skin_settings = settings
-        self.mainframe.apply_skins(settings)
+        self.main_viewcon.apply_skins(settings)
         return
 
     def apply_notation_settings(self, move_writer: notation.AbstractMoveWriter
         ) -> None:
         self.notation_writer.change_move_writer(move_writer)
         self.refresh_solution_text()
-        self.mainframe.movelist_frame.refresh_content()
+        self.main_viewcon.refresh_move_list()
         return
 
     #=== Observer callbacks
@@ -249,8 +246,8 @@ class Bindings:
         }
 
         self.FREE_SHORTCUTS = {
-            "<Key-h>": self.controller.mainframe.toggle_solution,
-            "<Key-H>": self.controller.mainframe.toggle_solution,
+            "<Key-h>": self.controller.main_viewcon.toggle_solution,
+            "<Key-H>": self.controller.main_viewcon.toggle_solution,
             "<Key-Left>": self.controller.go_prev_file,
             "<Key-Right>": self.controller.go_next_file,
         }

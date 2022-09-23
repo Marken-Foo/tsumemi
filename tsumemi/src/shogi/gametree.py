@@ -39,6 +39,9 @@ class MoveNode:
     def is_leaf(self) -> bool:
         return not bool(self.variations)
 
+    def has_variations(self) -> bool:
+        return len(self.variations) > 1
+
     def add_move(self, move: Move) -> MoveNode:
         """Add a new node to the movetree. If move already exists as a
         variation, don't create a new node but return the existing

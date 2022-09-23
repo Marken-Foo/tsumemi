@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 import tsumemi.src.tsumemi.event as evt
 
 from tsumemi.src.tsumemi import utils
-from tsumemi.src.tsumemi.game.game_model import GameUpdateEvent
+from tsumemi.src.tsumemi.game.game_model import GameStepEvent, GameUpdateEvent
 from tsumemi.src.tsumemi.game.game_nav_btns_view import GameNavButtonsFrame
 
 if TYPE_CHECKING:
@@ -23,6 +23,10 @@ class MovelistFrame(ttk.Frame):
         self.frm_nav = GameNavButtonsFrame(self)
         self.bind_buttons()
 
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_rowconfigure(1, weight=0)
+        self.grid_rowconfigure(2, weight=0)
+        self.grid_columnconfigure(0, weight=1)
         self.tvwfrm_movelist.grid(row=0, column=0, sticky="NSEW")
         self.frm_nav.grid(row=1, column=0, sticky="")
         self.tvwfrm_variations.grid(row=2, column=0)
@@ -60,7 +64,7 @@ class MovelistFrame(ttk.Frame):
 class MovelistTreeviewFrame(utils.ScrollableTreeviewFrame, evt.IObserver):
     def __init__(self, parent: tk.Widget, viewmodel: MovelistViewModel) -> None:
         utils.ScrollableTreeviewFrame.__init__(
-            self, parent, show="headings", selectmode="browse"
+            self, parent, show="headings", selectmode="none"
         )
         evt.IObserver.__init__(self)
         self.viewmodel = viewmodel
@@ -73,8 +77,12 @@ class MovelistTreeviewFrame(utils.ScrollableTreeviewFrame, evt.IObserver):
         self.tvw.heading("alternative", text="")
         self.tvw.column("alternative", width=10)
 
-        self.set_callbacks({GameUpdateEvent: self.refresh_view})
+        self.set_callbacks({
+            GameStepEvent: self.step_view,
+            GameUpdateEvent: self.refresh_view,
+        })
         self._bind_click()
+        self._bind_focus()
         return
 
     def _bind_click(self) -> None:
@@ -91,15 +99,42 @@ class MovelistTreeviewFrame(utils.ScrollableTreeviewFrame, evt.IObserver):
         self.tvw.unbind("<Button-1>")
         return
 
+    def _bind_up_down(self, _event: Optional[tk.Event] = None) -> None:
+        self.tvw.bind("<Key-Up>", self.viewmodel.go_prev)
+        self.tvw.bind("<Key-Down>", self.viewmodel.go_next)
+        return
+
+    def _unbind_up_down(self, _event: Optional[tk.Event] = None) -> None:
+        self.tvw.unbind("<Key-Up>")
+        self.tvw.unbind("<Key-Down>")
+        return
+
+    def _bind_focus(self) -> None:
+        self.tvw.bind("<FocusIn>", self._bind_up_down)
+        self.tvw.bind("<FocusOut>", self._unbind_up_down)
+        return
+
+    def _unbind_focus(self) -> None:
+        self.tvw.unbind("<FocusIn>")
+        self.tvw.unbind("<FocusOut>")
+        return
+
     def set_focus(self, iid: str) -> None:
         self.tvw.focus(iid)
         self.tvw.selection_set(iid)
         self.tvw.see(iid)
         return
 
-    def refresh_view(self, _event: Optional[tk.Event] = None) -> None:
+    def refresh_view(self, _event: Optional[GameUpdateEvent] = None) -> None:
         self.clear_treeview()
         self.viewmodel.populate_treeview(self.tvw)
+        iid = str(self.viewmodel.game.game.curr_node.id)
+        if self.tvw.exists(iid):
+            self.set_focus(iid)
+        self.refresh_vsb()
+        return
+
+    def step_view(self, _event: Optional[GameStepEvent] = None) -> None:
         iid = str(self.viewmodel.game.game.curr_node.id)
         if self.tvw.exists(iid):
             self.set_focus(iid)
@@ -109,12 +144,15 @@ class MovelistTreeviewFrame(utils.ScrollableTreeviewFrame, evt.IObserver):
     def enable(self) -> None:
         self.set_callbacks({GameUpdateEvent: self.refresh_view})
         self._bind_click()
+        self._bind_focus()
         self.refresh_view()
         return
 
     def disable(self) -> None:
         self.set_callbacks({})
         self._unbind_click()
+        self._unbind_up_down()
+        self._unbind_focus()
         self.clear_treeview()
         self.tvw.insert("", "end", values=("", "Hidden", ""))
         return
@@ -131,7 +169,10 @@ class VariationTreeviewFrame(utils.ScrollableTreeviewFrame, evt.IObserver):
         self.tvw.heading("priority", text="")
         self.tvw.column("priority", width=10)
         self.tvw.heading("move", text="Variation")
-        self.set_callbacks({GameUpdateEvent: self.refresh_view})
+        self.set_callbacks({
+            GameUpdateEvent: self.refresh_view,
+            GameStepEvent: self.refresh_view,
+        })
         self._bind_click()
         return
 
@@ -149,13 +190,16 @@ class VariationTreeviewFrame(utils.ScrollableTreeviewFrame, evt.IObserver):
         self.tvw.unbind("<Button-1>")
         return
 
-    def refresh_view(self, _event: Optional[tk.Event] = None) -> None:
+    def refresh_view(self, _event: Optional[evt.Event] = None) -> None:
         self.clear_treeview()
         self.viewmodel.populate_variation_treeview(self.tvw)
         return
 
     def enable(self) -> None:
-        self.set_callbacks({GameUpdateEvent: self.refresh_view})
+        self.set_callbacks({
+            GameStepEvent: self.refresh_view,
+            GameUpdateEvent: self.refresh_view,
+        })
         self._bind_click()
         self.refresh_view()
         return

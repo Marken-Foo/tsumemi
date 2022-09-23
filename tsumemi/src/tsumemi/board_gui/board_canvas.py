@@ -18,11 +18,11 @@ from tsumemi.src.tsumemi.board_gui.komadai_artist import KomadaiArtist
 
 if TYPE_CHECKING:
     from PIL import ImageTk
-    from typing import Any, Optional, Tuple
+    from typing import Any, Optional, Tuple, Union
     from tsumemi.src.shogi.position import Position
     from tsumemi.src.shogi.position_internals import HandRepresentation
     from tsumemi.src.tsumemi.board_gui.koma_artist import AbstractKomaArtist
-    from tsumemi.src.tsumemi.game.game_model import GameUpdateEvent
+    from tsumemi.src.tsumemi.game.game_model import GameStepEvent, GameUpdateEvent
     from tsumemi.src.tsumemi.move_input_handler import MoveInputHandler
 
 
@@ -42,9 +42,10 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
     """
     def __init__(self, parent: tk.Widget, position: Position,
             skin_settings: SkinSettings,
+            *args: Any,
             width: int = DEFAULT_CANVAS_WIDTH,
             height: int = DEFAULT_CANVAS_HEIGHT,
-            *args: Any, **kwargs: Any
+            **kwargs: Any,
         ) -> None:
         """Initialise self with reference to a Game, allowing self to
         display board positions from the Game (purely a view).
@@ -71,9 +72,17 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
         # Hand pieces would be [0, KomaType]
         self.highlighted_sq = Square.NONE
         self.highlighted_ktype = KomaType.NONE
+        # Last move highlighted tiles
+        self.last_move_start_sq = Square.NONE
+        self.last_move_end_sq = Square.NONE
         return
 
-    def set_and_draw_callback(self, event: GameUpdateEvent) -> None:
+    def set_and_draw_callback(self,
+            event: Union[GameStepEvent, GameUpdateEvent]
+        ) -> None:
+        last_move = event.game.get_last_move()
+        self.last_move_start_sq = last_move.start_sq
+        self.last_move_end_sq = last_move.end_sq
         self.set_position(event.game.get_position())
         return
 
@@ -126,6 +135,8 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
             self._highlight_hand_koma(ktype)
         else:
             self._highlight_square(sq)
+        # Kludge fix for _unhighlight_square() unhighlighting last move
+        self._highlight_last_move() 
         return
 
     def draw(self) -> None:
@@ -181,9 +192,10 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
             sente=south_side.is_sente(),
             align="bottom"
         )
-        # set focus
+        # set focus and highlights
         self.set_focus(self.highlighted_sq)
         self.board_artist.lift_click_layer(self)
+        self._highlight_last_move()
         return
 
     def _draw_canvas_base_layer(self) -> int:
@@ -196,7 +208,7 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
             x: float,
             y: float,
             hand: HandRepresentation,
-            sente: bool = True, 
+            sente: bool = True,
             align: str = "top",
         ) -> None:
         """Draw komadai with pieces given by hand argument, anchored
@@ -381,4 +393,18 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
                 image=self.komadai_img_cache.get_dict()["highlight"]
             )
         self.highlighted_sq = Square.HAND
+        return
+
+    def _highlight_last_move_square(self, sq: Square) -> None:
+        if sq == Square.HAND:
+            return
+        if sq == Square.NONE:
+            return
+        col_idx, row_idx = self._sq_to_idxs(sq)
+        self.board_artist.highlight_square_2(self, row_idx, col_idx)
+        return
+
+    def _highlight_last_move(self) -> None:
+        self._highlight_last_move_square(self.last_move_start_sq)
+        self._highlight_last_move_square(self.last_move_end_sq)
         return

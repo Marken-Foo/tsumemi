@@ -59,15 +59,6 @@ class ProblemsTreeviewFrame(utils.ScrollableTreeviewFrame, evt.IObserver):
         self._bind_focus()
         return
 
-    def _bind_click(self) -> None:
-        def _click_to_highlight(event: tk.Event) -> None:
-            iid = self._get_iid_on_click(event)
-            if iid:
-                self.set_focus(iid)
-            return
-        self.tvw.bind("<Button-1>", _click_to_highlight)
-        return
-
     def _bind_double_click(self) -> None:
         # Bind double click to go to problem
         def _click_to_prob(event: tk.Event) -> None:
@@ -131,7 +122,6 @@ class ProblemsTreeviewFrame(utils.ScrollableTreeviewFrame, evt.IObserver):
     def enable_input(self) -> None:
         self._bind_heading_commands()
         self._bind_double_click()
-        self._bind_up_down()
         self._bind_focus()
         return
 
@@ -156,8 +146,7 @@ class ProblemsTreeviewFrame(utils.ScrollableTreeviewFrame, evt.IObserver):
         if idx is None:
             return
         id_ = self._idx_to_iid(idx)
-        self.tvw.focus(id_)
-        self.tvw.selection_set(id_)
+        self.set_focus(id_)
         return
 
     def refresh_view(self, event: plist.ProbListEvent) -> None:
@@ -203,7 +192,9 @@ class ProblemListPane(ttk.Frame):
             self, text="Randomise problems",
             command=viewmodel.randomise
         )
-
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_rowconfigure(1, weight=0)
         self.tvwfrm_problems.grid(row=0, column=0, sticky="NSEW")
         self.btn_randomise.grid(row=1, column=0)
         return

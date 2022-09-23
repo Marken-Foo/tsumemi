@@ -39,6 +39,11 @@ class Game:
         self.position.reset()
         return
 
+    def get_last_move(self) -> Move:
+        """Returns the move leading to the current game state.
+        """
+        return self.curr_node.move
+
     def add_move(self, move: Move) -> None:
         """Execute the given move and add it to the movetree if it
         doesn't already exist.
@@ -65,19 +70,22 @@ class Game:
     def is_end(self) -> bool:
         return self.curr_node.is_leaf()
 
+    def has_variations(self) -> bool:
+        return self.curr_node.has_variations()
+
     def get_mainline_move(self) -> Move:
         next_node = self.curr_node.next()
         return next_node.move
 
-    def go_next_move(self) -> bool:
+    def go_next_move(self) -> None:
         """Go one move further into the game, following the mainline.
         """
         next_node = self.curr_node.next()
         if next_node.is_null():
-            return False
+            return
         self.position.make_move(next_node.move)
         self.curr_node = next_node
-        return True
+        return
 
     def go_prev_move(self) -> None:
         """Step one move back in the game.
@@ -102,9 +110,8 @@ class Game:
     def go_to_end(self) -> None:
         """Go to the end of the current branch.
         """
-        has_next = True
-        while has_next:
-            has_next = self.go_next_move()
+        while not self.is_end():
+            self.go_next_move()
         return
 
     def go_to_id(self, _id: int) -> None:
