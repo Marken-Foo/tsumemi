@@ -72,11 +72,17 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
         # Hand pieces would be [0, KomaType]
         self.highlighted_sq = Square.NONE
         self.highlighted_ktype = KomaType.NONE
+        # Last move highlighted tiles
+        self.last_move_start_sq = Square.NONE
+        self.last_move_end_sq = Square.NONE
         return
 
     def set_and_draw_callback(self,
             event: Union[GameStepEvent, GameUpdateEvent]
         ) -> None:
+        last_move = event.game.get_last_move()
+        self.last_move_start_sq = last_move.start_sq
+        self.last_move_end_sq = last_move.end_sq
         self.set_position(event.game.get_position())
         return
 
@@ -129,6 +135,8 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
             self._highlight_hand_koma(ktype)
         else:
             self._highlight_square(sq)
+        # Kludge fix for _unhighlight_square() unhighlighting last move
+        self._highlight_last_move() 
         return
 
     def draw(self) -> None:
@@ -184,9 +192,10 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
             sente=south_side.is_sente(),
             align="bottom"
         )
-        # set focus
+        # set focus and highlights
         self.set_focus(self.highlighted_sq)
         self.board_artist.lift_click_layer(self)
+        self._highlight_last_move()
         return
 
     def _draw_canvas_base_layer(self) -> int:
@@ -384,4 +393,18 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
                 image=self.komadai_img_cache.get_dict()["highlight"]
             )
         self.highlighted_sq = Square.HAND
+        return
+
+    def _highlight_last_move_square(self, sq: Square) -> None:
+        if sq == Square.HAND:
+            return
+        if sq == Square.NONE:
+            return
+        col_idx, row_idx = self._sq_to_idxs(sq)
+        self.board_artist.highlight_square_2(self, row_idx, col_idx)
+        return
+
+    def _highlight_last_move(self) -> None:
+        self._highlight_last_move_square(self.last_move_start_sq)
+        self._highlight_last_move_square(self.last_move_end_sq)
         return

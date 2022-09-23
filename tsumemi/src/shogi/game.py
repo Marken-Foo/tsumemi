@@ -39,6 +39,11 @@ class Game:
         self.position.reset()
         return
 
+    def get_last_move(self) -> Move:
+        """Returns the move leading to the current game state.
+        """
+        return self.curr_node.move
+
     def add_move(self, move: Move) -> None:
         """Execute the given move and add it to the movetree if it
         doesn't already exist.

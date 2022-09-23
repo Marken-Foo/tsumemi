@@ -19,7 +19,8 @@ logger = logging.getLogger(__name__)
 
 
 IMG_TRANSPARENT = Image.new("RGBA", (1, 1), "#00000000")
-IMG_HIGHLIGHT = Image.new("RGBA", (1, 1), "#99ff0066")
+IMG_HIGHLIGHT = Image.new("RGBA", (1, 1), "#99ff0044")
+IMG_HIGHLIGHT_2 = Image.new("RGBA", (1, 1), "#3399ff66")
 IMG_SEMI_TRANSPARENT = Image.new("RGBA", (1, 1), "#FFFFFF99")
 
 
@@ -191,6 +192,7 @@ class BoardImgManager(ImgManager):
         }
         self.imgdicts["tile_sized"].add_image("transparent", IMG_TRANSPARENT)
         self.imgdicts["tile_sized"].add_image("highlight", IMG_HIGHLIGHT)
+        self.imgdicts["tile_sized"].add_image("highlight2", IMG_HIGHLIGHT_2)
         self.imgdicts["board_sized"].add_image(
             "semi-transparent", IMG_SEMI_TRANSPARENT
         )

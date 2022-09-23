@@ -68,6 +68,9 @@ class GameModel(evt.Emitter):
         self._notify_observers(GameUpdateEvent(self))
         return
 
+    def get_last_move(self) -> Move:
+        return self.game.get_last_move()
+
     def add_move(self, move: Move) -> None:
         self.game.add_move(move)
         self._notify_observers(GameUpdateEvent(self))
