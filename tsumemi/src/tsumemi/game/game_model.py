@@ -20,6 +20,13 @@ class GameUpdateEvent(evt.Event):
         return
 
 
+class GameStepEvent(evt.Event):
+    def __init__(self, game: GameModel) -> None:
+        evt.Event.__init__(self)
+        self.game = game
+        return
+
+
 class GameModel(evt.Emitter):
     """Wrapper for a Game.
     """
@@ -45,12 +52,15 @@ class GameModel(evt.Emitter):
 
     def go_next_move(self) -> None:
         self.game.go_next_move()
-        self._notify_observers(GameUpdateEvent(self))
+        self._notify_observers(GameStepEvent(self))
         return
 
     def go_prev_move(self) -> None:
         self.game.go_prev_move()
-        self._notify_observers(GameUpdateEvent(self))
+        if self.game.has_variations():
+            self._notify_observers(GameUpdateEvent(self))
+        else:
+            self._notify_observers(GameStepEvent(self))
         return
 
     def go_to_id(self, id_: int) -> None:

@@ -18,11 +18,11 @@ from tsumemi.src.tsumemi.board_gui.komadai_artist import KomadaiArtist
 
 if TYPE_CHECKING:
     from PIL import ImageTk
-    from typing import Any, Optional, Tuple
+    from typing import Any, Optional, Tuple, Union
     from tsumemi.src.shogi.position import Position
     from tsumemi.src.shogi.position_internals import HandRepresentation
     from tsumemi.src.tsumemi.board_gui.koma_artist import AbstractKomaArtist
-    from tsumemi.src.tsumemi.game.game_model import GameUpdateEvent
+    from tsumemi.src.tsumemi.game.game_model import GameStepEvent, GameUpdateEvent
     from tsumemi.src.tsumemi.move_input_handler import MoveInputHandler
 
 
@@ -42,9 +42,10 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
     """
     def __init__(self, parent: tk.Widget, position: Position,
             skin_settings: SkinSettings,
+            *args: Any,
             width: int = DEFAULT_CANVAS_WIDTH,
             height: int = DEFAULT_CANVAS_HEIGHT,
-            *args: Any, **kwargs: Any
+            **kwargs: Any,
         ) -> None:
         """Initialise self with reference to a Game, allowing self to
         display board positions from the Game (purely a view).
@@ -73,7 +74,9 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
         self.highlighted_ktype = KomaType.NONE
         return
 
-    def set_and_draw_callback(self, event: GameUpdateEvent) -> None:
+    def set_and_draw_callback(self,
+            event: Union[GameStepEvent, GameUpdateEvent]
+        ) -> None:
         self.set_position(event.game.get_position())
         return
 
@@ -196,7 +199,7 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
             x: float,
             y: float,
             hand: HandRepresentation,
-            sente: bool = True, 
+            sente: bool = True,
             align: str = "top",
         ) -> None:
         """Draw komadai with pieces given by hand argument, anchored
