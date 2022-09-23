@@ -123,7 +123,7 @@ class SolutionLabel(tk.Label):
     def __init__(self, parent: tk.Widget, *args: Any, **kwargs: Any) -> None:
         tk.Label.__init__(self, parent, *args, **kwargs)
         self.is_solution_shown: bool = True
-        self.solution_text: str = "Open a folder of problems to display."
+        self.solution_text: str = "\nOpen a folder of problems to display.\n"
         self.textvar: tk.StringVar = tk.StringVar(value=self.solution_text)
         self["textvariable"] = self.textvar
 

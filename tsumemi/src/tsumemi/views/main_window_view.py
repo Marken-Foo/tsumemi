@@ -36,13 +36,7 @@ class MainWindowView(ttk.Frame):
             sashrelief="groove",
             sashwidth=5
         )
-        self.pane_1 = ttk.Frame(self.pwn_main)
-        self.pane_2 = ttk.Frame(self.pwn_main)
         self.pane_3 = ttk.Frame(self.pwn_main)
-        self.pwn_main.add(self.pane_1, stretch="always")
-        self.pwn_main.add(self.pane_2, stretch="always")
-        self.pwn_main.add(self.pane_3, stretch="always")
-        self.pwn_main.grid(row=0, column=0, sticky="NSEW")
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
 
@@ -52,41 +46,47 @@ class MainWindowView(ttk.Frame):
             root_controller
             .main_game
             .movelist_controller
-            .make_movelist_view(self.pane_1)
+            .make_movelist_view(self.pwn_main)
         )
-        self.pane_1.grid_columnconfigure(0, weight=1)
-        self.pane_1.grid_rowconfigure(0, weight=1)
-        self.movelist_frame.grid(row=0, column=0, sticky="NSEW", padx=10, pady=10)
 
         # Pane 2
+        self.vpw_middle = tk.PanedWindow(
+            self.pwn_main,
+            orient="vertical",
+            sashrelief="groove",
+            sashwidth=5,
+        )
         self.board_frame: gamecon.NavigableGameFrame
         self.board_canvas: bc.BoardCanvas
         self.board_frame, self.board_canvas = (
             root_controller
             .main_game
             .make_navigable_view(
-                parent=self.pane_2, skin_settings=root_controller.skin_settings
+                parent=self.vpw_middle,
+                skin_settings=root_controller.skin_settings,
             )
         )
+        # frame to hold bottom two elements
+        frm_mid_bottom = ttk.Frame(self.vpw_middle)
         self.lbl_solution: SolutionLabel = SolutionLabel(
-            parent=self.pane_2,
-            height=3,
+            parent=frm_mid_bottom,
             justify="left",
             wraplength=600,
         )
         self.frm_nav_control = NavControlFrame(
-            self.pane_2,
+            frm_mid_bottom,
             self.viewcon.flip_main_board
         )
-        self.pane_2.grid_columnconfigure(0, weight=1)
-        self.pane_2.grid_rowconfigure(0, weight=4)
-        self.pane_2.grid_rowconfigure(1, weight=1)
-        self.pane_2.grid_rowconfigure(2, weight=0)
-        self.board_frame.grid(row=0, column=0, sticky="NSEW", padx=5, pady=5)
-        self.lbl_solution.grid(row=1, column=0, sticky="W", padx=5, pady=5)
-        self.frm_nav_control.grid(row=2, column=0, sticky="NSEW")
-        self.frm_nav_control.grid_columnconfigure(0, weight=1)
-        self.frm_nav_control.grid_rowconfigure(0, weight=1)
+        frm_mid_bottom.grid_columnconfigure(0, weight=1)
+        frm_mid_bottom.grid_rowconfigure(0, weight=1)
+        frm_mid_bottom.grid_rowconfigure(1, weight=0)
+        self.lbl_solution.grid(row=0, column=0, sticky="W", padx=5, pady=5)
+        self.frm_nav_control.grid(row=1, column=0)
+
+        self.vpw_middle.add(
+            self.board_frame, stretch="always", padx=5, pady=5
+        )
+        self.vpw_middle.add(frm_mid_bottom, stretch="always")
         self.update_nav_control_pane()
 
         # Pane 3
@@ -109,9 +109,21 @@ class MainWindowView(ttk.Frame):
         self.pane_3.grid_rowconfigure(0, weight=4)
         self.pane_3.grid_rowconfigure(1, weight=1)
         self.pane_3.grid_rowconfigure(2, weight=0)
-        self.problem_list_pane.grid(row=0, column=0, sticky="NSEW", padx=5, pady=5)
+        self.problem_list_pane.grid(
+            row=0, column=0,
+            sticky="NSEW", padx=5, pady=5
+        )
         self.main_timer_view.grid(row=1, column=0)
         self.speedrun_frame.grid(row=2, column=0)
+
+        # Final gridding of main panedwindow
+        self.pwn_main.add(
+            self.movelist_frame, stretch="always",
+            sticky="NSEW", padx=10, pady=10
+        )
+        self.pwn_main.add(self.vpw_middle, stretch="always")
+        self.pwn_main.add(self.pane_3, stretch="always")
+        self.pwn_main.grid(row=0, column=0, sticky="NSEW")
         return
 
     def update_nav_control_pane(self,
