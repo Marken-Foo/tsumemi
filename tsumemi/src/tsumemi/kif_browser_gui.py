@@ -19,7 +19,7 @@ import tsumemi.src.tsumemi.timer_controller as timecon
 
 from tsumemi.src.shogi.parsing import kif
 from tsumemi.src.tsumemi import files, skins, timer
-from tsumemi.src.tsumemi.main_window_view_controller import MainWindowViewController
+from tsumemi.src.tsumemi.views import main_window_view_controller as mainviewcon
 from tsumemi.src.tsumemi.menubar import Menubar
 from tsumemi.src.tsumemi.statistics_window import StatisticsDialog
 
@@ -67,7 +67,7 @@ class RootController(evt.IObserver):
 
         self.menubar: Menubar = Menubar(parent=self.root, controller=self)
 
-        self.main_viewcon = MainWindowViewController(root, self)
+        self.main_viewcon = mainviewcon.MainWindowViewController(root, self)
 
         # Keyboard shortcuts
         self.bindings = Bindings(self)

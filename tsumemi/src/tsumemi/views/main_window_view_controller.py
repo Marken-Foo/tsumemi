@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from tsumemi.src.tsumemi import skins
-from tsumemi.src.tsumemi.main_window_view import MainWindowView
+from tsumemi.src.tsumemi.views.main_window_view import MainWindowView
 
 if TYPE_CHECKING:
     import tkinter as tk

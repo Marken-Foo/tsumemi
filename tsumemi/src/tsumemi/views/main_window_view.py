@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     import tsumemi.src.tsumemi.game.game_controller as gamecon
     import tsumemi.src.tsumemi.timer_controller as timecon
     from tsumemi.src.tsumemi.kif_browser_gui import RootController
-    from tsumemi.src.tsumemi.main_window_view_controller import MainWindowViewController
+    from tsumemi.src.tsumemi.views.main_window_view_controller import MainWindowViewController
     from tsumemi.src.tsumemi.movelist.movelist_view import MovelistFrame
     from tsumemi.src.tsumemi.problem_list.problem_list_view import ProblemListPane
 
