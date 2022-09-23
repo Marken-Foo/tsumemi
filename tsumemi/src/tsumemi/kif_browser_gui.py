@@ -68,7 +68,6 @@ class RootController(evt.IObserver):
         self.menubar: Menubar = Menubar(parent=self.root, controller=self)
 
         self.mainframe: MainWindowView = MainWindowView(root, self)
-        self.mainframe.grid_items_normal()
 
         # Keyboard shortcuts
         self.bindings = Bindings(self)

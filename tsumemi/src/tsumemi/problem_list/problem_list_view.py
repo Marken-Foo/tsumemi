@@ -203,7 +203,9 @@ class ProblemListPane(ttk.Frame):
             self, text="Randomise problems",
             command=viewmodel.randomise
         )
-
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_rowconfigure(1, weight=0)
         self.tvwfrm_problems.grid(row=0, column=0, sticky="NSEW")
         self.btn_randomise.grid(row=1, column=0)
         return

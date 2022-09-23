@@ -86,12 +86,17 @@ class TimerPane(ttk.Frame):
     def __init__(self,
             parent: tk.Widget, clock: timer.Timer, *args: Any, **kwargs: Any
         ) -> None:
-        super().__init__(parent, *args, **kwargs)
+        ttk.Frame.__init__(self, parent, *args, **kwargs)
         self.timer_display: TimerDisplay = TimerDisplay(
             parent=self,
             clock=clock
         )
 
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_columnconfigure(1, weight=1)
+        self.grid_columnconfigure(2, weight=1)
+        self.grid_rowconfigure(0, weight=0)
+        self.grid_rowconfigure(1, weight=0)
         self.timer_display.grid(
             row=0, column=0, columnspan=3
         )

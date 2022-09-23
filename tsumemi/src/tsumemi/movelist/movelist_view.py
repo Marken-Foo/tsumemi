@@ -23,6 +23,10 @@ class MovelistFrame(ttk.Frame):
         self.frm_nav = GameNavButtonsFrame(self)
         self.bind_buttons()
 
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_rowconfigure(1, weight=0)
+        self.grid_rowconfigure(2, weight=0)
+        self.grid_columnconfigure(0, weight=1)
         self.tvwfrm_movelist.grid(row=0, column=0, sticky="NSEW")
         self.frm_nav.grid(row=1, column=0, sticky="")
         self.tvwfrm_variations.grid(row=2, column=0)

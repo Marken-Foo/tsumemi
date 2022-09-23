@@ -18,48 +18,49 @@ if TYPE_CHECKING:
 
 class MainWindowView(ttk.Frame):
     def __init__(self, root: tk.Tk, root_controller: RootController) -> None:
-        super().__init__(root)
+        ttk.Frame.__init__(self, root)
         self.controller: RootController = root_controller
+        # grid itself to the window it is in
+        self.grid(row=0, column=0, sticky="NSEW", padx=10, pady=10)
+        self.pwn_main = tk.PanedWindow(self, orient="horizontal", sashrelief="groove", sashwidth=5)
+        self.pane_1 = ttk.Frame(self.pwn_main)
+        self.pane_2 = ttk.Frame(self.pwn_main)
+        self.pane_3 = ttk.Frame(self.pwn_main)
+        self.pwn_main.add(self.pane_1, stretch="always")
+        self.pwn_main.add(self.pane_2, stretch="always")
+        self.pwn_main.add(self.pane_3, stretch="always")
+        self.pwn_main.grid(row=0, column=0, sticky="NSEW")
         self.grid_columnconfigure(0, weight=1)
-        self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
-        self.grid(row=0, column=0, sticky="NSEW")
 
+        # Pane 1
         self.movelist_frame: MovelistFrame
         self.movelist_frame = (
             root_controller
             .main_game
             .movelist_controller
-            .make_movelist_view(self)
+            .make_movelist_view(self.pane_1)
         )
+        self.pane_1.grid_columnconfigure(0, weight=1)
+        self.pane_1.grid_rowconfigure(0, weight=1)
+        self.movelist_frame.grid(row=0, column=0, sticky="NSEW", padx=10, pady=10)
 
+        # Pane 2
         self.board_frame: gamecon.NavigableGameFrame
         self.board_canvas: bc.BoardCanvas
         self.board_frame, self.board_canvas = (
             root_controller
             .main_game
             .make_navigable_view(
-                parent=self, skin_settings=root_controller.skin_settings
+                parent=self.pane_2, skin_settings=root_controller.skin_settings
             )
         )
-
-        self.main_timer_view: timecon.TimerPane = (
-            root_controller
-            .main_timer
-            .make_timer_pane(parent=self)
-        )
-        self.problem_list_pane: ProblemListPane = (
-            root_controller
-            .main_problem_list
-            .make_problem_list_pane(parent=self)
-        )
-        self.lbl_solution: SolutionLabel = SolutionLabel(parent=self,
+        self.lbl_solution: SolutionLabel = SolutionLabel(parent=self.pane_2,
             height=3,
             justify="left",
             wraplength=600,
         )
-
-        self.nav_control_pane = ttk.Frame(self)
+        self.nav_control_pane = ttk.Frame(self.pane_2)
         self.nav_controls = ttk.Frame(self.nav_control_pane)
         want_upside_down = tk.BooleanVar(value=False)
         self.chk_upside_down = ttk.Checkbutton(
@@ -68,8 +69,30 @@ class MainWindowView(ttk.Frame):
             command=lambda: self.controller.mainframe.flip_main_board(want_upside_down.get()),
             variable=want_upside_down, onvalue=True, offvalue=False
         )
+        self.pane_2.grid_columnconfigure(0, weight=1)
+        self.pane_2.grid_rowconfigure(0, weight=4)
+        self.pane_2.grid_rowconfigure(1, weight=1)
+        self.pane_2.grid_rowconfigure(2, weight=1)
+        self.board_frame.grid(row=0, column=0, sticky="NSEW", padx=5, pady=5)
+        self.lbl_solution.grid(row=1, column=0, sticky="W", padx=5, pady=5)
+        self.nav_control_pane.grid(row=2, column=0, sticky="NSEW")
+        self.nav_control_pane.grid_columnconfigure(0, weight=1)
+        self.nav_control_pane.grid_rowconfigure(0, weight=1)
+        self.update_nav_control_pane(self.make_nav_pane_normal)
+        self._grid_nav_control_pane(self.nav_controls)
 
-        self.speedrun_frame = ttk.Frame(self)
+        # Pane 3
+        self.main_timer_view: timecon.TimerPane = (
+            root_controller
+            .main_timer
+            .make_timer_pane(parent=self.pane_3)
+        )
+        self.problem_list_pane: ProblemListPane = (
+            root_controller
+            .main_problem_list
+            .make_problem_list_pane(parent=self.pane_3)
+        )
+        self.speedrun_frame = ttk.Frame(self.pane_3)
         self.btn_speedrun: ttk.Button = ttk.Button(
             self.speedrun_frame,
             text="Start speedrun",
@@ -80,6 +103,17 @@ class MainWindowView(ttk.Frame):
             text="Abort speedrun",
             command=self.controller.abort_speedrun
         )
+        self.btn_speedrun.grid(row=0, column=0)
+        self.btn_abort_speedrun.grid(row=0, column=1)
+        self.btn_abort_speedrun.config(state="disabled")
+
+        self.pane_3.grid_columnconfigure(0, weight=1)
+        self.pane_3.grid_rowconfigure(0, weight=4)
+        self.pane_3.grid_rowconfigure(1, weight=1)
+        self.pane_3.grid_rowconfigure(2, weight=0)
+        self.problem_list_pane.grid(row=0, column=0, sticky="NSEW", padx=5, pady=5)
+        self.main_timer_view.grid(row=1, column=0)
+        self.speedrun_frame.grid(row=2, column=0)
         return
 
     def apply_skins(self, settings: skins.SkinSettings) -> None:
@@ -159,6 +193,9 @@ class MainWindowView(ttk.Frame):
         return nav
 
     def _grid_nav_control_pane(self, pane: ttk.Frame) -> None:
+        pane.grid_columnconfigure(0, weight=1)
+        pane.grid_rowconfigure(0, weight=0)
+        pane.grid_rowconfigure(0, weight=0)
         pane.grid(
             row=0, column=0
         )
@@ -174,49 +211,6 @@ class MainWindowView(ttk.Frame):
         self._grid_nav_control_pane(new_nav_controls)
         self.nav_controls.grid_forget()
         self.nav_controls = new_nav_controls
-        return
-
-    def grid_items_normal(self) -> None:
-        self.movelist_frame.grid_columnconfigure(0, weight=1)
-        self.movelist_frame.grid_rowconfigure(0, weight=1)
-        self.board_frame.grid_columnconfigure(0, weight=1)
-        self.board_frame.grid_rowconfigure(0, weight=1)
-        self.main_timer_view.grid_columnconfigure(0, weight=0)
-        self.main_timer_view.grid_rowconfigure(0, weight=0)
-        self.problem_list_pane.grid_columnconfigure(0, weight=1)
-        self.problem_list_pane.grid_rowconfigure(0, weight=1)
-
-        self.movelist_frame.grid(
-            row=0, column=0,
-            sticky="NSEW", padx=5, pady=5
-        )
-
-        self.board_frame.grid(
-             row=0, column=1,
-            sticky="NSEW", padx=5, pady=5
-        )
-        self.problem_list_pane.grid(
-            row=0, column=2,
-            sticky="NSEW", padx=5, pady=5
-        )
-        self.lbl_solution.grid(
-            row=1, column=1,
-            sticky="W", padx=5, pady=5
-        )
-        self.main_timer_view.grid(
-            row=1, column=2,
-        )
-        self.nav_control_pane.grid(
-            row=2, column=1
-        )
-        self.update_nav_control_pane(self.make_nav_pane_normal)
-        self._grid_nav_control_pane(self.nav_controls)
-        self.speedrun_frame.grid(
-            row=2, column=2,
-        )
-        self.btn_speedrun.grid(row=0, column=0)
-        self.btn_abort_speedrun.grid(row=0, column=1)
-        self.btn_abort_speedrun.config(state="disabled")
         return
 
 
