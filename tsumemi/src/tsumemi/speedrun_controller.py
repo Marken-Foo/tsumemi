@@ -226,11 +226,15 @@ class SpeedrunQuestionState(SpeedrunState):
         return
 
     def _mark_correct(self, _event: evt.Event) -> None:
+        if self.controller.current_speedrun_state is not self:
+            return
         self.controller.mark_correct()
         self.controller.go_to_state("solution")
         return
 
     def _mark_wrong(self, _event: evt.Event) -> None:
+        if self.controller.current_speedrun_state is not self:
+            return
         self.controller.mark_wrong()
         self.controller.go_to_state("solution")
         return
