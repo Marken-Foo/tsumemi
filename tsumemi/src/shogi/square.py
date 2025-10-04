@@ -4,7 +4,6 @@ from enum import IntEnum
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Dict, Tuple
     from tsumemi.src.shogi.basetypes import Side
 
 
@@ -21,15 +20,23 @@ class KanjiNumber(IntEnum):
     十 = 10
 
 
-FULL_WIDTH_NUMBER: Dict[int, str] = {
-    0: "０", 1: "１", 2: "２", 3: "３", 4: "４",
-    5: "５", 6: "６", 7: "７", 8: "８", 9: "９"
+FULL_WIDTH_NUMBER: dict[int, str] = {
+    0: "０",
+    1: "１",
+    2: "２",
+    3: "３",
+    4: "４",
+    5: "５",
+    6: "６",
+    7: "７",
+    8: "８",
+    9: "９",
 }
 
 
 class Square(IntEnum):
-    """Represents a square on the shogi board, or a piecetype in hand.
-    """
+    """Represents a square on the shogi board, or a piecetype in hand."""
+
     NONE = 0
     HAND = 82
     b11, b12, b13, b14, b15, b16, b17, b18, b19 = range(1, 10)
@@ -44,19 +51,19 @@ class Square(IntEnum):
 
     def __str__(self) -> str:
         col, row = self.get_cr()
-        return str(10*col+row)
+        return str(10 * col + row)
 
     @classmethod
     def from_cr(cls, col_num: int, row_num: int) -> Square:
-        return cls(9*col_num-9+row_num)
+        return cls(9 * col_num - 9 + row_num)
 
     @classmethod
     def from_coord(cls, coord: int) -> Square:
-        return cls.from_cr(col_num=int(coord/10), row_num=coord%10)
+        return cls.from_cr(col_num=int(coord / 10), row_num=coord % 10)
 
-    def get_cr(self) -> Tuple[int, int]:
-        col = (self-1)// 9 + 1
-        row = (self-1) % 9 + 1
+    def get_cr(self) -> tuple[int, int]:
+        col = (self - 1) // 9 + 1
+        row = (self - 1) % 9 + 1
         return col, row
 
     def is_board(self) -> bool:
@@ -95,7 +102,7 @@ class Square(IntEnum):
         _, row_diff = self._subtract_squares(sq_other)
         return row_diff == 0
 
-    def _subtract_squares(self, sq_other: Square) -> Tuple[int, int]:
+    def _subtract_squares(self, sq_other: Square) -> tuple[int, int]:
         col, row = self.get_cr()
         col_other, row_other = sq_other.get_cr()
         return (col - col_other, row - row_other)
