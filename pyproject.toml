@@ -12,5 +12,6 @@ dependencies = [
 dev = [
     "mypy>=1.18.2",
     "pyinstaller==6.16.0",
+    "pytest>=8.4.2",
     "ruff>=0.13.3",
 ]
