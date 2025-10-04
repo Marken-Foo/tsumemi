@@ -1,5 +1,9 @@
 __pycache__/
-config.ini
-ignore/
+build/
+.mypy_cache/
+.ruff_cache/
+.venv/
+.vscode/
 tsumemilog.log
-.venv
+ignore/
+config.ini
