@@ -1,31 +1,43 @@
-import pytest
+from hypothesis import given, strategies as st
 
 from tsumemi.src.shogi.basetypes import Side
 from tsumemi.src.shogi.square import Square
 
 
-@pytest.mark.parametrize("sq", [Square.b11, Square.b72, Square.b43])
-def test_row_1_to_3_in_sente_promotion_zone(sq: Square):
-    assert sq.is_in_promotion_zone(Side.SENTE)
+@st.composite
+def squares(draw: st.DrawFn):
+    row_num = draw(st.integers(1, 9))
+    col_num = draw(st.integers(1, 9))
+    return Square.from_cr(col_num, row_num)
 
 
-@pytest.mark.parametrize("sq", [Square.b27, Square.b88, Square.b69])
+@given(squares())
+def test_square_name_matches_cr(sq: Square):
+    (col, row) = sq.get_cr()
+    assert sq == Square[f"b{col}{row}"].value
+
+
+@given(squares())
+def test_cr_square_roundtrip(sq: Square):
+    (col, row) = sq.get_cr()
+    new_sq = Square.from_cr(col, row)
+    assert sq == new_sq
+
+
+@given(st.sampled_from(Square))
+def test_fixed_row_1_to_3_in_sente_promotion_zone(sq: Square):
+    (_, row) = sq.get_cr()
+    assert sq.is_in_promotion_zone(Side.SENTE) == (1 <= row <= 3)
+
+
+@given(st.sampled_from(Square))
 def test_row_7_to_9_in_gote_promotion_zone(sq: Square):
-    assert sq.is_in_promotion_zone(Side.GOTE)
+    (_, row) = sq.get_cr()
+    assert sq.is_in_promotion_zone(Side.GOTE) == (7 <= row <= 9)
 
 
-@pytest.mark.parametrize("sq", [Square.b27, Square.b88, Square.b69])
-def test_row_7_to_9_not_in_sente_promotion_zone(sq: Square):
-    assert not sq.is_in_promotion_zone(Side.SENTE)
-
-
-@pytest.mark.parametrize("sq", [Square.b11, Square.b72, Square.b43])
-def test_row_1_to_3_not_in_gote_promotion_zone(sq: Square):
-    assert not sq.is_in_promotion_zone(Side.GOTE)
-
-
-@pytest.mark.parametrize(
-    "sq1, sq2", [(Square.b11, Square.b31), (Square.b14, Square.b94)]
-)
+@given(squares(), squares())
 def test_is_same_row(sq1: Square, sq2: Square):
-    assert sq1.is_same_row(sq2)
+    (_, row1) = sq1.get_cr()
+    (_, row2) = sq2.get_cr()
+    assert sq1.is_same_row(sq2) == sq2.is_same_row(sq1) == (row1 == row2)

@@ -10,6 +10,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "hypothesis>=6.140.3",
     "mypy>=1.18.2",
     "pyinstaller==6.16.0",
     "pytest>=8.4.2",

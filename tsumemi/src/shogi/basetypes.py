@@ -56,7 +56,7 @@ class KomaType(IntFlag):
         return KomaType(koma & 0b1111)
 
     def promote(self) -> KomaType:
-        if self == KomaType.KI:
+        if self == KomaType.KI or self == KomaType.NONE:
             return self
         return self | KomaType.PROMOTED
 
@@ -151,7 +151,7 @@ class Koma(IntFlag):
         return self & ~Koma.PROMOTED
 
     def is_promoted(self) -> bool:
-        return bool((self & Koma.PROMOTED) and (self & ~Koma.OU))
+        return bool((self & Koma.PROMOTED) and (self & 0b111 & ~Koma.OU))
 
 
 HAND_TYPES: tuple[
