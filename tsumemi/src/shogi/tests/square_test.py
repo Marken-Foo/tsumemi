@@ -5,7 +5,7 @@ from tsumemi.src.shogi.square import Square
 
 
 @st.composite
-def squares(draw: st.DrawFn):
+def squares(draw: st.DrawFn) -> Square:
     row_num = draw(st.integers(1, 9))
     col_num = draw(st.integers(1, 9))
     return Square.from_cr(col_num, row_num)
