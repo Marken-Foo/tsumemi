@@ -1,39 +1,26 @@
-from hypothesis import assume, given, strategies as st
+from hypothesis import given, strategies as st
 
-from tsumemi.src.shogi.basetypes import Koma, KomaType, Side
+from tsumemi.src.shogi.basetypes import Koma
 from tsumemi.src.shogi.position import Position
 from tsumemi.src.shogi.square import Square
+from tsumemi.src.shogi.tests.koma_test import valid_koma
+from tsumemi.src.shogi.tests.square_test import board_squares
 
 
-@st.composite
-def board_square(draw: st.DrawFn) -> Square:
-    sq = draw(st.sampled_from(Square))
-    assume(sq != Square.NONE and sq != Square.HAND)
-    return sq
-
-
-@st.composite
-def koma(draw: st.DrawFn) -> Koma:
-    side = draw(st.sampled_from(Side))
-    ktype = draw(st.sampled_from(KomaType))
-    assume(ktype != KomaType.NONE and ktype != KomaType(13))
-    return Koma.make(side, ktype)
-
-
-@given(koma(), board_square())
+@given(valid_koma(), board_squares())
 def test_set_koma(koma: Koma, sq: Square):
     pos = Position()
     pos.set_koma(koma, sq)
     assert pos.get_koma(sq) == koma
 
 
-@given(board_square())
+@given(board_squares())
 def test_initial_board_is_empty(sq: Square):
     pos = Position()
     assert pos.get_koma(sq) == Koma.NONE
 
 
-@given(st.dictionaries(board_square(), koma()))
+@given(st.dictionaries(board_squares(), valid_koma()))
 def test_get_koma_sets(square_contents: dict[Square, Koma]):
     pos = Position()
     expected: dict[Koma, set[Square]] = {}

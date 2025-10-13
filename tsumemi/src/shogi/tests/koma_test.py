@@ -1,6 +1,14 @@
-from hypothesis import given, strategies as st
+from hypothesis import assume, given, strategies as st
 
 from tsumemi.src.shogi.basetypes import Koma, KomaType, Side
+
+
+@st.composite
+def valid_koma(draw: st.DrawFn) -> Koma:
+    side = draw(st.sampled_from(Side))
+    ktype = draw(st.sampled_from(KomaType))
+    assume(ktype != KomaType.NONE and ktype != KomaType(13))
+    return Koma.make(side, ktype)
 
 
 @given(st.sampled_from(Side), st.sampled_from(KomaType))

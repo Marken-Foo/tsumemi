@@ -6,37 +6,20 @@ from tsumemi.src.shogi.basetypes import GameTermination, Koma, KomaType, Side
 from tsumemi.src.shogi.move import Move, TerminationMove
 from tsumemi.src.shogi.position import Position
 from tsumemi.src.shogi.square import Square
-
-HAND_KTYPES = [
-    KomaType.HI,
-    KomaType.KA,
-    KomaType.KI,
-    KomaType.GI,
-    KomaType.KE,
-    KomaType.KY,
-    KomaType.FU,
-]
-
-HAND_MAX_AMOUNT = 18
-
-
-@st.composite
-def board_square(draw: st.DrawFn) -> Square:
-    sq = draw(st.sampled_from(Square))
-    assume(sq != Square.NONE and sq != Square.HAND)
-    return sq
-
-
-@st.composite
-def koma(draw: st.DrawFn) -> Koma:
-    side = draw(st.sampled_from(Side))
-    ktype = draw(st.sampled_from(KomaType))
-    assume(ktype != KomaType.NONE and ktype != KomaType(13))
-    return Koma.make(side, ktype)
+from tsumemi.src.shogi.tests.koma_test import valid_koma
+from tsumemi.src.shogi.tests.position_hand_test import (
+    TEST_HAND_KTYPES,
+    TEST_HAND_MAX_AMOUNT,
+)
+from tsumemi.src.shogi.tests.square_test import board_squares
 
 
 @given(
-    board_square(), board_square(), koma(), st.one_of(koma(), st.none()), st.booleans()
+    board_squares(),
+    board_squares(),
+    valid_koma(),
+    st.one_of(valid_koma(), st.none()),
+    st.booleans(),
 )
 def test_create_move(
     start_sq: Square,
@@ -63,7 +46,7 @@ def test_create_move(
     assert actual == expected
 
 
-@given(board_square(), st.sampled_from(Side), st.sampled_from(HAND_KTYPES))
+@given(board_squares(), st.sampled_from(Side), st.sampled_from(TEST_HAND_KTYPES))
 def test_create_drop_move(end_sq: Square, side: Side, ktype: KomaType):
     sut = Position()
     actual = sut.create_drop_move(side, ktype, end_sq)
@@ -84,10 +67,10 @@ def test_make_pass_move():
 
 
 @given(
-    board_square(),
+    board_squares(),
     st.sampled_from(Side),
-    st.sampled_from(HAND_KTYPES),
-    st.integers(1, HAND_MAX_AMOUNT),
+    st.sampled_from(TEST_HAND_KTYPES),
+    st.integers(1, TEST_HAND_MAX_AMOUNT),
 )
 def test_make_drop_move(end_sq: Square, side: Side, ktype: KomaType, n: int):
     pos = Position()

@@ -3,7 +3,7 @@ from hypothesis import given, strategies as st
 from tsumemi.src.shogi.basetypes import KomaType, Side
 from tsumemi.src.shogi.position import Position
 
-HAND_KTYPES = [
+TEST_HAND_KTYPES = [
     KomaType.HI,
     KomaType.KA,
     KomaType.KI,
@@ -13,12 +13,12 @@ HAND_KTYPES = [
     KomaType.FU,
 ]
 
-HAND_MAX_AMOUNT = 18
+TEST_HAND_MAX_AMOUNT = 18
 
 
 def random_hand() -> st.SearchStrategy[dict[KomaType, int]]:
     return st.dictionaries(
-        st.sampled_from(HAND_KTYPES), st.integers(0, HAND_MAX_AMOUNT)
+        st.sampled_from(TEST_HAND_KTYPES), st.integers(0, TEST_HAND_MAX_AMOUNT)
     )
 
 
@@ -39,7 +39,9 @@ def test_initial_hands_empty():
 
 
 @given(
-    st.sampled_from(HAND_KTYPES), st.integers(0, HAND_MAX_AMOUNT), st.sampled_from(Side)
+    st.sampled_from(TEST_HAND_KTYPES),
+    st.integers(0, TEST_HAND_MAX_AMOUNT),
+    st.sampled_from(Side),
 )
 def test_set_hand_koma_count(ktype: KomaType, amount: int, side: Side):
     pos = Position()
@@ -48,8 +50,8 @@ def test_set_hand_koma_count(ktype: KomaType, amount: int, side: Side):
 
 
 @given(
-    st.sampled_from(HAND_KTYPES),
-    st.integers(0, HAND_MAX_AMOUNT - 1),
+    st.sampled_from(TEST_HAND_KTYPES),
+    st.integers(0, TEST_HAND_MAX_AMOUNT - 1),
     st.sampled_from(Side),
 )
 def test_inc_hand_koma(ktype: KomaType, amount: int, side: Side):
@@ -60,8 +62,8 @@ def test_inc_hand_koma(ktype: KomaType, amount: int, side: Side):
 
 
 @given(
-    st.sampled_from(HAND_KTYPES),
-    st.integers(1, HAND_MAX_AMOUNT),
+    st.sampled_from(TEST_HAND_KTYPES),
+    st.integers(1, TEST_HAND_MAX_AMOUNT),
     st.sampled_from(Side),
 )
 def test_dec_hand_koma(ktype: KomaType, amount: int, side: Side):
@@ -71,7 +73,7 @@ def test_dec_hand_koma(ktype: KomaType, amount: int, side: Side):
     assert pos.get_hand_koma_count(side, ktype) == amount - 1
 
 
-@given(st.sampled_from(HAND_KTYPES), st.sampled_from(Side))
+@given(st.sampled_from(TEST_HAND_KTYPES), st.sampled_from(Side))
 def test_dec_empty_hand_koma(ktype: KomaType, side: Side):
     pos = Position()
     pos.set_hand_koma_count(side, ktype, 0)
