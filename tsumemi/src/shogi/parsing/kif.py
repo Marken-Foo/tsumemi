@@ -7,14 +7,11 @@ from tsumemi.src.shogi.game import Game
 from tsumemi.src.shogi.parsing.kif_reader import KifReader
 
 if TYPE_CHECKING:
-    import os
-    from typing import Optional, Union
-    PathLike = Union[str, os.PathLike]
+    from os import PathLike
 
 
-def read_kif(filepath: PathLike) -> Optional[Game]:
-    """Read a KIF file and return the complete game.
-    """
+def read_kif(filepath: PathLike[str]) -> Game | None:
+    """Read a KIF file and return the complete game."""
     encodings = ["cp932", "utf-8"]
     visitor = GAME_BUILDER_PVIS
     reader = KIF_READER

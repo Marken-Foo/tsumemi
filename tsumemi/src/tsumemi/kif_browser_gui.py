@@ -108,28 +108,18 @@ class RootController(evt.IObserver):
 
     def show_problem(self, prob: pb.Problem) -> None:
         """Display the given problem in the GUI and enable move input."""
-        self._read_problem(prob)
+        game = kif.read_kif(prob.filepath)
+        if game is None:
+            return
+        self.main_viewcon.set_solution(self.solution_str_from_game(game))
+        self.main_game.set_game(game)
+
         self.main_viewcon.refresh_main_board()
         self.main_viewcon.refresh_move_list()
         self.main_viewcon.enable_move_input()
         self.main_viewcon.hide_solution()
         self.root.title("tsumemi - " + str(prob.filepath))
         return
-
-    def _read_problem(self, prob: pb.Problem) -> None:
-        """Read the problem data from file into the program."""
-        game = self.game_from_problem(prob)
-        if game is None:
-            return
-        self.main_viewcon.set_solution(self.solution_str_from_game(game))
-        self.main_game.set_game(game)
-        return
-
-    def game_from_problem(self, prob: pb.Problem) -> Optional[Game]:
-        filepath = prob.filepath
-        if filepath is None:
-            return None
-        return kif.read_kif(filepath)
 
     def solution_str_from_game(self, game: Game) -> str:
         return "　".join(self.notation_writer.write_mainline(game))
