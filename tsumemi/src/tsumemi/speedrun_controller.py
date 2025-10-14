@@ -72,7 +72,7 @@ class SpeedrunController(evt.IObserver):
             self.go_to_state("solution")
 
     def start_speedrun(self) -> None:
-        self.target.go_to_file(idx=0)
+        self.target.main_problem_list_controller.go_to_problem(idx=0)
         self.target.main_game.set_speedrun_mode()
         self.target.main_viewcon.disable_problem_list_input()
         self.target.main_viewcon.allow_only_pause_timer()
@@ -89,8 +89,8 @@ class SpeedrunController(evt.IObserver):
         self.go_to_state("off")
 
     def go_next_question(self) -> bool:
-        has_next: bool = self.target.go_next_file()
-        if not has_next:
+        next_problem = self.target.main_problem_list_controller.go_next_problem()
+        if next_problem is None:
             # end of folder reached
             self.stop_timer()
             messagebox.showinfo(
@@ -98,7 +98,7 @@ class SpeedrunController(evt.IObserver):
                 message="You have reached the end of the speedrun.",
             )
             self.abort_speedrun()
-        return has_next
+        return next_problem is not None
 
     def show_solution(self) -> None:
         self.target.main_viewcon.show_solution()

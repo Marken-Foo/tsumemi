@@ -135,18 +135,6 @@ class RootController(evt.IObserver):
         self.main_viewcon.toggle_solution()
         return
 
-    def go_next_file(self, _event: Optional[tk.Event] = None) -> bool:
-        prob = self.main_problem_list_controller.go_next_problem()
-        return prob is not None
-
-    def go_prev_file(self, _event: Optional[tk.Event] = None) -> bool:
-        prob = self.main_problem_list_controller.go_prev_problem()
-        return prob is not None
-
-    def go_to_file(self, _event: Optional[tk.Event] = None, idx: int = 0) -> bool:
-        prob = self.main_problem_list_controller.go_to_problem(idx)
-        return prob is not None
-
     def clear_statuses(self) -> None:
         self.main_problem_list_controller.clear_statuses()
         return
@@ -239,8 +227,8 @@ class Bindings:
         self.FREE_SHORTCUTS = {
             "<Key-h>": self.controller.main_viewcon.toggle_solution,
             "<Key-H>": self.controller.main_viewcon.toggle_solution,
-            "<Key-Left>": self.controller.go_prev_file,
-            "<Key-Right>": self.controller.go_next_file,
+            "<Key-Left>": self.controller.main_problem_list_controller.go_prev_problem,
+            "<Key-Right>": self.controller.main_problem_list_controller.go_next_problem,
         }
 
     @staticmethod

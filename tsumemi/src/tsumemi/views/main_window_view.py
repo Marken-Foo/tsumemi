@@ -124,9 +124,9 @@ class MainWindowView(ttk.Frame):
         if nav_pane_constructor is None:
             nav_pane_constructor = functools.partial(
                 self.frm_nav_control.make_nav_pane_normal,
-                callable_prev=self.controller.go_prev_file,
+                callable_prev=self.controller.main_problem_list_controller.go_prev_problem,
                 callable_toggle_solution=self.viewcon.toggle_solution,
-                callable_next=self.controller.go_next_file,
+                callable_next=self.controller.main_problem_list_controller.go_next_problem,
             )
         self.frm_nav_control.set_new_nav_controls(nav_pane_constructor)
         return
