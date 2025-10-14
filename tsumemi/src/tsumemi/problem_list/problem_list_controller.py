@@ -48,6 +48,10 @@ class ProblemListController:
     def clear_times(self) -> None:
         self.problem_list.clear_times()
 
+    def clear_results(self) -> None:
+        self.clear_statuses()
+        self.clear_times()
+
     def make_problem_list_pane(self, parent: tk.Widget) -> ProblemListPane:
         problem_list_pane = ProblemListPane(parent, self.viewmodel)
         self.problem_list.add_observer(problem_list_pane.tvwfrm_problems)

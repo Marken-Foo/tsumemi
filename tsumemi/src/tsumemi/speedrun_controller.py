@@ -97,7 +97,7 @@ class SpeedrunController(evt.IObserver):
                 title="End of folder",
                 message="You have reached the end of the speedrun.",
             )
-            self.abort_speedrun()
+            self.target.abort_speedrun()
         return next_problem is not None
 
     def show_solution(self) -> None:

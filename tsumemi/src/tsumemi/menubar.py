@@ -12,13 +12,11 @@ if TYPE_CHECKING:
 
 
 class Menubar(tk.Menu):
-    """GUI class for the menubar at the top of the main window.
-    """
-    def __init__(self,
-            parent: tk.Tk,
-            controller: RootController,
-            *args: Any, **kwargs: Any
-        ) -> None:
+    """GUI class for the menubar at the top of the main window."""
+
+    def __init__(
+        self, parent: tk.Tk, controller: RootController, *args: Any, **kwargs: Any
+    ) -> None:
         self.controller = controller
         super().__init__(parent, *args, **kwargs)
 
@@ -59,20 +57,20 @@ class Menubar(tk.Menu):
         menu_solving.add_separator()
         menu_solving.add_command(
             label="Clear solving statuses",
-            command=self.controller.clear_statuses,
+            command=self.controller.main_problem_list_controller.clear_statuses,
         )
         menu_solving.add_command(
             label="Clear solving times",
-            command=self.controller.clear_times,
+            command=self.controller.main_problem_list_controller.clear_times,
         )
         menu_solving.add_command(
             label="Clear results",
-            command=self.controller.clear_results,
+            command=self.controller.main_problem_list_controller.clear_results,
         )
         # Settings
         menu_settings.add_command(
             label="Settings...",
-            command=self.controller.open_settings_window
+            command=self.controller.open_settings_window,
             # command=lambda: SettingsWindow(controller=self.controller.settings),
         )
         menu_settings.add_command(
@@ -80,8 +78,8 @@ class Menubar(tk.Menu):
             command=functools.partial(
                 messagebox.showinfo,
                 title="About tsumemi",
-                message="Written in Python 3 by Marken Foo. For the shogi community. KIF files sold separately."
-            )
+                message="Written in Python 3 by Marken Foo. For the shogi community. KIF files sold separately.",
+            ),
         )
         # Bind to main window
         parent["menu"] = self

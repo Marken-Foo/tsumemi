@@ -135,19 +135,6 @@ class RootController(evt.IObserver):
         self.main_viewcon.toggle_solution()
         return
 
-    def clear_statuses(self) -> None:
-        self.main_problem_list_controller.clear_statuses()
-        return
-
-    def clear_times(self) -> None:
-        self.main_problem_list_controller.clear_times()
-        return
-
-    def clear_results(self) -> None:
-        self.main_problem_list_controller.clear_statuses()
-        self.main_problem_list_controller.clear_times()
-        return
-
     def generate_statistics(self) -> None:
         directory_name = str(self.current_directory) if self.current_directory else ""
         run_stats = RunStatistics(
@@ -156,17 +143,15 @@ class RootController(evt.IObserver):
         StatisticsDialog(run_stats)
 
     def export_prob_list_csv(self) -> None:
-        date_time_now = datetime.datetime.now()
-        datetimestr = date_time_now.strftime("%Y%m%d-%H%M")
+        datetime_str = datetime.datetime.now().strftime("%Y%m%d-%H%M")
         directory: str = filedialog.asksaveasfilename(
             defaultextension=".csv",
             filetypes=(("Comma-separated values", ".csv"),),
-            initialfile=f"tsume-speedrun-{datetimestr}",
+            initialfile=f"tsume-speedrun-{datetime_str}",
         )
         if not directory:
             return
         self.main_problem_list_controller.export_as_csv(directory)
-        return
 
     # === Speedrun controller commands
     def start_speedrun(self) -> None:
