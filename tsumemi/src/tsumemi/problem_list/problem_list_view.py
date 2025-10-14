@@ -7,40 +7,41 @@ from tkinter import ttk
 from typing import TYPE_CHECKING
 
 import tsumemi.src.tsumemi.event as evt
+import tsumemi.src.tsumemi.problem as pb
 import tsumemi.src.tsumemi.problem_list.problem_list_model as plist
 
 from tsumemi.src.tsumemi import utils
 
 if TYPE_CHECKING:
     from typing import Dict, Optional
-    from tsumemi.src.tsumemi.problem_list.problem_list_viewmodel import ProblemListViewModel
+    from tsumemi.src.tsumemi.problem_list.problem_list_viewmodel import (
+        ProblemListViewModel,
+    )
 
 
 class ProblemsTreeviewFrame(utils.ScrollableTreeviewFrame, evt.IObserver):
     """GUI class to display list of problems.
     Observes underlying problem list and updates its view as needed.
     """
-    def __init__(self,
-            parent: tk.Widget,
-            viewmodel: ProblemListViewModel
-        ) -> None:
-        utils.ScrollableTreeviewFrame.__init__(
-            self, parent, selectmode="none"
-        )
+
+    def __init__(self, parent: tk.Widget, viewmodel: ProblemListViewModel) -> None:
+        utils.ScrollableTreeviewFrame.__init__(self, parent, selectmode="none")
         evt.IObserver.__init__(self)
         self.viewmodel = viewmodel
-        self.set_callbacks({
-            plist.ProbSelectedEvent: self.go_to_problem,
-            plist.ProbStatusEvent: self.display_status,
-            plist.ProbTimeEvent: self.display_time,
-            plist.ProbListEvent: self.refresh_view,
-        })
+        self.set_callbacks(
+            {
+                plist.ProbSelectedEvent: self.go_to_problem,
+                plist.ProbStatusEvent: self.display_status,
+                plist.ProbTimeEvent: self.display_time,
+                plist.ProbListEvent: self.refresh_view,
+            }
+        )
 
-        self.status_strings: Dict[plist.ProblemStatus, str] = {
-            plist.ProblemStatus.NONE: "",
-            plist.ProblemStatus.SKIP: "-",
-            plist.ProblemStatus.CORRECT: "O",
-            plist.ProblemStatus.WRONG: "X",
+        self.status_strings: Dict[pb.ProblemStatus, str] = {
+            pb.ProblemStatus.NONE: "",
+            pb.ProblemStatus.SKIP: "-",
+            pb.ProblemStatus.CORRECT: "O",
+            pb.ProblemStatus.WRONG: "X",
         }
 
         self.tvw["columns"] = ("filename", "time", "status")
@@ -67,6 +68,7 @@ class ProblemsTreeviewFrame(utils.ScrollableTreeviewFrame, evt.IObserver):
                 self.set_focus(iid)
                 self.viewmodel.go_to_problem(self.tvw.index(iid))
             return
+
         self.tvw.bind("<Double-1>", _click_to_prob)
         return
 
@@ -138,7 +140,7 @@ class ProblemsTreeviewFrame(utils.ScrollableTreeviewFrame, evt.IObserver):
         status = event.status
         id_ = self._idx_to_iid(idx)
         self.tvw.set(id_, column="status", value=self.status_strings[status])
-        self.tvw.item(id_, tags=[status.name]) # overrides existing tags
+        self.tvw.item(id_, tags=[status.name])  # overrides existing tags
         return
 
     def go_to_problem(self, event: plist.ProbSelectedEvent) -> None:
@@ -155,15 +157,13 @@ class ProblemsTreeviewFrame(utils.ScrollableTreeviewFrame, evt.IObserver):
         self.clear_treeview()
         for problem in problem_list:
             filename = os.path.basename(problem.filepath)
-            time_str = ("-" if problem.time is None
-                else problem.time.to_hms_str(places=1)
+            time_str = (
+                "-" if problem.time is None else problem.time.to_hms_str(places=1)
             )
             status_str = self.status_strings[problem.status]
             tag_list = [problem.status.name]
             self.tvw.insert(
-                "", "end",
-                values=(filename, time_str, status_str),
-                tags=tag_list
+                "", "end", values=(filename, time_str, status_str), tags=tag_list
             )
         self.refresh_vsb()
         return
@@ -173,7 +173,7 @@ class ProblemsTreeviewFrame(utils.ScrollableTreeviewFrame, evt.IObserver):
 
     def _get_iid_on_click(self, event: tk.Event) -> str:
         iid = self.tvw.identify("item", event.x, event.y)
-        assert isinstance(iid, str) # tkinter missing stub?
+        assert isinstance(iid, str)  # tkinter missing stub?
         return iid
 
 
@@ -181,16 +181,13 @@ class ProblemListPane(ttk.Frame):
     """GUI frame containing view of problem list and associated
     controls.
     """
-    def __init__(self,
-            parent: tk.Widget,
-            viewmodel: ProblemListViewModel
-        ) -> None:
+
+    def __init__(self, parent: tk.Widget, viewmodel: ProblemListViewModel) -> None:
         ttk.Frame.__init__(self, parent)
         self.tvwfrm_problems = ProblemsTreeviewFrame(self, viewmodel)
 
         self.btn_randomise: ttk.Button = ttk.Button(
-            self, text="Randomise problems",
-            command=viewmodel.randomise
+            self, text="Randomise problems", command=viewmodel.randomise
         )
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)

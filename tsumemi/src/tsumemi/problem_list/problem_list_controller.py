@@ -5,6 +5,7 @@ import os
 
 from typing import TYPE_CHECKING
 
+import tsumemi.src.tsumemi.problem as pb
 import tsumemi.src.tsumemi.problem_list.problem_list_model as plist
 
 from tsumemi.src.tsumemi.problem_list.problem_list_view import ProblemListPane
@@ -12,31 +13,33 @@ from tsumemi.src.tsumemi.problem_list.problem_list_viewmodel import ProblemListV
 
 if TYPE_CHECKING:
     import tkinter as tk
-    from typing import Iterable, Optional, Union
+    from typing import Iterable, Optional
     import tsumemi.src.tsumemi.timer as timer
-    PathLike = Union[str, os.PathLike]
+
+    PathLike = os.PathLike[str]
 
 
 class ProblemListController:
     """Controller object for a problem list. Handles access to its
     underlying problem list (model).
     """
+
     def __init__(self) -> None:
         self.problem_list: plist.ProblemList = plist.ProblemList()
         self.directory: Optional[PathLike] = None
         self.viewmodel = ProblemListViewModel(self.problem_list)
         return
 
-    def go_next_problem(self) -> Optional[plist.Problem]:
+    def go_next_problem(self) -> Optional[pb.Problem]:
         return self.problem_list.go_to_next()
 
-    def go_prev_problem(self) -> Optional[plist.Problem]:
+    def go_prev_problem(self) -> Optional[pb.Problem]:
         return self.problem_list.go_to_prev()
 
-    def go_to_problem(self, idx: int = 0) -> Optional[plist.Problem]:
+    def go_to_problem(self, idx: int = 0) -> Optional[pb.Problem]:
         return self.problem_list.go_to_idx(idx)
 
-    def set_status(self, status: plist.ProblemStatus) -> None:
+    def set_status(self, status: pb.ProblemStatus) -> None:
         self.problem_list.set_status(status)
         return
 
@@ -57,24 +60,23 @@ class ProblemListController:
         self.problem_list.add_observer(problem_list_pane.tvwfrm_problems)
         return problem_list_pane
 
-    def set_directory(self,
-            directory: PathLike,
-            file_list: Iterable[PathLike],
-        ) -> Optional[plist.Problem]:
-        """Open directory and set own problem list to contents.
-        """
+    def set_directory(
+        self,
+        directory: PathLike,
+        file_list: Iterable[PathLike],
+    ) -> Optional[pb.Problem]:
+        """Open directory and set own problem list to contents."""
         self.problem_list.clear(suppress=True)
         self.problem_list.add_problems(
-            (plist.Problem(filepath) for filepath in file_list),
-            suppress=True
+            (pb.Problem(filepath) for filepath in file_list), suppress=True
         )
         self.problem_list.sort_by_file()
         self.directory = directory
         return self.go_to_problem(0)
 
     def generate_statistics(self) -> ProblemListStats:
-        return ProblemListStats(self.problem_list,
-            self.directory if self.directory else ""
+        return ProblemListStats(
+            self.problem_list, self.directory if self.directory else ""
         )
 
     def export_as_csv(self, filepath: PathLike) -> None:
@@ -82,9 +84,7 @@ class ProblemListController:
             csvwriter = csv.writer(csvfile, delimiter=",")
             csvwriter.writerow(["filename", "status", "time (seconds)"])
             for prob in self.problem_list:
-                prob_filename = os.path.basename(
-                    os.path.normpath(prob.filepath)
-                )
+                prob_filename = os.path.basename(os.path.normpath(prob.filepath))
                 prob_status = str(prob.status)
                 prob_time = 0 if prob.time is None else prob.time.seconds
                 csvwriter.writerow([prob_filename, prob_status, prob_time])
@@ -95,10 +95,10 @@ class ProblemListStats:
     """A helper object that can be queried for the solving statistics
     of the problems inside the problem list it refers to.
     """
-    def __init__(self,
-            problem_list: plist.ProblemList,
-            directory: PathLike = ""
-        ) -> None:
+
+    def __init__(
+        self, problem_list: plist.ProblemList, directory: PathLike = ""
+    ) -> None:
         self.problem_list: plist.ProblemList = problem_list
         self.directory: str = str(os.path.basename(os.path.normpath(directory)))
         return
@@ -107,29 +107,24 @@ class ProblemListStats:
         return len(self.problem_list)
 
     def get_num_correct(self) -> int:
-        return len(
-            self.problem_list.filter_by_status(plist.ProblemStatus.CORRECT)
-        )
+        return len(self.problem_list.filter_by_status(pb.ProblemStatus.CORRECT))
 
     def get_num_wrong(self) -> int:
-        return len(
-            self.problem_list.filter_by_status(plist.ProblemStatus.WRONG)
-        )
+        return len(self.problem_list.filter_by_status(pb.ProblemStatus.WRONG))
 
     def get_num_skip(self) -> int:
-        return len(
-            self.problem_list.filter_by_status(plist.ProblemStatus.SKIP)
-        )
+        return len(self.problem_list.filter_by_status(pb.ProblemStatus.SKIP))
 
     def get_total_time(self) -> timer.Time:
         seen_problems = self.problem_list.filter_by_status(
-            plist.ProblemStatus.CORRECT, plist.ProblemStatus.WRONG,
-            plist.ProblemStatus.SKIP
+            pb.ProblemStatus.CORRECT,
+            pb.ProblemStatus.WRONG,
+            pb.ProblemStatus.SKIP,
         )
         return seen_problems.get_total_time()
 
-    def get_fastest_problem(self) -> Optional[plist.Problem]:
+    def get_fastest_problem(self) -> Optional[pb.Problem]:
         return self.problem_list.get_fastest_problem()
 
-    def get_slowest_problem(self) -> Optional[plist.Problem]:
+    def get_slowest_problem(self) -> Optional[pb.Problem]:
         return self.problem_list.get_slowest_problem()

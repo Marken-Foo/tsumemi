@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import datetime
-import logging.config
+import logging
 import os
 import tkinter as tk
 
@@ -18,7 +18,7 @@ import tsumemi.src.tsumemi.speedrun_controller as speedcon
 import tsumemi.src.tsumemi.timer_controller as timecon
 
 from tsumemi.src.shogi.parsing import kif
-from tsumemi.src.tsumemi import files, skins, timer
+from tsumemi.src.tsumemi import files, problem as pb, skins, timer
 from tsumemi.src.tsumemi.views import main_window_view_controller as mainviewcon
 from tsumemi.src.tsumemi.menubar import Menubar
 from tsumemi.src.tsumemi.statistics_window import StatisticsDialog
@@ -33,6 +33,7 @@ class RootController(evt.IObserver):
     """Root controller for the application. Manages top-level logic
     and GUI elements.
     """
+
     # eventually, refactor menu labels and dialog out into a constant namespace
     def __init__(self, root: tk.Tk) -> None:
         evt.IObserver.__init__(self)
@@ -53,10 +54,12 @@ class RootController(evt.IObserver):
         )
         self.main_timer.clock.add_observer(self)
         self.main_problem_list.problem_list.add_observer(self)
-        self.set_callbacks({
-            timer.TimerSplitEvent: self._on_split,
-            plist.ProbSelectedEvent: self._on_prob_selected,
-        })
+        self.set_callbacks(
+            {
+                timer.TimerSplitEvent: self._on_split,
+                plist.ProbSelectedEvent: self._on_prob_selected,
+            }
+        )
 
         # GUI
         self.root: tk.Tk = root
@@ -73,7 +76,7 @@ class RootController(evt.IObserver):
         self.bindings = Bindings(self)
         # mypy bug, function vs Callable[..., Any]
         # See https://github.com/python/mypy/issues/10740
-        self.bindings.bind_shortcuts(self.root, self.bindings.MASTER_SHORTCUTS) # type: ignore[arg-type]
+        self.bindings.bind_shortcuts(self.root, self.bindings.MASTER_SHORTCUTS)  # type: ignore[arg-type]
         self.bindings.bind_shortcuts(self.root, self.bindings.FREE_SHORTCUTS)
         return
 
@@ -81,19 +84,16 @@ class RootController(evt.IObserver):
         self.settings.open_settings_window()
         return
 
-    def open_folder(self,
-            _event: Optional[tk.Event] = None, recursive: bool = False
-        ) -> None:
-        """Prompt user for a folder, open into main_problem_list.
-        """
+    def open_folder(
+        self, _event: Optional[tk.Event] = None, recursive: bool = False
+    ) -> None:
+        """Prompt user for a folder, open into main_problem_list."""
         directory = filedialog.askdirectory()
         if not directory:
             return
         directory = os.path.normpath(directory)
         kif_files = files.get_kif_files(directory, recursive)
-        self.main_problem_list.set_directory(
-            directory, kif_files
-        )
+        self.main_problem_list.set_directory(directory, kif_files)
         return
 
     def open_folder_recursive(self, _event: Optional[tk.Event] = None) -> None:
@@ -106,9 +106,8 @@ class RootController(evt.IObserver):
         self.root.update()
         return
 
-    def show_problem(self, prob: plist.Problem) -> None:
-        """Display the given problem in the GUI and enable move input.
-        """
+    def show_problem(self, prob: pb.Problem) -> None:
+        """Display the given problem in the GUI and enable move input."""
         self._read_problem(prob)
         self.main_viewcon.refresh_main_board()
         self.main_viewcon.refresh_move_list()
@@ -117,9 +116,8 @@ class RootController(evt.IObserver):
         self.root.title("tsumemi - " + str(prob.filepath))
         return
 
-    def _read_problem(self, prob: plist.Problem) -> None:
-        """Read the problem data from file into the program.
-        """
+    def _read_problem(self, prob: pb.Problem) -> None:
+        """Read the problem data from file into the program."""
         game = self.game_from_problem(prob)
         if game is None:
             return
@@ -127,7 +125,7 @@ class RootController(evt.IObserver):
         self.main_game.set_game(game)
         return
 
-    def game_from_problem(self, prob: plist.Problem) -> Optional[Game]:
+    def game_from_problem(self, prob: pb.Problem) -> Optional[Game]:
         filepath = prob.filepath
         if filepath is None:
             return None
@@ -152,8 +150,7 @@ class RootController(evt.IObserver):
         prob = self.main_problem_list.go_prev_problem()
         return prob is not None
 
-    def go_to_file(self, _event: Optional[tk.Event] = None, idx: int = 0
-        ) -> bool:
+    def go_to_file(self, _event: Optional[tk.Event] = None, idx: int = 0) -> bool:
         prob = self.main_problem_list.go_to_problem(idx)
         return prob is not None
 
@@ -188,7 +185,7 @@ class RootController(evt.IObserver):
         self.main_problem_list.export_as_csv(directory)
         return
 
-    #=== Speedrun controller commands
+    # === Speedrun controller commands
     def start_speedrun(self) -> None:
         self.speedrun_controller.start_speedrun()
         self.main_viewcon.set_btns_allow_abort_speedrun()
@@ -202,26 +199,25 @@ class RootController(evt.IObserver):
         self.bindings.bind_shortcuts(self.root, self.bindings.FREE_SHORTCUTS)
         return
 
-    def update_nav_control_pane(self,
-            nav_pane_constructor: Callable[[tk.Widget], ttk.Frame]
-        ) -> None:
+    def update_nav_control_pane(
+        self, nav_pane_constructor: Callable[[tk.Widget], ttk.Frame]
+    ) -> None:
         self.main_viewcon.set_nav_pane(nav_pane_constructor)
         return
 
-    #=== GUI display methods
+    # === GUI display methods
     def apply_skin_settings(self, settings: skins.SkinSettings) -> None:
         self.skin_settings = settings
         self.main_viewcon.apply_skins(settings)
         return
 
-    def apply_notation_settings(self, move_writer: notation.AbstractMoveWriter
-        ) -> None:
+    def apply_notation_settings(self, move_writer: notation.AbstractMoveWriter) -> None:
         self.notation_writer.change_move_writer(move_writer)
         self.refresh_solution_text()
         self.main_viewcon.refresh_move_list()
         return
 
-    #=== Observer callbacks
+    # === Observer callbacks
     def _on_split(self, event: timer.TimerSplitEvent) -> None:
         if self.main_timer.clock is event.clock:
             self.main_problem_list.set_time(event.time)
@@ -254,16 +250,16 @@ class Bindings:
 
     @staticmethod
     def bind_shortcuts(
-            target: tk.Tk, shortcuts: Mapping[str, Callable[..., Any]]
-        ) -> None:
+        target: tk.Tk, shortcuts: Mapping[str, Callable[..., Any]]
+    ) -> None:
         for keypress, command in shortcuts.items():
             target.bind(keypress, command)
         return
 
     @staticmethod
     def unbind_shortcuts(
-            target: tk.Tk, shortcuts: Mapping[str, Callable[..., Any]]
-        ) -> None:
+        target: tk.Tk, shortcuts: Mapping[str, Callable[..., Any]]
+    ) -> None:
         for keypress in shortcuts.keys():
             target.unbind(keypress)
         return
@@ -271,23 +267,35 @@ class Bindings:
 
 def run() -> None:
     logging.basicConfig(filename="tsumemilog.log", level=logging.WARNING)
+
     def apply_theme_fix() -> None:
         # Fix from pyIDM on GitHub:
         # https://github.com/pyIDM/PyIDM/issues/128#issuecomment-655477524
         # fix for table colors in tkinter 8.6.9,
         # call style.map twice to work properly
         style = ttk.Style()
+
         def fixed_map(option: str) -> List[Any]:
-            return [elm for elm in style.map('Treeview', query_opt=option)
-                    if elm[:2] != ("!disabled", "!selected")]
-        style.map('Treeview', foreground=fixed_map("foreground"),
-                  background=fixed_map("background"))
-        style.map('Treeview', foreground=fixed_map("foreground"),
-                  background=fixed_map("background"))
+            return [
+                elm
+                for elm in style.map("Treeview", query_opt=option)
+                if elm[:2] != ("!disabled", "!selected")
+            ]
+
+        style.map(
+            "Treeview",
+            foreground=fixed_map("foreground"),
+            background=fixed_map("background"),
+        )
+        style.map(
+            "Treeview",
+            foreground=fixed_map("foreground"),
+            background=fixed_map("background"),
+        )
         return
 
     root = tk.Tk()
     RootController(root)
     apply_theme_fix()
-    root.minsize(width=400, height=200) # stopgap vs canvas overshrinking bug
+    root.minsize(width=400, height=200)  # stopgap vs canvas overshrinking bug
     root.mainloop()

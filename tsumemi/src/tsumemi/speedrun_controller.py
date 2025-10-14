@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 import tsumemi.src.tsumemi.event as evt
 import tsumemi.src.tsumemi.game.game_controller as gamecon
-import tsumemi.src.tsumemi.problem_list.problem_list_model as plist
+import tsumemi.src.tsumemi.problem as pb
 
 if TYPE_CHECKING:
     import tkinter as tk
@@ -77,7 +77,7 @@ class SpeedrunController:
             self.stop_timer()
             messagebox.showinfo(
                 title="End of folder",
-                message="You have reached the end of the speedrun."
+                message="You have reached the end of the speedrun.",
             )
             self.abort_speedrun()
         return has_next
@@ -99,15 +99,15 @@ class SpeedrunController:
         return
 
     def mark_correct(self) -> None:
-        self.target.main_problem_list.set_status(plist.ProblemStatus.CORRECT)
+        self.target.main_problem_list.set_status(pb.ProblemStatus.CORRECT)
         return
 
     def mark_wrong(self) -> None:
-        self.target.main_problem_list.set_status(plist.ProblemStatus.WRONG)
+        self.target.main_problem_list.set_status(pb.ProblemStatus.WRONG)
         return
 
     def mark_skip(self) -> None:
-        self.target.main_problem_list.set_status(plist.ProblemStatus.SKIP)
+        self.target.main_problem_list.set_status(pb.ProblemStatus.SKIP)
         return
 
     def disable_solving(self) -> None:
@@ -127,67 +127,45 @@ class SpeedrunController:
         return
 
     def make_nav_pane_question(self, parent: tk.Widget) -> ttk.Frame:
-        nav = ttk.Frame(parent) #NavControlPane
+        nav = ttk.Frame(parent)  # NavControlPane
         question_state = self._speedrun_states["question"]
         if not isinstance(question_state, SpeedrunQuestionState):
             logger.warning("speedrun question state missing")
             return nav
-        btn_show_solution = ttk.Button(nav,
-            text="Show solution",
-            command=question_state.show_answer
+        btn_show_solution = ttk.Button(
+            nav, text="Show solution", command=question_state.show_answer
         )
-        btn_show_solution.grid(
-            row=0, column=0, sticky="E",
-            padx=5, pady=5
-        )
-        btn_skip = ttk.Button(nav,
-            text="Skip",
-            command=question_state.skip
-        )
-        btn_skip.grid(
-            row=0, column=1, sticky="W",
-            padx=5, pady=5
-        )
+        btn_show_solution.grid(row=0, column=0, sticky="E", padx=5, pady=5)
+        btn_skip = ttk.Button(nav, text="Skip", command=question_state.skip)
+        btn_skip.grid(row=0, column=1, sticky="W", padx=5, pady=5)
         return nav
 
     def make_nav_pane_answer(self, parent: tk.Widget) -> ttk.Frame:
-        nav = ttk.Frame(parent) #NavControlPane
+        nav = ttk.Frame(parent)  # NavControlPane
         answer_state = self._speedrun_states["answer"]
         if not isinstance(answer_state, SpeedrunAnswerState):
             logger.warning("speedrun answer state missing")
             return nav
-        btn_correct = ttk.Button(nav,
-            text="Correct",
-            command=answer_state.mark_correct_and_continue
+        btn_correct = ttk.Button(
+            nav, text="Correct", command=answer_state.mark_correct_and_continue
         )
-        btn_correct.grid(
-            row=0, column=0, sticky="E",
-            padx=5, pady=5
+        btn_correct.grid(row=0, column=0, sticky="E", padx=5, pady=5)
+        btn_wrong = ttk.Button(
+            nav, text="Wrong", command=answer_state.mark_wrong_and_continue
         )
-        btn_wrong = ttk.Button(nav,
-            text="Wrong",
-            command=answer_state.mark_wrong_and_continue
-        )
-        btn_wrong.grid(
-            row=0, column=1, sticky="W",
-            padx=5, pady=5
-        )
+        btn_wrong.grid(row=0, column=1, sticky="W", padx=5, pady=5)
         return nav
 
     def make_nav_pane_solution(self, parent: tk.Widget) -> ttk.Frame:
-        nav = ttk.Frame(parent) #NavControlPane
+        nav = ttk.Frame(parent)  # NavControlPane
         solution_state = self._speedrun_states["solution"]
         if not isinstance(solution_state, SpeedrunSolutionState):
             logger.warning("speedrun solution state missing")
             return nav
-        btn_continue = ttk.Button(nav,
-            text="Next",
-            command=solution_state.next_question
+        btn_continue = ttk.Button(
+            nav, text="Next", command=solution_state.next_question
         )
-        btn_continue.grid(
-            row=0, column=0,
-            padx=5, pady=5
-        )
+        btn_continue.grid(row=0, column=0, padx=5, pady=5)
         return nav
 
 
@@ -207,10 +185,12 @@ class SpeedrunState(evt.IObserver):
 class SpeedrunQuestionState(SpeedrunState):
     def __init__(self, controller: SpeedrunController) -> None:
         SpeedrunState.__init__(self, controller)
-        self.set_callbacks({
-            gamecon.GameEndEvent: self._mark_correct,
-            gamecon.WrongMoveEvent: self._mark_wrong,
-        })
+        self.set_callbacks(
+            {
+                gamecon.GameEndEvent: self._mark_correct,
+                gamecon.WrongMoveEvent: self._mark_wrong,
+            }
+        )
         return
 
     def on_entry(self) -> None:
