@@ -13,6 +13,7 @@ import tsumemi.src.tsumemi.game.game_controller as gamecon
 import tsumemi.src.tsumemi.notation_writer as nwriter
 import tsumemi.src.tsumemi.problem_list.problem_list_model as plist
 import tsumemi.src.tsumemi.problem_list.problem_list_controller as plistcon
+from tsumemi.src.tsumemi.run_statistics import RunStatistics
 import tsumemi.src.tsumemi.settings.settings_controller as setcon
 import tsumemi.src.tsumemi.speedrun_controller as speedcon
 import tsumemi.src.tsumemi.timer_controller as timecon
@@ -158,8 +159,16 @@ class RootController(evt.IObserver):
         return
 
     def generate_statistics(self) -> None:
-        stats = self.main_problem_list.generate_statistics()
-        StatisticsDialog(stats)
+        directory_name = (
+            str(self.main_problem_list.directory)
+            if self.main_problem_list.directory
+            else ""
+        )
+        run_stats = RunStatistics(self.main_problem_list.problem_list, directory_name)
+        StatisticsDialog(run_stats)
+
+        # stats = self.main_problem_list.generate_statistics()
+        # StatisticsDialog(stats)
         return
 
     def export_prob_list_csv(self) -> None:

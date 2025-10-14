@@ -16,6 +16,8 @@ if TYPE_CHECKING:
     from os import PathLike
     from typing import Any
 
+    NaturalSortKey = list[int | str]
+
 
 class ProbSelectedEvent(evt.Event):
     def __init__(self, sender: ProblemList, prob: Problem) -> None:
@@ -53,11 +55,11 @@ class ProblemList(evt.Emitter):
     @staticmethod
     def natural_sort_key(
         _str: str, _nsre: re.Pattern[str] = re.compile(r"(\d+)")
-    ) -> list[int | str]:
+    ) -> NaturalSortKey:
         return [int(c) if c.isdigit() else c.lower() for c in _nsre.split(_str)]
 
     @staticmethod
-    def _file_key(prob: Problem) -> list[int | str]:
+    def _file_key(prob: Problem) -> NaturalSortKey:
         return ProblemList.natural_sort_key(str(prob.filepath))
 
     def __init__(self, problems: list[Problem] | None = None) -> None:
