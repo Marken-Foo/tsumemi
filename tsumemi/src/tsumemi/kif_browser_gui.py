@@ -167,10 +167,6 @@ class RootController(evt.IObserver):
         run_stats = RunStatistics(self.main_problem_list.problem_list, directory_name)
         StatisticsDialog(run_stats)
 
-        # stats = self.main_problem_list.generate_statistics()
-        # StatisticsDialog(stats)
-        return
-
     def export_prob_list_csv(self) -> None:
         date_time_now = datetime.datetime.now()
         datetimestr = date_time_now.strftime("%Y%m%d-%H%M")

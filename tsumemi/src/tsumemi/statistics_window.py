@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import datetime
-import os
 import tkinter as tk
 
 from tkinter import ttk
@@ -31,21 +30,15 @@ class StatisticsDialog(tk.Toplevel):
             f"Problems skipped: {stats.total_skipped}",
             f"Average time per problem: {stats.average_time_per_problem.to_hms_str(places=1)}",
         ]
-        slowest_prob = stats.slowest_problem
-        if slowest_prob is not None:
-            _slowest_filename = os.path.basename(slowest_prob.filepath)
-            _slowest_time = slowest_prob.time
-            assert _slowest_time is not None
+        slowest_problem = stats.slowest_problem
+        if slowest_problem is not None and slowest_problem.time is not None:
             message_strings.append(
-                f"Longest time taken: {_slowest_time.to_hms_str(places=1)} ({_slowest_filename})"
+                f"Longest time taken: {slowest_problem.time.to_hms_str(places=1)} ({slowest_problem.name})"
             )
-        fastest_prob = stats.fastest_problem
-        if fastest_prob is not None:
-            _fastest_filename = os.path.basename(fastest_prob.filepath)
-            _fastest_time = fastest_prob.time
-            assert _fastest_time is not None
+        fastest_problem = stats.fastest_problem
+        if fastest_problem is not None and fastest_problem.time is not None:
             message_strings.append(
-                f"Shortest time taken: {_fastest_time.to_hms_str(places=1)} ({_fastest_filename})"
+                f"Shortest time taken: {fastest_problem.time.to_hms_str(places=1)} ({fastest_problem.name})"
             )
         report_text = "\n".join(message_strings)
 

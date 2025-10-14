@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import csv
-import os
 
 from typing import TYPE_CHECKING
 
@@ -13,10 +12,9 @@ from tsumemi.src.tsumemi.problem_list.problem_list_viewmodel import ProblemListV
 
 if TYPE_CHECKING:
     import tkinter as tk
+    from os import PathLike
     from typing import Iterable, Optional
     import tsumemi.src.tsumemi.timer as timer
-
-    PathLike = os.PathLike[str]
 
 
 class ProblemListController:
@@ -26,7 +24,7 @@ class ProblemListController:
 
     def __init__(self) -> None:
         self.problem_list: plist.ProblemList = plist.ProblemList()
-        self.directory: PathLike | None = None
+        self.directory: PathLike[str] | None = None
         self.viewmodel = ProblemListViewModel(self.problem_list)
 
     def go_next_problem(self) -> Optional[pb.Problem]:
@@ -57,8 +55,8 @@ class ProblemListController:
 
     def set_directory(
         self,
-        directory: PathLike,
-        file_list: Iterable[PathLike],
+        directory: PathLike[str],
+        file_list: Iterable[PathLike[str]],
     ) -> Optional[pb.Problem]:
         """Open directory and set own problem list to contents."""
         self.problem_list.clear(suppress=True)
@@ -69,12 +67,10 @@ class ProblemListController:
         self.directory = directory
         return self.go_to_problem(0)
 
-    def export_as_csv(self, filepath: PathLike) -> None:
+    def export_as_csv(self, filepath: PathLike[str]) -> None:
         with open(filepath, mode="w", newline="", encoding="utf-8") as csvfile:
             csvwriter = csv.writer(csvfile, delimiter=",")
             csvwriter.writerow(["filename", "status", "time (seconds)"])
             for prob in self.problem_list:
-                prob_filename = os.path.basename(os.path.normpath(prob.filepath))
-                prob_status = str(prob.status)
                 prob_time = 0 if prob.time is None else prob.time.seconds
-                csvwriter.writerow([prob_filename, prob_status, prob_time])
+                csvwriter.writerow([prob.name, str(prob.status), prob_time])

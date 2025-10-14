@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum
+import os
 from typing import TYPE_CHECKING
 
 from tsumemi.src.tsumemi import timer
@@ -34,3 +35,7 @@ class Problem:
 
     def __eq__(self, obj: Any) -> bool:
         return isinstance(obj, Problem) and self.filepath == obj.filepath
+
+    @property
+    def name(self) -> str:
+        return os.path.basename(os.path.normpath(self.filepath))

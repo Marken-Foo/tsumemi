@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import tkinter as tk
 
 from tkinter import ttk
@@ -156,14 +155,13 @@ class ProblemsTreeviewFrame(utils.ScrollableTreeviewFrame, evt.IObserver):
         problem_list = event.sender
         self.clear_treeview()
         for problem in problem_list:
-            filename = os.path.basename(problem.filepath)
             time_str = (
                 "-" if problem.time is None else problem.time.to_hms_str(places=1)
             )
             status_str = self.status_strings[problem.status]
             tag_list = [problem.status.name]
             self.tvw.insert(
-                "", "end", values=(filename, time_str, status_str), tags=tag_list
+                "", "end", values=(problem.name, time_str, status_str), tags=tag_list
             )
         self.refresh_vsb()
         return
