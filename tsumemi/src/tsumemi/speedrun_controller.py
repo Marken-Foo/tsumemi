@@ -99,15 +99,15 @@ class SpeedrunController:
         return
 
     def mark_correct(self) -> None:
-        self.target.main_problem_list.set_status(pb.ProblemStatus.CORRECT)
+        self.target.main_problem_list_controller.set_status(pb.ProblemStatus.CORRECT)
         return
 
     def mark_wrong(self) -> None:
-        self.target.main_problem_list.set_status(pb.ProblemStatus.WRONG)
+        self.target.main_problem_list_controller.set_status(pb.ProblemStatus.WRONG)
         return
 
     def mark_skip(self) -> None:
-        self.target.main_problem_list.set_status(pb.ProblemStatus.SKIP)
+        self.target.main_problem_list_controller.set_status(pb.ProblemStatus.SKIP)
         return
 
     def disable_solving(self) -> None:

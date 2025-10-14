@@ -49,7 +49,7 @@ class RootController(evt.IObserver):
         self.main_game = gamecon.GameController(self.notation_writer)
         self.main_timer = timecon.TimerController()
         self.current_directory: PathLike | None = None
-        self.main_problem_list = plistcon.ProblemListController()
+        self.main_problem_list_controller = plistcon.ProblemListController()
 
         self.speedrun_controller = speedcon.SpeedrunController(self)
 
@@ -57,7 +57,7 @@ class RootController(evt.IObserver):
             self.speedrun_controller._speedrun_states["question"]
         )
         self.main_timer.clock.add_observer(self)
-        self.main_problem_list.problem_list.add_observer(self)
+        self.main_problem_list_controller.problem_list.add_observer(self)
         self.set_callbacks(
             {
                 timer.TimerSplitEvent: self._on_split,
@@ -97,7 +97,7 @@ class RootController(evt.IObserver):
             return
         directory = os.path.normpath(directory)
         self.current_directory = directory
-        self.main_problem_list.set_problem_files(
+        self.main_problem_list_controller.set_problem_files(
             files.get_kif_files(directory, recursive)
         )
 
@@ -138,33 +138,35 @@ class RootController(evt.IObserver):
         return
 
     def go_next_file(self, _event: Optional[tk.Event] = None) -> bool:
-        prob = self.main_problem_list.go_next_problem()
+        prob = self.main_problem_list_controller.go_next_problem()
         return prob is not None
 
     def go_prev_file(self, _event: Optional[tk.Event] = None) -> bool:
-        prob = self.main_problem_list.go_prev_problem()
+        prob = self.main_problem_list_controller.go_prev_problem()
         return prob is not None
 
     def go_to_file(self, _event: Optional[tk.Event] = None, idx: int = 0) -> bool:
-        prob = self.main_problem_list.go_to_problem(idx)
+        prob = self.main_problem_list_controller.go_to_problem(idx)
         return prob is not None
 
     def clear_statuses(self) -> None:
-        self.main_problem_list.clear_statuses()
+        self.main_problem_list_controller.clear_statuses()
         return
 
     def clear_times(self) -> None:
-        self.main_problem_list.clear_times()
+        self.main_problem_list_controller.clear_times()
         return
 
     def clear_results(self) -> None:
-        self.main_problem_list.clear_statuses()
-        self.main_problem_list.clear_times()
+        self.main_problem_list_controller.clear_statuses()
+        self.main_problem_list_controller.clear_times()
         return
 
     def generate_statistics(self) -> None:
         directory_name = str(self.current_directory) if self.current_directory else ""
-        run_stats = RunStatistics(self.main_problem_list.problem_list, directory_name)
+        run_stats = RunStatistics(
+            self.main_problem_list_controller.problem_list, directory_name
+        )
         StatisticsDialog(run_stats)
 
     def export_prob_list_csv(self) -> None:
@@ -177,7 +179,7 @@ class RootController(evt.IObserver):
         )
         if not directory:
             return
-        self.main_problem_list.export_as_csv(directory)
+        self.main_problem_list_controller.export_as_csv(directory)
         return
 
     # === Speedrun controller commands
@@ -215,11 +217,11 @@ class RootController(evt.IObserver):
     # === Observer callbacks
     def _on_split(self, event: timer.TimerSplitEvent) -> None:
         if self.main_timer.clock is event.clock:
-            self.main_problem_list.set_time(event.time)
+            self.main_problem_list_controller.set_time(event.time)
         return
 
     def _on_prob_selected(self, event: plist.ProbSelectedEvent) -> None:
-        if event.sender is self.main_problem_list.problem_list:
+        if event.sender is self.main_problem_list_controller.problem_list:
             self.show_problem(event.problem)
         return
 
