@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import operator
 import random
 import re
 
@@ -9,12 +8,13 @@ from typing import TYPE_CHECKING
 import tsumemi.src.tsumemi.event as evt
 
 from tsumemi.src.tsumemi import timer
-from tsumemi.src.tsumemi.problem import Problem, ProblemStatus
+from tsumemi.src.tsumemi.problem import ProblemStatus
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Iterator
     from os import PathLike
     from typing import Any
+    from tsumemi.src.tsumemi.problem import Problem
 
     NaturalSortKey = list[int | str]
 
@@ -114,29 +114,6 @@ class ProblemList(evt.Emitter):
             return None
         else:
             return self.curr_prob.filepath
-
-    def filter_by_status(self, *args: ProblemStatus) -> ProblemList:
-        return ProblemList([prob for prob in self.problems if (prob.status in args)])
-
-    def get_total_time(self) -> timer.Time:
-        return sum(
-            (prob.time for prob in self.problems if prob.time is not None),
-            start=timer.Time(0),
-        )
-
-    def get_slowest_problem(self) -> Problem | None:
-        return max(
-            (prob for prob in self.problems if prob.time is not None),
-            key=operator.attrgetter("time"),
-            default=None,
-        )
-
-    def get_fastest_problem(self) -> Problem | None:
-        return min(
-            (prob for prob in self.problems if prob.time is not None),
-            key=operator.attrgetter("time"),
-            default=None,
-        )
 
     # === Setting methods
     def set_status(self, status: ProblemStatus) -> None:
