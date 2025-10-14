@@ -7,7 +7,7 @@ from tsumemi.src.shogi.move import NullMove
 if TYPE_CHECKING:
     from typing import Any, Callable, Generator, Iterator, List
     from tsumemi.src.shogi.move import Move
-    from tsumemi.src.shogi.notation.notation import AbstractMoveWriter
+    from tsumemi.src.shogi.notation import AbstractMoveWriter
     from tsumemi.src.shogi.position import Position
 
 
@@ -72,7 +72,7 @@ class MoveNode:
         the gametree to the caller node, inclusive.
         """
         node = self
-        res = []
+        res: list[MoveNode] = []
         while not node.is_null():
             res.append(node)
             node = node.parent

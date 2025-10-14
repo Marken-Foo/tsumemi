@@ -26,7 +26,7 @@ from tsumemi.src.tsumemi.statistics_window import StatisticsDialog
 
 if TYPE_CHECKING:
     from typing import Any, Callable, List, Mapping, Optional
-    from tsumemi.src.shogi.notation import notation
+    from tsumemi.src.shogi.notation import AbstractMoveWriter
     from tsumemi.src.shogi.game import Game
 
     PathLike = str | os.PathLike[str]
@@ -159,7 +159,7 @@ class RootController(evt.IObserver):
         self.main_viewcon.apply_skins(settings)
         return
 
-    def apply_notation_settings(self, move_writer: notation.AbstractMoveWriter) -> None:
+    def apply_notation_settings(self, move_writer: AbstractMoveWriter) -> None:
         self.notation_writer.change_move_writer(move_writer)
         self.refresh_solution_text()
         self.main_viewcon.refresh_move_list()

@@ -6,7 +6,7 @@ if TYPE_CHECKING:
     from typing import List
     from tsumemi.src.shogi.game import Game
     from tsumemi.src.shogi.gametree import MoveNode
-    from tsumemi.src.shogi.notation.notation import AbstractMoveWriter
+    from tsumemi.src.shogi.notation import AbstractMoveWriter
     from tsumemi.src.shogi.position import Position
 
 

@@ -1,184 +1,28 @@
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 from tsumemi.src.shogi import rules
 from tsumemi.src.shogi.basetypes import Koma, KomaType
 from tsumemi.src.shogi.basetypes import KANJI_NOTATION_FROM_KTYPE, SFEN_FROM_KOMA
 from tsumemi.src.shogi.move import TerminationMove
+from tsumemi.src.shogi.notation.abstract_move_writer import AbstractMoveWriter
+from tsumemi.src.shogi.notation.move_format import (
+    JAPANESE_MOVE_FORMAT,
+    WESTERN_MOVE_FORMAT,
+)
 
 if TYPE_CHECKING:
-    from typing import Callable, Iterable
+    from collections.abc import Iterable
     from tsumemi.src.shogi.basetypes import Side
     from tsumemi.src.shogi.move import Move
-    from tsumemi.src.shogi.position import Position
     from tsumemi.src.shogi.square import Square
-
-    MoveFormat = Iterable["MoveNotationBuilder"]
-    MoveNotationBuilder = Callable[[Move, Position, "AbstractMoveWriter"], str]
-
-
-def _write_koma(move: Move, _pos: Position, move_writer: AbstractMoveWriter) -> str:
-    """MoveNotationBuilder function."""
-    return move_writer.write_koma(move.koma)
-
-
-def _write_disambiguation(
-    move: Move, pos: Position, move_writer: AbstractMoveWriter
-) -> str:
-    """MoveNotationBuilder function."""
-    ambiguous_moves = rules.get_ambiguous_moves(pos, move)
-    needs_disambiguation = move_writer.needs_disambiguation(move, ambiguous_moves)
-    if not needs_disambiguation:
-        return ""
-    return move_writer.write_disambiguation(move, ambiguous_moves)
-
-
-def _write_movetype(move: Move, _pos: Position, move_writer: AbstractMoveWriter) -> str:
-    """MoveNotationBuilder function. Writes whether a move is a drop,
-    capture, or normal move.
-    """
-    return move_writer.write_movetype(move)
-
-
-def _write_destination(
-    move: Move, _pos: Position, move_writer: AbstractMoveWriter
-) -> str:
-    """MoveNotationBuilder function."""
-    return move_writer.write_destination(move.end_sq)
-
-
-def _write_same_destination(
-    move: Move, _pos: Position, move_writer: AbstractMoveWriter
-) -> str:
-    """MoveNotationBuilder function."""
-    return move_writer.write_same_destination(move.end_sq)
-
-
-def _write_promotion(
-    move: Move, _pos: Position, move_writer: AbstractMoveWriter
-) -> str:
-    """MoveNotationBuilder function."""
-    if rules.can_be_promotion(move):
-        return move_writer.write_promotion(move.is_promotion)
-    return ""
-
-
-WESTERN_MOVE_FORMAT: MoveFormat = (
-    _write_koma,
-    _write_disambiguation,
-    _write_movetype,
-    _write_destination,
-    _write_promotion,
-)
-
-
-JAPANESE_MOVE_FORMAT: MoveFormat = (
-    _write_destination,
-    _write_koma,
-    _write_movetype,
-    _write_disambiguation,
-    _write_promotion,
-)
-
-
-class AbstractMoveWriter(ABC):
-    """Abstract base class for a MoveWriter. Writes shogi moves
-    given a Move and Position.
-    """
-
-    def __init__(self, move_format: MoveFormat) -> None:
-        """Equips the move writer with a move format to follow."""
-        self.move_format: MoveFormat = move_format
-        self.same_move_format: MoveFormat = tuple(
-            _write_same_destination if func is _write_destination else func
-            for func in self.move_format
-        )
-
-    def get_new_instance(self) -> AbstractMoveWriter:
-        if self.__class__ == AbstractMoveWriter:
-            raise NotImplementedError
-        return self.__class__(self.move_format)
-
-    def write_move(self, move: Move, pos: Position, is_same: bool = False) -> str:
-        """Writes a shogi move as a string, given the move and the
-        position it occurred in. `is_same` specifies if the move is
-        to be written as though the prior move had the same
-        destination square.
-        """
-        if move.is_null():
-            raise ValueError("Attempting to write notation for a NullMove")
-        if isinstance(move, TerminationMove):
-            return self.write_termination_move(move)
-        if is_same:
-            return "".join((func(move, pos, self) for func in self.same_move_format))
-        return "".join((func(move, pos, self) for func in self.move_format))
-
-    def needs_disambiguation(self, move: Move, ambiguous_moves: Iterable[Move]) -> bool:
-        """Given a move and a list of potentially ambiguous moves
-        (same end square), identify if the move needs disambiguation.
-        """
-        needs_promotion = rules.can_be_promotion(move)
-        return any(
-            (
-                rules.can_be_promotion(amb_move) == needs_promotion
-                for amb_move in ambiguous_moves
-            )
-        )
-
-    @abstractmethod
-    def write_termination_move(self, move: TerminationMove) -> str:
-        raise NotImplementedError
-
-    @abstractmethod
-    def write_koma(self, koma: Koma) -> str:
-        raise NotImplementedError
-
-    @abstractmethod
-    def write_destination(self, sq: Square) -> str:
-        raise NotImplementedError
-
-    @abstractmethod
-    def write_same_destination(self, sq: Square) -> str:
-        raise NotImplementedError
-
-    @abstractmethod
-    def write_disambiguation(self, move: Move, ambiguous_moves: Iterable[Move]) -> str:
-        raise NotImplementedError
-
-    def write_movetype(self, move: Move) -> str:
-        """Writes whether the given move is a drop, capture, or
-        normal move.
-        """
-        if move.start_sq.is_hand():
-            return self.write_drop()
-        if move.captured != Koma.NONE:
-            return self.write_capture()
-        return self.write_simple()
-
-    @abstractmethod
-    def write_promotion(self, is_promotion: bool) -> str:
-        raise NotImplementedError
-
-    @abstractmethod
-    def write_coords(self, sq: Square) -> str:
-        raise NotImplementedError
-
-    @abstractmethod
-    def write_drop(self) -> str:
-        raise NotImplementedError
-
-    @abstractmethod
-    def write_capture(self) -> str:
-        raise NotImplementedError
-
-    @abstractmethod
-    def write_simple(self) -> str:
-        raise NotImplementedError
 
 
 class WesternMoveWriter(AbstractMoveWriter):
+    def __init__(self) -> None:
+        super().__init__(WESTERN_MOVE_FORMAT)
+
     def write_termination_move(self, move: TerminationMove) -> str:
         return move.to_latin()
 
@@ -221,6 +65,9 @@ class KitaoKawasakiMoveWriter(WesternMoveWriter):
 
 
 class JapaneseMoveWriter(AbstractMoveWriter):
+    def __init__(self) -> None:
+        super().__init__(JAPANESE_MOVE_FORMAT)
+
     def write_termination_move(self, move: TerminationMove) -> str:
         return move.to_ja_kif()
 

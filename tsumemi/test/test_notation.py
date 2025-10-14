@@ -4,11 +4,7 @@ import itertools
 
 from tsumemi.src.shogi.basetypes import GameTermination, KomaType, Side
 from tsumemi.src.shogi.move import TerminationMove
-from tsumemi.src.shogi.notation.notation import JapaneseMoveWriter, WesternMoveWriter
-from tsumemi.src.shogi.notation.notation import (
-    JAPANESE_MOVE_FORMAT,
-    WESTERN_MOVE_FORMAT,
-)
+from tsumemi.src.shogi.notation import JapaneseMoveWriter, WesternMoveWriter
 from tsumemi.src.shogi.position import Position
 from tsumemi.src.shogi.square import Square
 
@@ -16,7 +12,7 @@ from tsumemi.src.shogi.square import Square
 class TestWesternNotation(unittest.TestCase):
     def setUp(self):
         self.position = Position()
-        self.move_writer = WesternMoveWriter(WESTERN_MOVE_FORMAT)
+        self.move_writer = WesternMoveWriter()
 
     def _parse_move_test(self, line1, line2, line3):
         test_name = line1.rstrip()
@@ -59,7 +55,7 @@ class TestWesternNotation(unittest.TestCase):
 class TestJapaneseNotation(unittest.TestCase):
     def setUp(self):
         self.position = Position()
-        self.move_writer = JapaneseMoveWriter(JAPANESE_MOVE_FORMAT)
+        self.move_writer = JapaneseMoveWriter()
 
     def _parse_move_test(self, line1, line2, line3):
         test_name = line1.rstrip()

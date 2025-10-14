@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from typing import Generator, Iterable, List, Optional
     from tsumemi.src.shogi.gametree import MoveNode
     from tsumemi.src.shogi.move import Move
-    from tsumemi.src.shogi.notation.notation import AbstractMoveWriter
+    from tsumemi.src.shogi.notation import AbstractMoveWriter
 
 
 class Game:
@@ -147,7 +147,7 @@ class Game:
     def get_mainline_notation(self, move_writer: AbstractMoveWriter) -> List[str]:
         pos = Position()
         pos.from_sfen(self.movetree.start_pos)
-        res = []
+        res: list[str] = []
         nodes = self.movetree.traverse_mainline()
         nodes.__next__()  # exclude the root node
         for node in nodes:
