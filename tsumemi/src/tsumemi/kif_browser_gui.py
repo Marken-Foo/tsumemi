@@ -53,9 +53,7 @@ class RootController(evt.IObserver):
 
         self.speedrun_controller = speedcon.SpeedrunController(self)
 
-        self.main_game.add_observer(
-            self.speedrun_controller._speedrun_states["question"]
-        )
+        self.main_game.add_observer(self.speedrun_controller)
         self.main_timer.clock.add_observer(self)
         self.main_problem_list_controller.problem_list.add_observer(self)
         self.set_callbacks(

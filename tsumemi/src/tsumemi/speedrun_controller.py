@@ -5,6 +5,8 @@ import logging
 from tkinter import messagebox, ttk
 from typing import TYPE_CHECKING
 
+import tsumemi.src.tsumemi.event as evt
+import tsumemi.src.tsumemi.game.game_controller as gamecon
 import tsumemi.src.tsumemi.problem as pb
 from tsumemi.src.tsumemi.speedrun_states import (
     ReviewAnswer,
@@ -22,7 +24,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class SpeedrunController:
+class SpeedrunController(evt.IObserver):
     def __init__(self, root_controller: RootController) -> None:
         self.target = root_controller
         self._speedrun_states: dict[str, SpeedrunState] = {
@@ -33,6 +35,12 @@ class SpeedrunController:
             "solution": SolutionShown(controller=self),
         }
         self.current_speedrun_state = self._speedrun_states["off"]
+        self.set_callbacks(
+            {
+                gamecon.GameEndEvent: self._on_correct_solve,
+                gamecon.WrongMoveEvent: self._on_wrong_solve,
+            }
+        )
 
     def go_to_state(self, state: str) -> None:
         old_state = self.current_speedrun_state
@@ -52,6 +60,16 @@ class SpeedrunController:
         elif isinstance(state, SolutionShown):
             constructor = self.make_nav_pane_solution
             self.target.update_nav_control_pane(constructor)
+
+    def _on_correct_solve(self, _event: evt.Event):
+        if isinstance(self.current_speedrun_state, Solving):
+            self.mark_correct()
+            self.go_to_state("solution")
+
+    def _on_wrong_solve(self, _event: evt.Event):
+        if isinstance(self.current_speedrun_state, Solving):
+            self.mark_wrong()
+            self.go_to_state("solution")
 
     def start_speedrun(self) -> None:
         self.target.go_to_file(idx=0)

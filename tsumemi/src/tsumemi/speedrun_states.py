@@ -2,16 +2,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import tsumemi.src.tsumemi.event as evt
-import tsumemi.src.tsumemi.game.game_controller as gamecon
-
 if TYPE_CHECKING:
     from tsumemi.src.tsumemi.speedrun_controller import SpeedrunController
 
 
-class SpeedrunState(evt.IObserver):
+class SpeedrunState:
     def __init__(self, controller: SpeedrunController) -> None:
-        evt.IObserver.__init__(self)
         self.controller = controller
 
     def on_entry(self) -> None:
@@ -24,12 +20,6 @@ class SpeedrunState(evt.IObserver):
 class Solving(SpeedrunState):
     def __init__(self, controller: SpeedrunController) -> None:
         SpeedrunState.__init__(self, controller)
-        self.set_callbacks(
-            {
-                gamecon.GameEndEvent: self._mark_correct,
-                gamecon.WrongMoveEvent: self._mark_wrong,
-            }
-        )
 
     def on_entry(self) -> None:
         self.controller.start_timer()
@@ -40,18 +30,6 @@ class Solving(SpeedrunState):
         self.controller.mark_skip()
         if self.controller.go_next_question():
             self.controller.go_to_state("question")
-
-    def _mark_correct(self, _event: evt.Event) -> None:
-        if self.controller.current_speedrun_state is not self:
-            return
-        self.controller.mark_correct()
-        self.controller.go_to_state("solution")
-
-    def _mark_wrong(self, _event: evt.Event) -> None:
-        if self.controller.current_speedrun_state is not self:
-            return
-        self.controller.mark_wrong()
-        self.controller.go_to_state("solution")
 
     def show_answer(self) -> None:
         self.controller.go_to_state("answer")
