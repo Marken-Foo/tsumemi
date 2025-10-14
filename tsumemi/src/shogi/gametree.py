@@ -7,7 +7,7 @@ from tsumemi.src.shogi.move import NullMove
 if TYPE_CHECKING:
     from typing import Any, Callable, Generator, Iterator, List
     from tsumemi.src.shogi.move import Move
-    from tsumemi.src.shogi.notation import AbstractMoveWriter
+    from tsumemi.src.shogi.notation.notation import AbstractMoveWriter
     from tsumemi.src.shogi.position import Position
 
 
@@ -20,10 +20,11 @@ class MoveNode:
     Each node also contains a reference to its parent, and an ordered
     list of child nodes (the mainline is first in the list).
     """
-    _id = 0 # running unique ID for MoveNodes
+
+    _id = 0  # running unique ID for MoveNodes
 
     def __init__(self, move: Move, parent: MoveNode) -> None:
-        self.move: Move = move # move leading to this node
+        self.move: Move = move  # move leading to this node
         self.parent: MoveNode = parent
         self.movenum: int = 0 if parent.is_null() else parent.movenum + 1
         self.comment: str = ""
@@ -58,8 +59,7 @@ class MoveNode:
         return any(node.move == move for node in self.variations)
 
     def get_variation_node(self, move: Move) -> MoveNode:
-        """Return the child node corresponding to the given move.
-        """
+        """Return the child node corresponding to the given move."""
         for node in self.variations:
             if move == node.move:
                 return node
@@ -79,8 +79,7 @@ class MoveNode:
         return reversed(res)
 
     def get_last_node(self) -> MoveNode:
-        """Returns the node at the end of the mainline from this node.
-        """
+        """Returns the node at the end of the mainline from this node."""
         node = self
         while node.variations:
             node = node.variations[0]
@@ -108,10 +107,11 @@ class MoveNode:
         if self.variations:
             yield from self.variations[0].traverse_mainline()
 
-    def write_move(self,
-            move_writer: AbstractMoveWriter,
-            position: Position,
-        ) -> str:
+    def write_move(
+        self,
+        move_writer: AbstractMoveWriter,
+        position: Position,
+    ) -> str:
         """Returns the node's move as a string in the format of
         `move_writer`. The `position` is required for disambiguation.
         """
@@ -123,11 +123,10 @@ class MoveNode:
         )
         return move_writer.write_move(self.move, position, is_same_sq)
 
-    def _rec_str(self, acc: List[Any],
-            func: Callable[[MoveNode, List[Any]], None]
-            ) -> None:
-        """Recursive method to allow GameNode to print game tree.
-        """
+    def _rec_str(
+        self, acc: List[Any], func: Callable[[MoveNode, List[Any]], None]
+    ) -> None:
+        """Recursive method to allow GameNode to print game tree."""
         func(self, acc)
         if not self.variations:
             return
@@ -146,8 +145,8 @@ class MoveNode:
 
 
 class NullMoveNode(MoveNode):
-    """Null object to act as sentinel.
-    """
+    """Null object to act as sentinel."""
+
     def __init__(self) -> None:
         super().__init__(move=NullMove(), parent=self)
         return
@@ -161,12 +160,13 @@ class GameNode(MoveNode):
     the starting position (handicap/nonstandard game, or a problem
     position) and the player names.
     """
+
     def __init__(self) -> None:
         super().__init__(NullMove(), NullMoveNode())
         self.sente: str = ""
         self.gote: str = ""
         self.handicap: str = ""
-        self.start_pos: str = "" # sfen
+        self.start_pos: str = ""  # sfen
         return
 
     def __str__(self) -> str:

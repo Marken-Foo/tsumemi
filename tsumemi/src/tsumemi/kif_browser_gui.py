@@ -26,7 +26,7 @@ from tsumemi.src.tsumemi.statistics_window import StatisticsDialog
 
 if TYPE_CHECKING:
     from typing import Any, Callable, List, Mapping, Optional
-    from tsumemi.src.shogi import notation
+    from tsumemi.src.shogi.notation import notation
     from tsumemi.src.shogi.game import Game
 
     PathLike = str | os.PathLike[str]

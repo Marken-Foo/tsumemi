@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from typing import Generator, Iterable, List, Optional
     from tsumemi.src.shogi.gametree import MoveNode
     from tsumemi.src.shogi.move import Move
-    from tsumemi.src.shogi.notation import AbstractMoveWriter
+    from tsumemi.src.shogi.notation.notation import AbstractMoveWriter
 
 
 class Game:
@@ -17,6 +17,7 @@ class Game:
     root of the movetree, the current active node, and the current
     position in the game.
     """
+
     def __init__(self) -> None:
         self.movetree: GameNode = GameNode()
         self.curr_node: MoveNode = self.movetree
@@ -24,31 +25,28 @@ class Game:
         return
 
     def copy_from(self, game: Game) -> None:
-        """Shallow copy provided game onto self.
-        """
+        """Shallow copy provided game onto self."""
         self.movetree = game.movetree
         self.curr_node = game.curr_node
         self.position = game.position
         return
 
     def reset(self) -> None:
-        """Reset self to a new empty game.
-        """
+        """Reset self to a new empty game."""
         self.movetree = GameNode()
         self.curr_node = self.movetree
         self.position.reset()
         return
 
     def get_last_move(self) -> Move:
-        """Returns the move leading to the current game state.
-        """
+        """Returns the move leading to the current game state."""
         return self.curr_node.move
 
     def add_move(self, move: Move) -> None:
         """Execute the given move and add it to the movetree if it
         doesn't already exist.
         """
-        self.position.make_move(move) # should check for exceptions
+        self.position.make_move(move)  # should check for exceptions
         self.curr_node = self.curr_node.add_move(move)
         return
 
@@ -58,7 +56,7 @@ class Game:
         """
         res = self.curr_node.has_as_next_move(move)
         if res:
-            self.position.make_move(move) # should check for exceptions
+            self.position.make_move(move)  # should check for exceptions
             self.curr_node = self.curr_node.get_variation_node(move)
         return res
 
@@ -78,8 +76,7 @@ class Game:
         return next_node.move
 
     def go_next_move(self) -> None:
-        """Go one move further into the game, following the mainline.
-        """
+        """Go one move further into the game, following the mainline."""
         next_node = self.curr_node.next()
         if next_node.is_null():
             return
@@ -88,8 +85,7 @@ class Game:
         return
 
     def go_prev_move(self) -> None:
-        """Step one move back in the game.
-        """
+        """Step one move back in the game."""
         prev_node = self.curr_node.prev()
         if prev_node.is_null():
             return
@@ -98,8 +94,7 @@ class Game:
         return
 
     def go_to_start(self) -> None:
-        """Go to the start of the game.
-        """
+        """Go to the start of the game."""
         if not self.movetree.start_pos:
             # This should not happen, but needs to be handled
             return
@@ -108,15 +103,13 @@ class Game:
         return
 
     def go_to_end(self) -> None:
-        """Go to the end of the current branch.
-        """
+        """Go to the end of the current branch."""
         while not self.is_end():
             self.go_next_move()
         return
 
     def go_to_id(self, _id: int) -> None:
-        """Go to the node with the given id.
-        """
+        """Go to the node with the given id."""
         for node in self.movetree.traverse_preorder():
             if node.id == _id:
                 target_node = node
@@ -128,13 +121,10 @@ class Game:
         return
 
     def _go_to_node(self, target_node: MoveNode) -> None:
-        """Go to the target node, assuming it is in the movetree.
-        """
+        """Go to the target node, assuming it is in the movetree."""
         path_nodes = target_node.get_path_from_root()
-        path_nodes.__next__() # exclude the root node
-        self.position = self.get_end_position(
-            (node.move for node in path_nodes)
-        )
+        path_nodes.__next__()  # exclude the root node
+        self.position = self.get_end_position((node.move for node in path_nodes))
         self.curr_node = target_node
         return
 
@@ -154,14 +144,12 @@ class Game:
             position.make_move(move)
         return position
 
-    def get_mainline_notation(self,
-            move_writer: AbstractMoveWriter
-        ) -> List[str]:
+    def get_mainline_notation(self, move_writer: AbstractMoveWriter) -> List[str]:
         pos = Position()
         pos.from_sfen(self.movetree.start_pos)
         res = []
         nodes = self.movetree.traverse_mainline()
-        nodes.__next__() # exclude the root node
+        nodes.__next__()  # exclude the root node
         for node in nodes:
             pos.make_move(node.move)
             res.append(node.write_move(move_writer, pos))

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 import tsumemi.src.tsumemi.settings.setting_choices as setc
 
-from tsumemi.src.shogi import notation
+from tsumemi.src.shogi.notation import notation
 from tsumemi.src.shogi.basetypes import Koma
 from tsumemi.src.shogi.position import Position
 from tsumemi.src.shogi.square import Square
@@ -77,17 +77,16 @@ class NotationDropdown(setc.Dropdown[notation.AbstractMoveWriter]):
 
 
 class NotationSelectionFrame(ttk.Frame):
-    def __init__(self,
-            parent: tk.Widget,
-            controller: NotationSelectionController,
-        ) -> None:
+    def __init__(
+        self,
+        parent: tk.Widget,
+        controller: NotationSelectionController,
+    ) -> None:
         self.controller = controller
         super().__init__(parent)
         self.lbl_name = ttk.Label(self, text="Notation system")
         self.cmb_dropdown = NotationDropdown(parent=self, controller=controller.model)
-        self.cmb_dropdown.bind(
-            "<<ComboboxSelected>>", self.set_preview, add="+"
-        )
+        self.cmb_dropdown.bind("<<ComboboxSelected>>", self.set_preview, add="+")
         self.lbl_preview = ttk.Label(self)
 
         self.lbl_name.grid(row=0, column=0, sticky="W")
