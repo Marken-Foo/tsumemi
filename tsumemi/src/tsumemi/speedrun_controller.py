@@ -5,13 +5,18 @@ import logging
 from tkinter import messagebox, ttk
 from typing import TYPE_CHECKING
 
-import tsumemi.src.tsumemi.event as evt
-import tsumemi.src.tsumemi.game.game_controller as gamecon
 import tsumemi.src.tsumemi.problem as pb
+from tsumemi.src.tsumemi.speedrun_states import (
+    ReviewAnswer,
+    NotInSpeedrun,
+    Paused,
+    Solving,
+    SolutionShown,
+    SpeedrunState,
+)
 
 if TYPE_CHECKING:
     import tkinter as tk
-    from typing import Dict
     from tsumemi.src.tsumemi.kif_browser_gui import RootController
 
 logger = logging.getLogger(__name__)
@@ -20,15 +25,14 @@ logger = logging.getLogger(__name__)
 class SpeedrunController:
     def __init__(self, root_controller: RootController) -> None:
         self.target = root_controller
-        self._speedrun_states: Dict[str, SpeedrunState] = {
-            "answer": SpeedrunAnswerState(controller=self),
-            "off": SpeedrunOffState(controller=self),
-            "pause": SpeedrunPauseState(controller=self),
-            "question": SpeedrunQuestionState(controller=self),
-            "solution": SpeedrunSolutionState(controller=self),
+        self._speedrun_states: dict[str, SpeedrunState] = {
+            "answer": ReviewAnswer(controller=self),
+            "off": NotInSpeedrun(controller=self),
+            "pause": Paused(controller=self),
+            "question": Solving(controller=self),
+            "solution": SolutionShown(controller=self),
         }
         self.current_speedrun_state = self._speedrun_states["off"]
-        return
 
     def go_to_state(self, state: str) -> None:
         old_state = self.current_speedrun_state
@@ -37,19 +41,17 @@ class SpeedrunController:
         new_state.on_entry()
         self.current_speedrun_state = new_state
         self._state_change_callback(new_state)
-        return
 
     def _state_change_callback(self, state: SpeedrunState) -> None:
-        if isinstance(state, SpeedrunQuestionState):
+        if isinstance(state, Solving):
             constructor = self.make_nav_pane_question
             self.target.update_nav_control_pane(constructor)
-        elif isinstance(state, SpeedrunAnswerState):
+        elif isinstance(state, ReviewAnswer):
             constructor = self.make_nav_pane_answer
             self.target.update_nav_control_pane(constructor)
-        elif isinstance(state, SpeedrunSolutionState):
+        elif isinstance(state, SolutionShown):
             constructor = self.make_nav_pane_solution
             self.target.update_nav_control_pane(constructor)
-        return
 
     def start_speedrun(self) -> None:
         self.target.go_to_file(idx=0)
@@ -59,7 +61,6 @@ class SpeedrunController:
         self.target.main_timer.reset()
         self.start_timer()
         self.go_to_state("question")
-        return
 
     def abort_speedrun(self) -> None:
         self.stop_timer()
@@ -68,7 +69,6 @@ class SpeedrunController:
         self.enable_move_navigation()
         self.target.main_viewcon.enable_problem_list_input()
         self.go_to_state("off")
-        return
 
     def go_next_question(self) -> bool:
         has_next: bool = self.target.go_next_file()
@@ -84,52 +84,41 @@ class SpeedrunController:
 
     def show_solution(self) -> None:
         self.target.main_viewcon.show_solution()
-        return
 
     def start_timer(self) -> None:
         self.target.main_timer.start()
-        return
 
     def stop_timer(self) -> None:
         self.target.main_timer.stop()
-        return
 
     def split_timer(self) -> None:
         self.target.main_timer.split()
-        return
 
     def mark_correct(self) -> None:
         self.target.main_problem_list_controller.set_status(pb.ProblemStatus.CORRECT)
-        return
 
     def mark_wrong(self) -> None:
         self.target.main_problem_list_controller.set_status(pb.ProblemStatus.WRONG)
-        return
 
     def mark_skip(self) -> None:
         self.target.main_problem_list_controller.set_status(pb.ProblemStatus.SKIP)
-        return
 
     def disable_solving(self) -> None:
         self.target.main_viewcon.disable_move_input()
-        return
 
     def enable_solving(self) -> None:
         self.target.main_viewcon.enable_move_input()
-        return
 
     def disable_move_navigation(self) -> None:
         self.target.main_viewcon.disable_move_navigation()
-        return
 
     def enable_move_navigation(self) -> None:
         self.target.main_viewcon.enable_move_navigation()
-        return
 
     def make_nav_pane_question(self, parent: tk.Widget) -> ttk.Frame:
         nav = ttk.Frame(parent)  # NavControlPane
         question_state = self._speedrun_states["question"]
-        if not isinstance(question_state, SpeedrunQuestionState):
+        if not isinstance(question_state, Solving):
             logger.warning("speedrun question state missing")
             return nav
         btn_show_solution = ttk.Button(
@@ -143,7 +132,7 @@ class SpeedrunController:
     def make_nav_pane_answer(self, parent: tk.Widget) -> ttk.Frame:
         nav = ttk.Frame(parent)  # NavControlPane
         answer_state = self._speedrun_states["answer"]
-        if not isinstance(answer_state, SpeedrunAnswerState):
+        if not isinstance(answer_state, ReviewAnswer):
             logger.warning("speedrun answer state missing")
             return nav
         btn_correct = ttk.Button(
@@ -159,7 +148,7 @@ class SpeedrunController:
     def make_nav_pane_solution(self, parent: tk.Widget) -> ttk.Frame:
         nav = ttk.Frame(parent)  # NavControlPane
         solution_state = self._speedrun_states["solution"]
-        if not isinstance(solution_state, SpeedrunSolutionState):
+        if not isinstance(solution_state, SolutionShown):
             logger.warning("speedrun solution state missing")
             return nav
         btn_continue = ttk.Button(
@@ -167,118 +156,3 @@ class SpeedrunController:
         )
         btn_continue.grid(row=0, column=0, padx=5, pady=5)
         return nav
-
-
-class SpeedrunState(evt.IObserver):
-    def __init__(self, controller: SpeedrunController) -> None:
-        evt.IObserver.__init__(self)
-        self.controller = controller
-        return
-
-    def on_entry(self) -> None:
-        return
-
-    def on_exit(self) -> None:
-        return
-
-
-class SpeedrunQuestionState(SpeedrunState):
-    def __init__(self, controller: SpeedrunController) -> None:
-        SpeedrunState.__init__(self, controller)
-        self.set_callbacks(
-            {
-                gamecon.GameEndEvent: self._mark_correct,
-                gamecon.WrongMoveEvent: self._mark_wrong,
-            }
-        )
-        return
-
-    def on_entry(self) -> None:
-        self.controller.start_timer()
-        self.controller.disable_move_navigation()
-        return
-
-    def skip(self) -> None:
-        self.controller.split_timer()
-        self.controller.mark_skip()
-        if self.controller.go_next_question():
-            self.controller.go_to_state("question")
-        return
-
-    def _mark_correct(self, _event: evt.Event) -> None:
-        if self.controller.current_speedrun_state is not self:
-            return
-        self.controller.mark_correct()
-        self.controller.go_to_state("solution")
-        return
-
-    def _mark_wrong(self, _event: evt.Event) -> None:
-        if self.controller.current_speedrun_state is not self:
-            return
-        self.controller.mark_wrong()
-        self.controller.go_to_state("solution")
-        return
-
-    def show_answer(self) -> None:
-        self.controller.go_to_state("answer")
-        return
-
-    def pause(self) -> None:
-        self.controller.go_to_state("pause")
-        return
-
-
-class SpeedrunPauseState(SpeedrunState):
-    # Should it disable showing solution?
-    def on_entry(self) -> None:
-        self.controller.stop_timer()
-        self.controller.disable_solving()
-        return
-
-    def on_exit(self) -> None:
-        self.controller.enable_solving()
-        return
-
-    def unpause(self) -> None:
-        self.controller.go_to_state("question")
-        return
-
-
-class SpeedrunAnswerState(SpeedrunState):
-    def on_entry(self) -> None:
-        self.controller.split_timer()
-        self.controller.stop_timer()
-        self.controller.show_solution()
-        self.controller.enable_move_navigation()
-        return
-
-    def mark_correct_and_continue(self) -> None:
-        self.controller.mark_correct()
-        if self.controller.go_next_question():
-            self.controller.go_to_state("question")
-        return
-
-    def mark_wrong_and_continue(self) -> None:
-        self.controller.mark_wrong()
-        if self.controller.go_next_question():
-            self.controller.go_to_state("question")
-        return
-
-
-class SpeedrunSolutionState(SpeedrunState):
-    def on_entry(self) -> None:
-        self.controller.split_timer()
-        self.controller.stop_timer()
-        self.controller.show_solution()
-        self.controller.enable_move_navigation()
-        return
-
-    def next_question(self) -> None:
-        if self.controller.go_next_question():
-            self.controller.go_to_state("question")
-        return
-
-
-class SpeedrunOffState(SpeedrunState):
-    # Default state
-    pass
