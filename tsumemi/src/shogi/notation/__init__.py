@@ -1,4 +1,4 @@
-from tsumemi.src.shogi.notation.notation import (
+from tsumemi.src.shogi.notation.move_writers import (
     IrohaMoveWriter,
     JapaneseMoveWriter,
     KitaoKawasakiMoveWriter,
