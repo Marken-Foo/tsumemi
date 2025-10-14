@@ -12,11 +12,12 @@ from tsumemi.src.tsumemi.problem import ProblemStatus
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Iterator
-    from os import PathLike
+    import os
     from typing import Any
     from tsumemi.src.tsumemi.problem import Problem
 
     NaturalSortKey = list[int | str]
+    PathLike = str | os.PathLike[str]
 
 
 class ProbSelectedEvent(evt.Event):
@@ -109,7 +110,7 @@ class ProblemList(evt.Emitter):
             self._notify_observers(ProbListEvent(self))
 
     # === Getters/queries
-    def get_curr_filepath(self) -> PathLike[str] | None:
+    def get_curr_filepath(self) -> PathLike | None:
         if self.curr_prob is None:
             return None
         else:

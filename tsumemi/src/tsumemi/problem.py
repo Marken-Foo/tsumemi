@@ -7,8 +7,9 @@ from typing import TYPE_CHECKING
 from tsumemi.src.tsumemi import timer
 
 if TYPE_CHECKING:
-    from os import PathLike
     from typing import Any
+
+    PathLike = str | os.PathLike[str]
 
 
 class ProblemStatus(Enum):
@@ -28,8 +29,8 @@ class Problem:
     are included but do not affect identity.
     """
 
-    def __init__(self, filepath: PathLike[str]) -> None:
-        self.filepath: PathLike[str] = filepath
+    def __init__(self, filepath: PathLike) -> None:
+        self.filepath: PathLike = filepath
         self.time: timer.Time | None = None
         self.status: ProblemStatus = ProblemStatus.NONE
 

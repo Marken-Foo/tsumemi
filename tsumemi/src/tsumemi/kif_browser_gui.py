@@ -29,6 +29,8 @@ if TYPE_CHECKING:
     from tsumemi.src.shogi import notation
     from tsumemi.src.shogi.game import Game
 
+    PathLike = str | os.PathLike[str]
+
 
 class RootController(evt.IObserver):
     """Root controller for the application. Manages top-level logic
@@ -46,6 +48,7 @@ class RootController(evt.IObserver):
         )
         self.main_game = gamecon.GameController(self.notation_writer)
         self.main_timer = timecon.TimerController()
+        self.current_directory: PathLike | None = None
         self.main_problem_list = plistcon.ProblemListController()
 
         self.speedrun_controller = speedcon.SpeedrunController(self)
@@ -93,9 +96,10 @@ class RootController(evt.IObserver):
         if not directory:
             return
         directory = os.path.normpath(directory)
-        kif_files = files.get_kif_files(directory, recursive)
-        self.main_problem_list.set_directory(directory, kif_files)
-        return
+        self.current_directory = directory
+        self.main_problem_list.set_problem_files(
+            files.get_kif_files(directory, recursive)
+        )
 
     def open_folder_recursive(self, _event: Optional[tk.Event] = None) -> None:
         return self.open_folder(recursive=True)
@@ -159,11 +163,7 @@ class RootController(evt.IObserver):
         return
 
     def generate_statistics(self) -> None:
-        directory_name = (
-            str(self.main_problem_list.directory)
-            if self.main_problem_list.directory
-            else ""
-        )
+        directory_name = str(self.current_directory) if self.current_directory else ""
         run_stats = RunStatistics(self.main_problem_list.problem_list, directory_name)
         StatisticsDialog(run_stats)
 

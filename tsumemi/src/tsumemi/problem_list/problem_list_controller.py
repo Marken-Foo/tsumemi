@@ -4,17 +4,18 @@ import csv
 
 from typing import TYPE_CHECKING
 
-import tsumemi.src.tsumemi.problem as pb
-import tsumemi.src.tsumemi.problem_list.problem_list_model as plist
-
+from tsumemi.src.tsumemi.problem import Problem, ProblemStatus
+from tsumemi.src.tsumemi.problem_list.problem_list_model import ProblemList
 from tsumemi.src.tsumemi.problem_list.problem_list_view import ProblemListPane
 from tsumemi.src.tsumemi.problem_list.problem_list_viewmodel import ProblemListViewModel
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+    import os
     import tkinter as tk
-    from os import PathLike
-    from typing import Iterable, Optional
     import tsumemi.src.tsumemi.timer as timer
+
+    PathLike = str | os.PathLike[str]
 
 
 class ProblemListController:
@@ -23,20 +24,19 @@ class ProblemListController:
     """
 
     def __init__(self) -> None:
-        self.problem_list: plist.ProblemList = plist.ProblemList()
-        self.directory: PathLike[str] | None = None
+        self.problem_list: ProblemList = ProblemList()
         self.viewmodel = ProblemListViewModel(self.problem_list)
 
-    def go_next_problem(self) -> Optional[pb.Problem]:
+    def go_next_problem(self) -> Problem | None:
         return self.problem_list.go_to_next()
 
-    def go_prev_problem(self) -> Optional[pb.Problem]:
+    def go_prev_problem(self) -> Problem | None:
         return self.problem_list.go_to_prev()
 
-    def go_to_problem(self, idx: int = 0) -> Optional[pb.Problem]:
+    def go_to_problem(self, idx: int = 0) -> Problem | None:
         return self.problem_list.go_to_idx(idx)
 
-    def set_status(self, status: pb.ProblemStatus) -> None:
+    def set_status(self, status: ProblemStatus) -> None:
         self.problem_list.set_status(status)
 
     def set_time(self, time: timer.Time) -> None:
@@ -53,21 +53,15 @@ class ProblemListController:
         self.problem_list.add_observer(problem_list_pane.tvwfrm_problems)
         return problem_list_pane
 
-    def set_directory(
-        self,
-        directory: PathLike[str],
-        file_list: Iterable[PathLike[str]],
-    ) -> Optional[pb.Problem]:
-        """Open directory and set own problem list to contents."""
+    def set_problem_files(self, file_list: Iterable[PathLike]) -> Problem | None:
         self.problem_list.clear(suppress=True)
         self.problem_list.add_problems(
-            (pb.Problem(filepath) for filepath in file_list), suppress=True
+            (Problem(filepath) for filepath in file_list), suppress=True
         )
         self.problem_list.sort_by_file()
-        self.directory = directory
         return self.go_to_problem(0)
 
-    def export_as_csv(self, filepath: PathLike[str]) -> None:
+    def export_as_csv(self, filepath: PathLike) -> None:
         with open(filepath, mode="w", newline="", encoding="utf-8") as csvfile:
             csvwriter = csv.writer(csvfile, delimiter=",")
             csvwriter.writerow(["filename", "status", "time (seconds)"])
