@@ -32,7 +32,7 @@ def _write_disambiguation(
     needs_disambiguation = move_writer.needs_disambiguation(move, ambiguous_moves)
     if not needs_disambiguation:
         return ""
-    return move_writer.write_disambiguation(pos, move, ambiguous_moves)
+    return move_writer.write_disambiguation(move, ambiguous_moves)
 
 
 def _write_movetype(move: Move, _pos: Position, move_writer: AbstractMoveWriter) -> str:
@@ -89,15 +89,12 @@ class AbstractMoveWriter(ABC):
     """
 
     def __init__(self, move_format: MoveFormat) -> None:
-        """Equips the move writer with a move format to follow, and
-        specify if it is to aggressively disambiguate every move.
-        """
+        """Equips the move writer with a move format to follow."""
         self.move_format: MoveFormat = move_format
         self.same_move_format: MoveFormat = tuple(
             _write_same_destination if func is _write_destination else func
             for func in self.move_format
         )
-        self.aggressive_disambiguation = False
 
     def get_new_instance(self) -> AbstractMoveWriter:
         if self.__class__ == AbstractMoveWriter:
@@ -122,8 +119,6 @@ class AbstractMoveWriter(ABC):
         """Given a move and a list of potentially ambiguous moves
         (same end square), identify if the move needs disambiguation.
         """
-        if self.aggressive_disambiguation:
-            return bool(list(ambiguous_moves))
         needs_promotion = rules.can_be_promotion(move)
         return any(
             (
@@ -149,9 +144,7 @@ class AbstractMoveWriter(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def write_disambiguation(
-        self, pos: Position, move: Move, ambiguous_moves: Iterable[Move]
-    ) -> str:
+    def write_disambiguation(self, move: Move, ambiguous_moves: Iterable[Move]) -> str:
         raise NotImplementedError
 
     def write_movetype(self, move: Move) -> str:
@@ -198,9 +191,7 @@ class WesternMoveWriter(AbstractMoveWriter):
     def write_same_destination(self, sq: Square) -> str:
         return ""
 
-    def write_disambiguation(
-        self, pos: Position, move: Move, ambiguous_moves: Iterable[Move]
-    ) -> str:
+    def write_disambiguation(self, move: Move, ambiguous_moves: Iterable[Move]) -> str:
         start_sq = move.start_sq
         return self.write_coords(start_sq)
 
@@ -224,9 +215,7 @@ class KitaoKawasakiMoveWriter(WesternMoveWriter):
     def write_koma(self, koma: Koma) -> str:
         return KANJI_NOTATION_FROM_KTYPE[KomaType.get(koma)]
 
-    def write_disambiguation(
-        self, pos: Position, move: Move, ambiguous_moves: Iterable[Move]
-    ) -> str:
+    def write_disambiguation(self, move: Move, ambiguous_moves: Iterable[Move]) -> str:
         start_sq = move.start_sq
         return f"({self.write_coords(start_sq)})"
 
@@ -244,12 +233,8 @@ class JapaneseMoveWriter(AbstractMoveWriter):
     def write_same_destination(self, sq: Square) -> str:
         return "同"
 
-    def write_disambiguation(
-        self, pos: Position, move: Move, ambiguous_moves: Iterable[Move]
-    ) -> str:
-        return _disambiguate_japanese_move(
-            move, ambiguous_moves, self.aggressive_disambiguation
-        )
+    def write_disambiguation(self, move: Move, ambiguous_moves: Iterable[Move]) -> str:
+        return _disambiguate_japanese_move(move, ambiguous_moves)
 
     def write_promotion(self, is_promotion: bool) -> str:
         return "成" if is_promotion else "不成"
@@ -292,11 +277,7 @@ class IrohaMoveWriter(JapaneseMoveWriter):
         return IrohaMoveWriter.IROHA_SQUARES[sq - 1]
 
 
-def _disambiguate_japanese_move(
-    move: Move,
-    ambiguous_moves: Iterable[Move],
-    aggressive_disambiguation: bool,
-) -> str:
+def _disambiguate_japanese_move(move: Move, ambiguous_moves: Iterable[Move]) -> str:
     """Returns the Japanese kanji (may be more than one) which
     disambiguate a shogi move, given the move and a list of moves it
     could be confused with.
@@ -304,8 +285,7 @@ def _disambiguate_japanese_move(
     origin_squares = {
         amb_move.start_sq
         for amb_move in ambiguous_moves
-        if (aggressive_disambiguation)
-        or rules.can_be_promotion(amb_move) == rules.can_be_promotion(move)
+        if rules.can_be_promotion(amb_move) == rules.can_be_promotion(move)
     }
     side = move.koma.side()
     start_sq = move.start_sq
