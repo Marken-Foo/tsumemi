@@ -98,8 +98,8 @@ class MainWindowView(ttk.Frame):
         )
         self.speedrun_frame = SpeedrunFrame(
             self.pane_3,
-            self.controller.start_speedrun,
-            self.controller.abort_speedrun,
+            self.controller.speedrun_controller.start_speedrun,
+            self.controller.speedrun_controller.abort_speedrun,
         )
         self.pane_3.grid_columnconfigure(0, weight=1)
         self.pane_3.grid_rowconfigure(0, weight=4)

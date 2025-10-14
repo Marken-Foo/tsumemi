@@ -53,13 +53,13 @@ class SpeedrunController(evt.IObserver):
     def _state_change_callback(self, state: SpeedrunState) -> None:
         if isinstance(state, Solving):
             constructor = self.make_nav_pane_question
-            self.target.update_nav_control_pane(constructor)
+            self.target.main_viewcon.set_nav_pane(constructor)
         elif isinstance(state, ReviewAnswer):
             constructor = self.make_nav_pane_answer
-            self.target.update_nav_control_pane(constructor)
+            self.target.main_viewcon.set_nav_pane(constructor)
         elif isinstance(state, SolutionShown):
             constructor = self.make_nav_pane_solution
-            self.target.update_nav_control_pane(constructor)
+            self.target.main_viewcon.set_nav_pane(constructor)
 
     def _on_correct_solve(self, _event: evt.Event):
         if isinstance(self.current_speedrun_state, Solving):
@@ -76,6 +76,10 @@ class SpeedrunController(evt.IObserver):
         self.target.main_game.set_speedrun_mode()
         self.target.main_viewcon.disable_problem_list_input()
         self.target.main_viewcon.allow_only_pause_timer()
+        self.target.main_viewcon.set_btns_allow_abort_speedrun()
+        self.target.bindings.unbind_shortcuts(
+            self.target.root, self.target.bindings.FREE_SHORTCUTS
+        )
         self.target.main_timer.reset()
         self.start_timer()
         self.go_to_state("question")
@@ -83,6 +87,11 @@ class SpeedrunController(evt.IObserver):
     def abort_speedrun(self) -> None:
         self.stop_timer()
         self.target.main_viewcon.allow_all_timer()
+        self.target.main_viewcon.set_normal_nav_pane()
+        self.target.main_viewcon.set_btns_allow_start_speedrun()
+        self.target.bindings.bind_shortcuts(
+            self.target.root, self.target.bindings.FREE_SHORTCUTS
+        )
         self.target.main_game.set_free_mode()
         self.enable_move_navigation()
         self.target.main_viewcon.enable_problem_list_input()
@@ -97,7 +106,7 @@ class SpeedrunController(evt.IObserver):
                 title="End of folder",
                 message="You have reached the end of the speedrun.",
             )
-            self.target.abort_speedrun()
+            self.abort_speedrun()
         return next_problem is not None
 
     def show_solution(self) -> None:
