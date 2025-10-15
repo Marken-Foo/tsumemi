@@ -1,0 +1,74 @@
+test move
+27P
+27 26 =
+２六歩
+
+test gote move
+83p
+83 84 =
+８四歩
+
+test capture
+39L, 34n
+39 34 =
+３四香
+
+test straight disambiguation
+44S, 24S, 46S, 36S
+36 35 =
+３五銀直
+
+test right disambiguation
+44S, 24S, 46S, 36S
+24 35 =
+３五銀右
+
+test up disambiguation
+44S, 24S, 46S, 36S
+46 35 =
+３五銀上
+
+test horizontal disambiguation
+53+P, 54+P, 44+P
+53 43 =
+４三と寄
+
+test retreat disambiguation
+42+P, 44+P
+42 43 =
+４三と引
+
+test promotion
+65B
+65 32 +
+３二角成
+
+test nonpromotion
+65B
+65 32 =
+３二角不成
+
+test promotion and disambiguation
+72R, 57R
+57 52 +
+５二飛右成
+
+test nonpromotion and disambiguation
+72R, 57R
+72 52 =
+５二飛左不成
+
+test promotion as disambiguation
+23S, 25S
+23 34 +
+３四銀成
+
+test nonpromotion as disambiguation
+23S, 25S
+23 14 =
+１四銀不成
+
+test cannot promote as disambiguation
+23S, 25S
+25 14 =
+１四銀

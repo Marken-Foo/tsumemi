@@ -7,11 +7,12 @@ from typing import TYPE_CHECKING
 
 from tsumemi.src.shogi.basetypes import KOMA_FROM_SFEN, Koma
 from tsumemi.src.shogi.notation import WesternMoveWriter
+from tsumemi.src.shogi.notation.move_writers import JapaneseMoveWriter
 from tsumemi.src.shogi.position import Position
 from tsumemi.src.shogi.square import Square
 
 if TYPE_CHECKING:
-    from typing import Literal
+    from typing import Any, Literal
 
 
 def _read_notation_test_file(filename: str) -> list[NotationTestCase]:
@@ -24,7 +25,7 @@ def _read_notation_test_file(filename: str) -> list[NotationTestCase]:
     - The start square, end square, and whether the move is a promotion (`+` if promotion, `=` if not), separated by spaces. e.g. `83 84 =`
     - The expected move string, e.g. `S36-35` or `４三と引`
     """
-    with open(filename) as test_file:
+    with open(filename, encoding="utf-8") as test_file:
         return [
             _read_notation_test_case(
                 test_name=test_name.strip(),
@@ -113,19 +114,32 @@ western_notation_test_cases = _read_notation_test_file(
     r"tsumemi/src/shogi/tests/notation_test_cases_western.txt"
 )
 
+japanese_notation_test_cases = _read_notation_test_file(
+    r"tsumemi/src/shogi/tests/notation_test_cases_japanese.txt"
+)
 
-argvalues, names = zip(
-    *(
-        ((t.koma_locations, t.start_sq, t.end_sq, t.promotion, t.expected), t.name)
-        for t in western_notation_test_cases
+
+def _get_parametrization_from_test_cases(
+    test_cases: list[NotationTestCase],
+) -> tuple[Any, ...]:
+    argvalues, names = zip(
+        *(
+            ((t.koma_locations, t.start_sq, t.end_sq, t.promotion, t.expected), t.name)
+            for t in test_cases
+        )
     )
+    return (argvalues, names)
+
+
+western_args, western_names = _get_parametrization_from_test_cases(
+    western_notation_test_cases
 )
 
 
 @pytest.mark.parametrize(
     ["koma_locations", "start_sq", "end_sq", "promotion", "expected"],
-    argvalues,
-    ids=names,
+    western_args,
+    ids=western_names,
 )
 def test_western_notation(
     koma_locations: list[tuple[Square, Koma]],
@@ -135,6 +149,38 @@ def test_western_notation(
     expected: str,
 ):
     move_writer = WesternMoveWriter()
+    pos = Position()
+    for square, koma in koma_locations:
+        pos.set_koma(koma, square)
+    if promotion == "+":
+        is_promotion = True
+    elif promotion == "=":
+        is_promotion = False
+    else:
+        print("Unknown promotion value (must be '+' or '=')")
+        assert False
+    move = pos.create_move(start_sq=start_sq, end_sq=end_sq, is_promotion=is_promotion)
+    assert move_writer.write_move(move, pos) == expected
+
+
+japanese_args, japanese_names = _get_parametrization_from_test_cases(
+    japanese_notation_test_cases
+)
+
+
+@pytest.mark.parametrize(
+    ["koma_locations", "start_sq", "end_sq", "promotion", "expected"],
+    japanese_args,
+    ids=japanese_names,
+)
+def test_japanese_notation(
+    koma_locations: list[tuple[Square, Koma]],
+    start_sq: Square,
+    end_sq: Square,
+    promotion: Literal["+", "="],
+    expected: str,
+):
+    move_writer = JapaneseMoveWriter()
     pos = Position()
     for square, koma in koma_locations:
         pos.set_koma(koma, square)
