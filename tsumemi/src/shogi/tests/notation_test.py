@@ -5,14 +5,15 @@ import pytest
 
 from typing import TYPE_CHECKING
 
-from tsumemi.src.shogi.basetypes import KOMA_FROM_SFEN, Koma
+from tsumemi.src.shogi.basetypes import KOMA_FROM_SFEN
 from tsumemi.src.shogi.notation import WesternMoveWriter
 from tsumemi.src.shogi.notation.move_writers import JapaneseMoveWriter
 from tsumemi.src.shogi.position import Position
 from tsumemi.src.shogi.square import Square
 
 if TYPE_CHECKING:
-    from typing import Any, Literal
+    from collections.abc import Sequence
+    from tsumemi.src.shogi.basetypes import Koma
 
 
 def _read_notation_test_file(filename: str) -> list[NotationTestCase]:
@@ -50,14 +51,18 @@ def _read_notation_test_case(
     Reads a single test case. Refer to documentation for `_read_notation_test_file` for the format.
     """
     start_coord, end_coord, promotion = move_params.split(" ")
-    if not (promotion == "+" or promotion == "="):
+    if promotion == "+":
+        is_promotion = True
+    elif promotion == "=":
+        is_promotion = False
+    else:
         raise ValueError("Unknown promotion value (must be '+' or '=')")
     return NotationTestCase(
         test_name,
         _parse_koma_location_list(koma_locations),
         start_sq=_parse_square(start_coord),
         end_sq=_parse_square(end_coord),
-        promotion=promotion,
+        is_promotion=is_promotion,
         expected=expected_move_string,
     )
 
@@ -99,14 +104,14 @@ class NotationTestCase:
         koma_locations: list[tuple[Square, Koma]],
         start_sq: Square,
         end_sq: Square,
-        promotion: Literal["+", "="],
+        is_promotion: bool,
         expected: str,
     ) -> None:
         self.name = name
         self.koma_locations = koma_locations
         self.start_sq = start_sq
         self.end_sq = end_sq
-        self.promotion = promotion
+        self.is_promotion = is_promotion
         self.expected = expected
 
 
@@ -121,13 +126,14 @@ japanese_notation_test_cases = _read_notation_test_file(
 
 def _get_parametrization_from_test_cases(
     test_cases: list[NotationTestCase],
-) -> tuple[Any, ...]:
-    argvalues, names = zip(
-        *(
-            ((t.koma_locations, t.start_sq, t.end_sq, t.promotion, t.expected), t.name)
-            for t in test_cases
+) -> tuple[list[Sequence[object] | object], list[str]]:
+    argvalues: list[Sequence[object] | object] = []
+    names: list[str] = []
+    for t in test_cases:
+        argvalues.append(
+            (t.koma_locations, t.start_sq, t.end_sq, t.is_promotion, t.expected)
         )
-    )
+        names.append(t.name)
     return (argvalues, names)
 
 
@@ -137,7 +143,7 @@ western_args, western_names = _get_parametrization_from_test_cases(
 
 
 @pytest.mark.parametrize(
-    ["koma_locations", "start_sq", "end_sq", "promotion", "expected"],
+    ["koma_locations", "start_sq", "end_sq", "is_promotion", "expected"],
     western_args,
     ids=western_names,
 )
@@ -145,20 +151,13 @@ def test_western_notation(
     koma_locations: list[tuple[Square, Koma]],
     start_sq: Square,
     end_sq: Square,
-    promotion: Literal["+", "="],
+    is_promotion: bool,
     expected: str,
 ):
     move_writer = WesternMoveWriter()
     pos = Position()
     for square, koma in koma_locations:
         pos.set_koma(koma, square)
-    if promotion == "+":
-        is_promotion = True
-    elif promotion == "=":
-        is_promotion = False
-    else:
-        print("Unknown promotion value (must be '+' or '=')")
-        assert False
     move = pos.create_move(start_sq=start_sq, end_sq=end_sq, is_promotion=is_promotion)
     assert move_writer.write_move(move, pos) == expected
 
@@ -169,7 +168,7 @@ japanese_args, japanese_names = _get_parametrization_from_test_cases(
 
 
 @pytest.mark.parametrize(
-    ["koma_locations", "start_sq", "end_sq", "promotion", "expected"],
+    ["koma_locations", "start_sq", "end_sq", "is_promotion", "expected"],
     japanese_args,
     ids=japanese_names,
 )
@@ -177,19 +176,12 @@ def test_japanese_notation(
     koma_locations: list[tuple[Square, Koma]],
     start_sq: Square,
     end_sq: Square,
-    promotion: Literal["+", "="],
+    is_promotion: bool,
     expected: str,
 ):
     move_writer = JapaneseMoveWriter()
     pos = Position()
     for square, koma in koma_locations:
         pos.set_koma(koma, square)
-    if promotion == "+":
-        is_promotion = True
-    elif promotion == "=":
-        is_promotion = False
-    else:
-        print("Unknown promotion value (must be '+' or '=')")
-        assert False
     move = pos.create_move(start_sq=start_sq, end_sq=end_sq, is_promotion=is_promotion)
     assert move_writer.write_move(move, pos) == expected
