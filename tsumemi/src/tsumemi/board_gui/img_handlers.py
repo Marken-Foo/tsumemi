@@ -10,10 +10,11 @@ from PIL import Image, ImageTk
 from tsumemi.src.shogi.basetypes import KomaType
 
 if TYPE_CHECKING:
-    from typing import Any, Callable, Dict, Tuple, Union
+    from typing import Any, Callable
     from tsumemi.src.tsumemi.skins import BoardSkin, PieceSkin
     from tsumemi.src.tsumemi.board_gui.board_meas import BoardMeasurements
-    PathLike = Union[str, os.PathLike]
+
+    PathLike = str | os.PathLike[str]
 
 logger = logging.getLogger(__name__)
 
@@ -29,23 +30,22 @@ class ImgSizingDict:
     references to the images so they will not be garbage-collected,
     and also allows resizing on the fly.
     """
-    def __init__(self, update_func: Callable[[], Tuple[float, float]]) -> None:
+
+    def __init__(self, update_func: Callable[[], tuple[float, float]]) -> None:
         """Create ImgSizingDict. `update_func` is a Callable
         returning a tuple of the `(width, height)` that the resized
         images should be.
         """
         self.update_func = update_func
         self.width, self.height = map(int, update_func())
-        self.raws: Dict[Union[str, KomaType], Image.Image] = {}
-        self.images: Dict[Any, ImageTk.PhotoImage] = {}
-        return
+        self.raws: dict[str | KomaType, Image.Image] = {}
+        self.images: dict[Any, ImageTk.PhotoImage] = {}
 
     def __getitem__(self, key: Any) -> ImageTk.PhotoImage:
         return self.images[key]
 
     @staticmethod
-    def _resize_image(img: Image.Image, width: int, height: int
-        ) -> ImageTk.PhotoImage:
+    def _resize_image(img: Image.Image, width: int, height: int) -> ImageTk.PhotoImage:
         """Takes a PIL Image `img` and returns a resized
         ImageTk.PhotoImage.
         """
@@ -55,42 +55,36 @@ class ImgSizingDict:
             logger.info(
                 "Image resizing in ImgDict failed, passed parameters width %i, height %i",
                 int(width),
-                int(height)
+                int(height),
             )
             return ImageTk.PhotoImage(Image.new("RGB", (1, 1), "#000000"))
         return ImageTk.PhotoImage(resized_img)
 
-    def add_image(self, key: Union[str, KomaType], image: Image.Image) -> None:
-        """Stores the PIL Image as well as a resized copy.
-        """
+    def add_image(self, key: str | KomaType, image: Image.Image) -> None:
+        """Stores the PIL Image as well as a resized copy."""
         self.raws[key] = image
         self.images[key] = self._resize_image(image, self.width, self.height)
-        return
 
     def resize_images(self) -> None:
         """Updates all the resized images by resizing from the stored
         originals.
         """
         for key, raw_img in self.raws.items():
-            self.images[key] = self._resize_image(
-                raw_img, self.width, self.height
-            )
-        return
+            self.images[key] = self._resize_image(raw_img, self.width, self.height)
 
     def update_sizes(self) -> None:
         self.width, self.height = map(int, self.update_func())
-        return
 
 
 class ImgManager(ABC):
-    def __init__(self,
-            measurements: BoardMeasurements,
-            skin: Union[BoardSkin, PieceSkin],
-        ) -> None:
+    def __init__(
+        self,
+        measurements: BoardMeasurements,
+        skin: BoardSkin | PieceSkin,
+    ) -> None:
         self.measurements = measurements
         self.skin = skin
-        self.imgdicts: Dict[str, ImgSizingDict]
-        return
+        self.imgdicts: dict[str, ImgSizingDict]
 
     def has_images(self) -> bool:
         return bool(self.skin.path)
@@ -101,22 +95,22 @@ class ImgManager(ABC):
         for imgdict in self.imgdicts.values():
             imgdict.update_sizes()
             imgdict.resize_images()
-        return
 
 
 class KomaImgManager(ImgManager):
-    """Handles storing and sizing of images for pieces.
-    """
-    def __init__(self,
-            measurements: BoardMeasurements, skin: PieceSkin
-        ) -> None:
+    """Handles storing and sizing of images for pieces."""
+
+    def __init__(self, measurements: BoardMeasurements, skin: PieceSkin) -> None:
         ImgManager.__init__(self, measurements, skin)
-        def _komadai_piece_size() -> Tuple[int, int]:
+
+        def _komadai_piece_size() -> tuple[int, int]:
             kpc_w = measurements.komadai_piece_size
             return kpc_w, kpc_w
-        def _board_piece_size() -> Tuple[float, float]:
+
+        def _board_piece_size() -> tuple[float, float]:
             sq_w = measurements.sq_w
             return sq_w, sq_w
+
         self.imgdicts = {
             "upright": ImgSizingDict(_board_piece_size),
             "inverted": ImgSizingDict(_board_piece_size),
@@ -125,11 +119,11 @@ class KomaImgManager(ImgManager):
         }
         self.skin: PieceSkin
         self.load(skin)
-        return
 
     @staticmethod
-    def _open_ktype_images(ktype: KomaType, filepath: PathLike
-        ) -> Tuple[Image.Image, Image.Image]:
+    def _open_ktype_images(
+        ktype: KomaType, filepath: PathLike
+    ) -> tuple[Image.Image, Image.Image]:
         """Opens koma image files following the naming convention in
         the code. Returns the PIL images of the koma right-side-up
         and upside-down.
@@ -154,38 +148,37 @@ class KomaImgManager(ImgManager):
             self.imgdicts["inverted"].add_image(ktype, img_inverted)
             self.imgdicts["komadai_inverted"].add_image(ktype, img_inverted)
         self.skin = skin
-        return
 
-    def get_dict(self, invert: bool = False, komadai: bool = False
-        ) -> ImgSizingDict:
+    def get_dict(self, invert: bool = False, komadai: bool = False) -> ImgSizingDict:
         if not invert and not komadai:
             return self.imgdicts["upright"]
         elif invert and not komadai:
             return self.imgdicts["inverted"]
         elif not invert and komadai:
             return self.imgdicts["komadai_upright"]
-        else: # invert and komadai
+        else:  # invert and komadai
             return self.imgdicts["komadai_inverted"]
 
 
 class BoardImgManager(ImgManager):
-    """Handles storing and sizing of images for the board.
-    """
-    def __init__(self,
-            measurements: BoardMeasurements, skin: BoardSkin
-        ) -> None:
+    """Handles storing and sizing of images for the board."""
+
+    def __init__(self, measurements: BoardMeasurements, skin: BoardSkin) -> None:
         ImgManager.__init__(self, measurements, skin)
-        def _board_sq_size() -> Tuple[float, float]:
+
+        def _board_sq_size() -> tuple[float, float]:
             sq_w = measurements.sq_w
             sq_h = measurements.sq_h
             # +1 pixel to avoid gaps when tiling image
-            return sq_w+1, sq_h+1
-        def _board_size() -> Tuple[float, float]:
+            return sq_w + 1, sq_h + 1
+
+        def _board_size() -> tuple[float, float]:
             # for a 9x9 board
             sq_w = measurements.sq_w
             sq_h = measurements.sq_h
             # +1 pixel to avoid gaps
-            return 9*sq_w+1, 9*sq_h+1
+            return 9 * sq_w + 1, 9 * sq_h + 1
+
         self.imgdicts = {
             "tile_sized": ImgSizingDict(_board_sq_size),
             "board_sized": ImgSizingDict(_board_size),
@@ -193,12 +186,9 @@ class BoardImgManager(ImgManager):
         self.imgdicts["tile_sized"].add_image("transparent", IMG_TRANSPARENT)
         self.imgdicts["tile_sized"].add_image("highlight", IMG_HIGHLIGHT)
         self.imgdicts["tile_sized"].add_image("highlight2", IMG_HIGHLIGHT_2)
-        self.imgdicts["board_sized"].add_image(
-            "semi-transparent", IMG_SEMI_TRANSPARENT
-        )
+        self.imgdicts["board_sized"].add_image("semi-transparent", IMG_SEMI_TRANSPARENT)
         self.skin: BoardSkin
         self.load(skin)
-        return
 
     def load(self, skin: BoardSkin) -> None:
         filepath = skin.path
@@ -208,8 +198,7 @@ class BoardImgManager(ImgManager):
             return
         img = Image.open(filepath)
         self.imgdicts["tile_sized"].add_image("board", img)
-        self.skin = skin # after loading, in case anything goes wrong
-        return
+        self.skin = skin  # after loading, in case anything goes wrong
 
     def get_dict(self, board_sized: bool = False) -> ImgSizingDict:
         if board_sized:
@@ -218,26 +207,22 @@ class BoardImgManager(ImgManager):
 
 
 class KomadaiImgManager(ImgManager):
-    """Handles storing and sizing of images for the komadai.
-    """
-    def __init__(self,
-            measurements: BoardMeasurements, skin: BoardSkin
-        ) -> None:
+    """Handles storing and sizing of images for the komadai."""
+
+    def __init__(self, measurements: BoardMeasurements, skin: BoardSkin) -> None:
         ImgManager.__init__(self, measurements, skin)
-        def _komadai_piece_size() -> Tuple[int, int]:
+
+        def _komadai_piece_size() -> tuple[int, int]:
             kpc_w = measurements.komadai_piece_size
             return kpc_w, kpc_w
+
         self.imgdicts = {
             "komadai_piece_sized": ImgSizingDict(_komadai_piece_size),
         }
-        self.imgdicts["komadai_piece_sized"].add_image(
-            "highlight", IMG_HIGHLIGHT
-        )
-        return
+        self.imgdicts["komadai_piece_sized"].add_image("highlight", IMG_HIGHLIGHT)
 
     def load(self, skin: BoardSkin) -> None:
         self.skin = skin
-        return
 
     def get_dict(self) -> ImgSizingDict:
         return self.imgdicts["komadai_piece_sized"]
