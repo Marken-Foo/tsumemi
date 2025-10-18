@@ -17,7 +17,7 @@ from tsumemi.src.tsumemi.board_gui.img_handlers import KomadaiImgManager
 from tsumemi.src.tsumemi.board_gui.komadai_artist import KomadaiArtist
 
 if TYPE_CHECKING:
-    from typing import Any, Optional, Tuple, Union
+    from typing import Any
     from tsumemi.src.shogi.position import Position
     from tsumemi.src.shogi.position_internals import HandRepresentation
     from tsumemi.src.tsumemi.game.game_model import GameStepEvent, GameUpdateEvent
@@ -27,6 +27,9 @@ if TYPE_CHECKING:
 # Default/current canvas size for board
 DEFAULT_CANVAS_WIDTH = 600
 DEFAULT_CANVAS_HEIGHT = 500
+
+# tk input
+TK_SINGLE_LEFT_CLICK = "<Button-1>"
 
 
 # IDX = zero-based, top left to bottom right, row-column (like FEN)
@@ -58,7 +61,7 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
         tk.Canvas.__init__(self, parent, width=width, height=height, *args, **kwargs)
         evt.IObserver.__init__(self)
         # Specify source of board data
-        self.move_input_handler: Optional[MoveInputHandler] = None
+        self.move_input_handler: MoveInputHandler | None = None
         self.position: Position = position
         # Initialise measurements, used for many other things
         self.measurements = BoardMeasurements(width, height)
@@ -82,16 +85,12 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
         # Last move highlighted tiles
         self.last_move_start_sq = Square.NONE
         self.last_move_end_sq = Square.NONE
-        return
 
-    def set_and_draw_callback(
-        self, event: Union[GameStepEvent, GameUpdateEvent]
-    ) -> None:
+    def set_and_draw_callback(self, event: GameStepEvent | GameUpdateEvent) -> None:
         last_move = event.game.get_last_move()
         self.last_move_start_sq = last_move.start_sq
         self.last_move_end_sq = last_move.end_sq
         self.set_position(event.game.get_position())
-        return
 
     def set_position(self, pos: Position) -> None:
         """Set the internal position (and of any associated input
@@ -101,22 +100,18 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
         if self.move_input_handler is not None:
             self.move_input_handler.position = pos
         self.draw()
-        return
 
     def apply_piece_skin(self, skin: PieceSkin) -> None:
         self.koma_image_cache.update_skin(skin)
         self.komadai_koma_image_cache.update_skin(skin)
-        return
 
     def apply_board_skin(self, skin: BoardSkin) -> None:
         self.board_artist.apply_skin(self, skin)
-        return
 
     def apply_komadai_skin(self, skin: BoardSkin) -> None:
         # Can only figure out how to apply solid colours for now
         self.itemconfig("komadai-solid", fill=skin.colour)
         self.komadai_img_cache.load(skin)
-        return
 
     def on_resize(self, event: tk.Event) -> None:
         # Callback for when the canvas itself is resized
@@ -133,14 +128,12 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
         self.komadai_img_cache.resize_images()
         # Redraw board after setting new dimensions
         self.draw()
-        return
 
     def flip_board(self, want_upside_down: bool) -> None:
         # For upside-down mode
         if self.is_upside_down != want_upside_down:
             self.is_upside_down = want_upside_down
             self.draw()
-        return
 
     def set_focus(self, sq: Square, ktype: KomaType = KomaType.NONE) -> None:
         self._unhighlight_square()
@@ -150,7 +143,6 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
             self._highlight_square(sq)
         # Kludge fix for _unhighlight_square() unhighlighting last move
         self._highlight_last_move()
-        return
 
     def draw(self) -> None:
         """Draw complete board with komadai and pieces."""
@@ -184,7 +176,6 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
                         self, text, invert, row_idx, col_idx
                     )
                 else:
-                    # img = self.get_koma_image(ktype, invert)
                     img = self.koma_image_cache.get_koma_image(ktype, invert)
                     if img is None:
                         continue
@@ -209,7 +200,6 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
         self.set_focus(self.highlighted_sq)
         self.board_artist.lift_click_layer(self)
         self._highlight_last_move()
-        return
 
     def _draw_canvas_base_layer(self) -> int:
         id_: int = self.create_rectangle(0, 0, self.width, self.height, fill="#ffffff")
@@ -236,7 +226,6 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
         artist.draw_komadai_header_text(self)
         artist.draw_all_komadai_koma(self)
         self._add_all_komadai_koma_onclick_callbacks()
-        return
 
     def prompt_promotion(self, sq: Square, ktype: KomaType) -> None:
         """Display the visual cues prompting user to choose promotion
@@ -259,26 +248,27 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
         if id_promoted is not None:
             self.tag_bind(
                 id_promoted,
-                "<Button-1>",
+                TK_SINGLE_LEFT_CLICK,
                 functools.partial(callback, is_promotion=True),
             )
         if id_unpromoted is not None:
             self.tag_bind(
                 id_unpromoted,
-                "<Button-1>",
+                TK_SINGLE_LEFT_CLICK,
                 functools.partial(callback, is_promotion=False),
             )
         self.tag_bind(
-            id_cover, "<Button-1>", functools.partial(callback, is_promotion=None)
+            id_cover,
+            TK_SINGLE_LEFT_CLICK,
+            functools.partial(callback, is_promotion=None),
         )
-        return
 
     def _prompt_promotion_callback(
         self,
         _event: tk.Event,
         sq: Square,
         ktype: KomaType,
-        is_promotion: Optional[bool],
+        is_promotion: bool | None,
     ) -> None:
         """Callback for promotion prompt. Clears the visual cues and
         passes the selected choice to underlying adapter. Use None
@@ -289,11 +279,9 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
                 is_promotion, sq=sq, ktype=ktype
             )
             self.clear_promotion_prompts()
-        return
 
     def clear_promotion_prompts(self) -> None:
         self.board_artist.clear_promotion_prompts(self)
-        return
 
     def col_idx_to_num(self, col_idx: int) -> int:
         return col_idx + 1 if self.is_upside_down else NUM_COLS - col_idx
@@ -307,7 +295,7 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
     def _row_num_to_idx(self, row_num: int) -> int:
         return NUM_ROWS - row_num if self.is_upside_down else row_num - 1
 
-    def _sq_to_idxs(self, sq: Square) -> Tuple[int, int]:
+    def _sq_to_idxs(self, sq: Square) -> tuple[int, int]:
         col_num, row_num = sq.get_cr()
         col_idx = self._col_num_to_idx(col_num)
         row_idx = self._row_num_to_idx(row_num)
@@ -315,7 +303,7 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
 
     def idxs_to_xy(
         self, col_idx: int, row_idx: int, centering: str = ""
-    ) -> Tuple[int, int]:
+    ) -> tuple[int, int]:
         x_sq = self.measurements.x_sq
         y_sq = self.measurements.y_sq
         x = x_sq(col_idx + 0.5) if "x" in centering.lower() else x_sq(col_idx)
@@ -354,10 +342,9 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
                 )
                 self.tag_bind(
                     self.board_artist.click_layer.tiles[row_idx][col_idx],
-                    "<Button-1>",
+                    TK_SINGLE_LEFT_CLICK,
                     callback,
                 )
-        return
 
     def _add_all_komadai_koma_onclick_callbacks(self) -> None:
         if self.move_input_handler is None:
@@ -373,8 +360,7 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
                 )
                 ids = self.find_withtag(f"komadai_koma&&{ktype.to_csa()}&&{side_str}")
                 for id_ in ids:
-                    self.tag_bind(id_, "<Button-1>", callback)
-        return
+                    self.tag_bind(id_, TK_SINGLE_LEFT_CLICK, callback)
 
     def _unhighlight_square(self) -> None:
         if self.highlighted_sq == Square.NONE:
@@ -385,7 +371,6 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
             return
         col_idx, row_idx = self._sq_to_idxs(self.highlighted_sq)
         self.board_artist.unhighlight_square(self, row_idx, col_idx)
-        return
 
     def _highlight_square(self, sq: Square) -> None:
         if sq == Square.HAND:
@@ -396,7 +381,6 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
         col_idx, row_idx = self._sq_to_idxs(sq)
         self.board_artist.highlight_square(self, row_idx, col_idx)
         self.highlighted_sq = sq
-        return
 
     def _highlight_hand_koma(self, ktype: KomaType) -> None:
         if ktype == KomaType.NONE:
@@ -410,7 +394,6 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
                 return
             self.itemconfig(item[0], image=highlight_image)
         self.highlighted_sq = Square.HAND
-        return
 
     def _highlight_last_move_square(self, sq: Square) -> None:
         if sq == Square.HAND:
@@ -419,9 +402,7 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
             return
         col_idx, row_idx = self._sq_to_idxs(sq)
         self.board_artist.highlight_square_2(self, row_idx, col_idx)
-        return
 
     def _highlight_last_move(self) -> None:
         self._highlight_last_move_square(self.last_move_start_sq)
         self._highlight_last_move_square(self.last_move_end_sq)
-        return
