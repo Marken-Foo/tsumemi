@@ -244,11 +244,12 @@ def test_unmake_move(
 @pytest.mark.parametrize(
     "sfen",
     [
+        "krbgsnlp1/1+r+b1+s+n+l+p1/9/9/9/9/9/1+P+L+N+S1+B+R1/1PLNSGBRK b - 1",
         "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1",
         "nk1n5/1g3g3/p8/2BP5/3+r5/9/9/9/9 b RBGg4s2n4l16p 17",
     ],
 )
-def test_starting_position_sfen_roundtrip(sfen: str):
+def test_sfen_roundtrip(sfen: str):
     pos = Position()
     pos.from_sfen(sfen)
     assert pos.to_sfen() == sfen
