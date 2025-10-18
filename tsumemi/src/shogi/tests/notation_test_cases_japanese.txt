@@ -13,6 +13,11 @@ test capture
 39 34 =
 ３四香
 
+test gote capture
+52l, 56B
+52 56 =
+５六香
+
 test straight disambiguation
 44S, 24S, 46S, 36S
 36 35 =
@@ -22,6 +27,11 @@ test right disambiguation
 44S, 24S, 46S, 36S
 24 35 =
 ３五銀右
+
+test left disambiguation
+44S, 24S, 26S, 36S
+44 35 =
+３五銀左
 
 test up disambiguation
 44S, 24S, 46S, 36S
@@ -38,6 +48,36 @@ test retreat disambiguation
 42 43 =
 ４三と引
 
+test gote straight disambiguation
+84s, 74s, 96s, 76s
+84 85 =
+８五銀直
+
+test gote right disambiguation
+84s, 74s, 96s, 76s
+96 85 =
+８五銀右
+
+test gote left disambiguation
+84s, 74s, 96s, 94s
+74 85 =
+８五銀左
+
+test gote up disambiguation
+84s, 74s, 96s, 76s
+74 85 =
+８五銀上
+
+test gote horizontal disambiguation
+57+p, 56+p, 66+p
+57 67 =
+６七と寄
+
+test gote retreat disambiguation
+68+p, 66+p
+68 67 =
+６七と引
+
 test promotion
 65B
 65 32 +
@@ -48,6 +88,16 @@ test nonpromotion
 65 32 =
 ３二角不成
 
+test gote promotion
+65b
+65 38 +
+３八角成
+
+test gote nonpromotion
+65b
+65 38 =
+３八角不成
+
 test promotion and disambiguation
 72R, 57R
 57 52 +
@@ -57,6 +107,16 @@ test nonpromotion and disambiguation
 72R, 57R
 72 52 =
 ５二飛左不成
+
+test gote promotion and disambiguation
+78r, 53r
+53 58 +
+５八飛左成
+
+test gote nonpromotion and disambiguation
+78r, 53r
+78 58 =
+５八飛右不成
 
 test promotion as disambiguation
 23S, 25S
@@ -72,3 +132,18 @@ test cannot promote as disambiguation
 23S, 25S
 25 14 =
 １四銀
+
+test gote promotion as disambiguation
+87s, 85s
+87 76 +
+７六銀成
+
+test nonpromotion as disambiguation
+87s, 85s
+87 96 =
+９六銀不成
+
+test cannot promote as disambiguation
+87s, 85s
+85 96 =
+９六銀
