@@ -24,6 +24,10 @@ class Dir(IntEnum):
     NW = 12
 
 
+KomasBySquare = dict[Square, Koma]
+KomaLocations = dict[Koma, set[Square]]
+
+
 class MailboxBoard:
     # Internal representation for the position.
     # Board representation used is mailbox.
@@ -130,11 +134,18 @@ class MailboxBoard:
     def get_koma(self, sq: Square) -> Koma:
         return self.mailbox[self.sq_to_idx(sq)]
 
-    def get_koma_sets(self) -> dict[Koma, set[Square]]:
+    def get_koma_sets(self) -> KomaLocations:
         return {
             koma: set(map(MailboxBoard.idx_to_sq, idxset))
             for koma, idxset in self.koma_sets.items()
         }
+
+    def get_komas_by_square(self) -> KomasBySquare:
+        komas_by_square: KomasBySquare = {}
+        for koma, idx_set in self.koma_sets.items():
+            for idx in idx_set:
+                komas_by_square[MailboxBoard.idx_to_sq(idx)] = koma
+        return komas_by_square
 
 
 class HandRepresentation:
