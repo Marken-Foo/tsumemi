@@ -9,7 +9,6 @@ from tsumemi.src.shogi.basetypes import HAND_TYPES, KOMA_TYPES, SFEN_FROM_KOMA
 from tsumemi.src.shogi.square import Square
 
 if TYPE_CHECKING:
-    from typing import Dict, List, Set
     from tsumemi.src.shogi.basetypes import KomaType
 
 
@@ -30,17 +29,16 @@ class MailboxBoard:
     # Board representation used is mailbox.
     # 1D array interpreted as a 9x9 array with padding.
     def __init__(self) -> None:
-        self.mailbox: List[Koma] = [Koma.INVALID] * 143
+        self.mailbox: list[Koma] = [Koma.INVALID] * 143
         # indices of squares containing Koma.NONE (empty squares)
-        self.empty_idxs: Set[int] = set()
-        self.koma_sets: Dict[Koma, Set[int]] = {}
+        self.empty_idxs: set[int] = set()
+        self.koma_sets: dict[Koma, set[int]] = {}
         self.reset()
-        return
 
     def __str__(self) -> str:
-        rows = []
+        rows: list[str] = []
         for row_num in range(1, 10, 1):
-            row = []
+            row: list[str] = []
             for col_num in range(9, 0, -1):
                 koma = self.mailbox[self.cr_to_idx(col_num, row_num)]
                 row.append(str(koma))
@@ -60,25 +58,25 @@ class MailboxBoard:
 
     @staticmethod
     def cr_to_idx(col_num: int, row_num: int) -> int:
-        return 13*col_num + row_num+1
+        return 13 * col_num + row_num + 1
 
     @staticmethod
     def idx_to_c(idx: int) -> int:
-        return (idx-1) // 13
+        return (idx - 1) // 13
 
     @staticmethod
     def idx_to_r(idx: int) -> int:
-        return (idx-1) % 13
+        return (idx - 1) % 13
 
     def to_sfen(self) -> str:
-        board = []
+        board: list[str] = []
         for row_num in range(1, 10):
             board.append(self._build_sfen_row(row_num))
         return "/".join(board)
 
     def _build_sfen_row(self, row_num: int) -> str:
         blanks = 0
-        row: List[str] = []
+        row: list[str] = []
         for col_num in range(9, 0, -1):
             koma = self.mailbox[self.cr_to_idx(col_num, row_num)]
             if koma is Koma.NONE:
@@ -105,25 +103,20 @@ class MailboxBoard:
                 self.empty_idxs.add(idx)
         # Koma set: indexed by side and komatype
         # contents are indices of where they are located on the board.
-        koma_sente: Dict[Koma, Set[int]] = {
+        koma_sente: dict[Koma, set[int]] = {
             Koma.make(Side.SENTE, ktype): set() for ktype in KOMA_TYPES
         }
-        koma_gote: Dict[Koma, Set[int]] = {
+        koma_gote: dict[Koma, set[int]] = {
             Koma.make(Side.GOTE, ktype): set() for ktype in KOMA_TYPES
         }
-        self.koma_sets = {
-            **koma_sente, **koma_gote
-        }
-        return
+        self.koma_sets = {**koma_sente, **koma_gote}
 
     def set_koma(self, koma: Koma, sq: Square) -> None:
         prev_koma = self.get_koma(sq)
         idx = self.sq_to_idx(sq)
         self.mailbox[idx] = koma
         if prev_koma == Koma.INVALID:
-            raise ValueError(
-                f"Cannot set koma {str(koma)} to replace Koma.INVALID"
-            )
+            raise ValueError(f"Cannot set koma {str(koma)} to replace Koma.INVALID")
         if koma == Koma.INVALID:
             raise ValueError("Cannot set koma to be Koma.INVALID")
         if koma == Koma.NONE:
@@ -133,12 +126,11 @@ class MailboxBoard:
             self.empty_idxs.discard(idx)
         if prev_koma != Koma.NONE:
             self.koma_sets[prev_koma].discard(idx)
-        return
 
     def get_koma(self, sq: Square) -> Koma:
         return self.mailbox[self.sq_to_idx(sq)]
 
-    def get_koma_sets(self) -> Dict[Koma, Set[Square]]:
+    def get_koma_sets(self) -> dict[Koma, set[Square]]:
         return {
             koma: set(map(MailboxBoard.idx_to_sq, idxset))
             for koma, idxset in self.koma_sets.items()
@@ -147,10 +139,7 @@ class MailboxBoard:
 
 class HandRepresentation:
     def __init__(self) -> None:
-        self.mochigoma_dict: Dict[KomaType, int] = {
-            ktype: 0 for ktype in HAND_TYPES
-        }
-        return
+        self.mochigoma_dict: dict[KomaType, int] = dict.fromkeys(HAND_TYPES, 0)
 
     def __str__(self) -> str:
         string_gen = (
@@ -163,7 +152,7 @@ class HandRepresentation:
         if self.is_empty():
             # Writing '-' in SFEN needs both hands, not just one
             return ""
-        sfen_hand = []
+        sfen_hand: list[str] = []
         for ktype in HAND_TYPES:
             count = self.mochigoma_dict[ktype]
             if count > 1:
@@ -173,14 +162,10 @@ class HandRepresentation:
         return "".join(sfen_hand)
 
     def reset(self) -> None:
-        self.mochigoma_dict = {
-            ktype: 0 for ktype in HAND_TYPES
-        }
-        return
+        self.mochigoma_dict = dict.fromkeys(HAND_TYPES, 0)
 
     def set_komatype_count(self, ktype: KomaType, count: int) -> None:
         self.mochigoma_dict[ktype] = count
-        return
 
     def get_komatype_count(self, ktype: KomaType) -> int:
         return self.mochigoma_dict[ktype]
@@ -190,13 +175,11 @@ class HandRepresentation:
             self.mochigoma_dict[ktype] += 1
         except KeyError:
             self.mochigoma_dict[ktype] = 1
-        return
 
     def dec_komatype(self, ktype: KomaType) -> None:
         if self.mochigoma_dict[ktype] <= 0:
             raise ValueError("Cannot decrease number of pieces in hand below 0")
         self.mochigoma_dict[ktype] -= 1
-        return
 
     def is_empty(self) -> bool:
         return not any(self.mochigoma_dict.values())
