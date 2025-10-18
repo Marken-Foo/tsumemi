@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from PIL import Image, ImageTk
 
+from tsumemi.src.tsumemi.board_gui.img_handlers import resize_image
 from tsumemi.src.tsumemi.skins import BoardSkin
 
 if TYPE_CHECKING:
@@ -81,9 +82,9 @@ class BoardImageCache:
         for key, raw in self._raws.items():
             match key:
                 case "semi-transparent":
-                    self._resized[key] = _resize_image(raw, board_width, board_height)
+                    self._resized[key] = resize_image(raw, board_width, board_height)
                 case _:
-                    self._resized[key] = _resize_image(raw, sq_width, sq_height)
+                    self._resized[key] = resize_image(raw, sq_width, sq_height)
 
     def update_skin(self, skin: BoardSkin) -> None:
         self._load_board_tile_from_skin(skin)
@@ -96,20 +97,6 @@ class BoardImageCache:
             return
         image = Image.open(image_filepath)
         self._raws["board_tile"] = image
-        self._resized["board_tile"] = _resize_image(
+        self._resized["board_tile"] = resize_image(
             image, self._sq_width, self._sq_height
         )
-
-
-def _resize_image(img: Image.Image, width: float, height: float) -> ImageTk.PhotoImage:
-    """
-    Returns a resized `ImageTk.PhotoImage` from a PIL `Image` and desired width and height.
-    """
-    try:
-        resized_img = img.resize((int(width), int(height)))
-        return ImageTk.PhotoImage(resized_img)
-    except ValueError:
-        logger.info(
-            f"Failed to resize image to dimensions {int(width)} * {int(height)}."
-        )
-        return ImageTk.PhotoImage(Image.new("RGB", (1, 1), "#000000"))

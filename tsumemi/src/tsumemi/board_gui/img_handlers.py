@@ -48,14 +48,14 @@ class ImgSizingDict:
     def add_image(self, key: str | KomaType, image: Image.Image) -> None:
         """Stores the PIL Image as well as a resized copy."""
         self.raws[key] = image
-        self.images[key] = _resize_image(image, self.width, self.height)
+        self.images[key] = resize_image(image, self.width, self.height)
 
     def resize_images(self) -> None:
         """Updates all the resized images by resizing from the stored
         originals.
         """
         for key, raw_img in self.raws.items():
-            self.images[key] = _resize_image(raw_img, self.width, self.height)
+            self.images[key] = resize_image(raw_img, self.width, self.height)
 
     def update_sizes(self) -> None:
         self.width, self.height = map(int, self.update_func())
@@ -82,7 +82,7 @@ class ImgManager(ABC):
             imgdict.resize_images()
 
 
-def _resize_image(img: Image.Image, width: float, height: float) -> ImageTk.PhotoImage:
+def resize_image(img: Image.Image, width: float, height: float) -> ImageTk.PhotoImage:
     """
     Returns a resized `ImageTk.PhotoImage` from a PIL `Image` and desired width and height.
     """

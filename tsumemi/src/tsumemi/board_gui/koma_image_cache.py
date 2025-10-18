@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from PIL import Image, ImageTk
 
 from tsumemi.src.shogi.basetypes import KomaType
+from tsumemi.src.tsumemi.board_gui.img_handlers import resize_image
 
 if TYPE_CHECKING:
     from tsumemi.src.tsumemi.skins import PieceSkin
@@ -26,7 +27,7 @@ class KomaImageCache:
         self.raws: dict[str, Image.Image] = {}
         self.resized: dict[str, ImageTk.PhotoImage] = {}
         self.raws["highlight"] = IMG_HIGHLIGHT
-        self.resized["highlight"] = _resize_image(IMG_HIGHLIGHT, width, height)
+        self.resized["highlight"] = resize_image(IMG_HIGHLIGHT, width, height)
         self._load_koma_images_from_skin(skin)
 
     def _get_key(self, ktype: KomaType, is_upside_down: bool) -> str:
@@ -47,7 +48,7 @@ class KomaImageCache:
 
     def _resize_images(self, width: float, height: float) -> None:
         for key, raw in self.raws.items():
-            self.resized[key] = _resize_image(raw, width, height)
+            self.resized[key] = resize_image(raw, width, height)
 
     def update_skin(self, skin: PieceSkin) -> None:
         self._load_koma_images_from_skin(skin)
@@ -68,11 +69,11 @@ class KomaImageCache:
             upright_key = self._get_key(ktype, False)
             upside_down_key = self._get_key(ktype, True)
             self.raws[upright_key] = img_upright
-            self.resized[upright_key] = _resize_image(
+            self.resized[upright_key] = resize_image(
                 img_upright, self.width, self.height
             )
             self.raws[upside_down_key] = img_upside_down
-            self.resized[upside_down_key] = _resize_image(
+            self.resized[upside_down_key] = resize_image(
                 img_upside_down, self.width, self.height
             )
 
@@ -88,17 +89,3 @@ def _open_koma_png(
     extension = "png"
     filename = f"{1 if is_upside_down else 0}{ktype.to_csa()}.{extension}"
     return Image.open(os.path.join(image_directory, filename))
-
-
-def _resize_image(img: Image.Image, width: float, height: float) -> ImageTk.PhotoImage:
-    """
-    Returns a resized `ImageTk.PhotoImage` from a PIL `Image` and desired width and height.
-    """
-    try:
-        resized_img = img.resize((int(width), int(height)))
-        return ImageTk.PhotoImage(resized_img)
-    except ValueError:
-        logger.info(
-            f"Failed to resize image to dimensions {int(width)} * {int(height)}."
-        )
-        return ImageTk.PhotoImage(Image.new("RGB", (1, 1), "#000000"))
