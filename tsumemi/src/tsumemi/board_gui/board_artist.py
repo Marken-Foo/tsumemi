@@ -25,7 +25,7 @@ class BoardLayer(ABC):
         self.is_centered = is_centered
         # Stored canvas item ids for later alteration.
         # FEN ordering. (row_idx, col_idx), zero-based
-        self.tiles = [[-1] * NUM_COLS for i in range(NUM_ROWS)]
+        self.tiles = [[-1] * NUM_COLS for _ in range(NUM_ROWS)]
         return
 
     @abstractmethod
@@ -50,17 +50,13 @@ class BoardImageLayer(BoardLayer):
                 self.tiles[row_idx][col_idx] = id_
         return
 
-    def update_tile(self,
-            canvas: BoardCanvas,
-            img: ImageTk.PhotoImage,
-            row_idx: int,
-            col_idx: int
-        ) -> None:
+    def update_tile(
+        self, canvas: BoardCanvas, img: ImageTk.PhotoImage, row_idx: int, col_idx: int
+    ) -> None:
         canvas.itemconfig(self.tiles[row_idx][col_idx], image=img)
         return
 
-    def update_all_tiles(self, canvas: BoardCanvas, img: ImageTk.PhotoImage
-        ) -> None:
+    def update_all_tiles(self, canvas: BoardCanvas, img: ImageTk.PhotoImage) -> None:
         for row in self.tiles:
             for tile in row:
                 canvas.itemconfig(tile, image=img)
@@ -87,8 +83,7 @@ class BoardKomaTextLayer(BoardLayer):
 
 
 class BoardArtist:
-    def __init__(self, measurements: BoardMeasurements, skin: BoardSkin
-        ) -> None:
+    def __init__(self, measurements: BoardMeasurements, skin: BoardSkin) -> None:
         self.board_rect = -1
         self.board_tile_layer = BoardImageLayer()
         self.highlight_layer = BoardImageLayer()
@@ -123,22 +118,24 @@ class BoardArtist:
         self.board_img_cache.resize_images()
         return
 
-    def draw_koma(self,
-            canvas: BoardCanvas,
-            img: ImageTk,
-            row_idx: int,
-            col_idx: int,
-        ) -> None:
+    def draw_koma(
+        self,
+        canvas: BoardCanvas,
+        img: ImageTk.PhotoImage,
+        row_idx: int,
+        col_idx: int,
+    ) -> None:
         self.koma_image_layer.update_tile(canvas, img, row_idx, col_idx)
         return
 
-    def draw_text_koma(self,
-            canvas: BoardCanvas,
-            text: str,
-            invert: bool,
-            row_idx: int,
-            col_idx: int,
-        ) -> None:
+    def draw_text_koma(
+        self,
+        canvas: BoardCanvas,
+        text: str,
+        invert: bool,
+        row_idx: int,
+        col_idx: int,
+    ) -> None:
         canvas.itemconfig(
             self.koma_text_layer.tiles[row_idx][col_idx],
             text=text,
@@ -151,9 +148,7 @@ class BoardArtist:
         return
 
     def draw_promotion_cover(self, canvas: BoardCanvas) -> int:
-        img = self.board_img_cache.get_dict(
-            board_sized=True
-        )["semi-transparent"]
+        img = self.board_img_cache.get_dict(board_sized=True)["semi-transparent"]
         id_: int
         id_ = canvas.create_image(
             *canvas.idxs_to_xy(0, 0),
@@ -163,42 +158,25 @@ class BoardArtist:
         )
         return id_
 
-    def draw_promotion_prompt_koma(self, canvas: BoardCanvas,
-            ktype: KomaType,
-            invert: bool,
-            row_idx: int,
-            col_idx: int,
-        ) -> Optional[int]:
-        artist = canvas.make_koma_artist(invert, False)
-        return artist.draw_koma(
-            canvas,
-            *canvas.idxs_to_xy(col_idx, row_idx, centering="xy"),
-            ktype,
-            anchor="center",
-            tags=(("promotion_prompt",)),
-        )
-
     def clear_promotion_prompts(self, canvas: BoardCanvas) -> None:
         canvas.delete("promotion_prompt")
         return
 
-    def unhighlight_square(self,
-            canvas: BoardCanvas, row_idx: int, col_idx: int
-        ) -> None:
+    def unhighlight_square(
+        self, canvas: BoardCanvas, row_idx: int, col_idx: int
+    ) -> None:
         img = self.board_img_cache.get_dict()["transparent"]
         self.highlight_layer.update_tile(canvas, img, row_idx, col_idx)
         return
 
-    def highlight_square(self,
-            canvas: BoardCanvas, row_idx: int, col_idx: int
-        ) -> None:
+    def highlight_square(self, canvas: BoardCanvas, row_idx: int, col_idx: int) -> None:
         img = self.board_img_cache.get_dict()["highlight"]
         self.highlight_layer.update_tile(canvas, img, row_idx, col_idx)
         return
 
-    def highlight_square_2(self,
-            canvas: BoardCanvas, row_idx: int, col_idx: int
-        ) -> None:
+    def highlight_square_2(
+        self, canvas: BoardCanvas, row_idx: int, col_idx: int
+    ) -> None:
         img = self.board_img_cache.get_dict()["highlight2"]
         self.highlight_layer.update_tile(canvas, img, row_idx, col_idx)
         return
@@ -231,17 +209,19 @@ class BoardArtist:
         return
 
     def _draw_board_grid_lines(self, canvas: BoardCanvas) -> None:
-        for i in range(NUM_COLS+1):
+        for i in range(NUM_COLS + 1):
             canvas.create_line(
                 *canvas.idxs_to_xy(i, 0),
                 *canvas.idxs_to_xy(i, NUM_ROWS),
-                fill="black", width=1,
+                fill="black",
+                width=1,
             )
-        for j in range(NUM_ROWS+1):
+        for j in range(NUM_ROWS + 1):
             canvas.create_line(
                 *canvas.idxs_to_xy(0, j),
                 *canvas.idxs_to_xy(NUM_COLS, j),
-                fill="black", width=1,
+                fill="black",
+                width=1,
             )
         return
 
@@ -273,13 +253,11 @@ class BoardArtist:
         return
 
     def _update_board_base_colour(self, canvas: BoardCanvas) -> None:
-        canvas.itemconfig(
-            self.board_rect, fill=self.board_img_cache.skin.colour
-        )
+        canvas.itemconfig(self.board_rect, fill=self.board_img_cache.skin.colour)
         return
 
-    def _update_board_tile_images(self,
-            canvas: BoardCanvas, img: ImageTk.PhotoImage
-        ) -> None:
+    def _update_board_tile_images(
+        self, canvas: BoardCanvas, img: ImageTk.PhotoImage
+    ) -> None:
         self.board_tile_layer.update_all_tiles(canvas, img)
         return
