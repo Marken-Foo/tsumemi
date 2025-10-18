@@ -44,33 +44,17 @@ class ImgSizingDict:
     def __getitem__(self, key: Any) -> ImageTk.PhotoImage:
         return self.images[key]
 
-    @staticmethod
-    def _resize_image(img: Image.Image, width: int, height: int) -> ImageTk.PhotoImage:
-        """Takes a PIL Image `img` and returns a resized
-        ImageTk.PhotoImage.
-        """
-        try:
-            resized_img = img.resize((int(width), int(height)))
-        except ValueError:
-            logger.info(
-                "Image resizing in ImgDict failed, passed parameters width %i, height %i",
-                int(width),
-                int(height),
-            )
-            return ImageTk.PhotoImage(Image.new("RGB", (1, 1), "#000000"))
-        return ImageTk.PhotoImage(resized_img)
-
     def add_image(self, key: str | KomaType, image: Image.Image) -> None:
         """Stores the PIL Image as well as a resized copy."""
         self.raws[key] = image
-        self.images[key] = self._resize_image(image, self.width, self.height)
+        self.images[key] = _resize_image(image, self.width, self.height)
 
     def resize_images(self) -> None:
         """Updates all the resized images by resizing from the stored
         originals.
         """
         for key, raw_img in self.raws.items():
-            self.images[key] = self._resize_image(raw_img, self.width, self.height)
+            self.images[key] = _resize_image(raw_img, self.width, self.height)
 
     def update_sizes(self) -> None:
         self.width, self.height = map(int, self.update_func())
@@ -120,20 +104,6 @@ class KomaImgManager(ImgManager):
         self.skin: PieceSkin
         self.load(skin)
 
-    @staticmethod
-    def _open_ktype_images(
-        ktype: KomaType, filepath: PathLike
-    ) -> tuple[Image.Image, Image.Image]:
-        """Opens koma image files following the naming convention in
-        the code. Returns the PIL images of the koma right-side-up
-        and upside-down.
-        """
-        filename_upright = f"0{ktype.to_csa()}.png"
-        filename_inverted = f"1{ktype.to_csa()}.png"
-        img_upright = Image.open(os.path.join(filepath, filename_upright))
-        img_inverted = Image.open(os.path.join(filepath, filename_inverted))
-        return img_upright, img_inverted
-
     def load(self, skin: PieceSkin) -> None:
         filepath = skin.path
         if not filepath:
@@ -142,7 +112,8 @@ class KomaImgManager(ImgManager):
         for ktype in KomaType:
             if ktype == KomaType.NONE:
                 continue
-            img_upright, img_inverted = self._open_ktype_images(ktype, filepath)
+            img_upright = _open_koma_png(filepath, ktype, is_upside_down=False)
+            img_inverted = _open_koma_png(filepath, ktype, is_upside_down=True)
             self.imgdicts["upright"].add_image(ktype, img_upright)
             self.imgdicts["komadai_upright"].add_image(ktype, img_upright)
             self.imgdicts["inverted"].add_image(ktype, img_inverted)
@@ -158,6 +129,33 @@ class KomaImgManager(ImgManager):
             return self.imgdicts["komadai_upright"]
         else:  # invert and komadai
             return self.imgdicts["komadai_inverted"]
+
+
+def _open_koma_png(
+    image_directory: PathLike, ktype: KomaType, is_upside_down: bool
+) -> Image.Image:
+    """
+    Opens koma PNG files as a PIL image. Assumes files are named e.g. `0FU.png`,
+    where the first character is `0` (right side up) or `1` (upside down), and
+    the koma type is given in all capitals in CSA notation.
+    """
+    extension = "png"
+    filename = f"{1 if is_upside_down else 0}{ktype.to_csa()}.{extension}"
+    return Image.open(os.path.join(image_directory, filename))
+
+
+def _resize_image(img: Image.Image, width: float, height: float) -> ImageTk.PhotoImage:
+    """
+    Returns a resized `ImageTk.PhotoImage` from a PIL `Image` and desired width and height.
+    """
+    try:
+        resized_img = img.resize((int(width), int(height)))
+        return ImageTk.PhotoImage(resized_img)
+    except ValueError:
+        logger.info(
+            f"Failed to resize image to dimensions {int(width)} * {int(height)}."
+        )
+        return ImageTk.PhotoImage(Image.new("RGB", (1, 1), "#000000"))
 
 
 class BoardImgManager(ImgManager):
