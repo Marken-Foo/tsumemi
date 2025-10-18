@@ -124,7 +124,9 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
         self.komadai_koma_image_cache.update_dimensions(
             self.measurements.komadai_piece_size, self.measurements.komadai_piece_size
         )
-        self.board_artist.update_measurements()
+        self.board_artist.update_measurements(
+            self.measurements.sq_w, self.measurements.sq_h
+        )
         self.komadai_img_cache.resize_images()
         # Redraw board after setting new dimensions
         self.draw()
@@ -257,11 +259,12 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
                 TK_SINGLE_LEFT_CLICK,
                 functools.partial(callback, is_promotion=False),
             )
-        self.tag_bind(
-            id_cover,
-            TK_SINGLE_LEFT_CLICK,
-            functools.partial(callback, is_promotion=None),
-        )
+        if id_cover is not None:
+            self.tag_bind(
+                id_cover,
+                TK_SINGLE_LEFT_CLICK,
+                functools.partial(callback, is_promotion=None),
+            )
 
     def _prompt_promotion_callback(
         self,
