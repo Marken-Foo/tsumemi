@@ -280,7 +280,7 @@ class BoardState(MoveInputHandlerState):
                 caller.set_state("ready")
                 return
         koma = caller.position.get_koma(sq)
-        if koma.side() == caller.position.turn:
+        if koma != Koma.NONE and koma.side() == caller.position.turn:
             if sq == caller.focused_sq:
                 caller.set_state("ready")
             else:
