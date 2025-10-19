@@ -13,7 +13,6 @@ from tsumemi.src.shogi.square import Square
 from tsumemi.src.tsumemi.skins import BoardSkin, PieceSkin, SkinSettings
 from tsumemi.src.tsumemi.board_gui.board_artist import BoardArtist, NUM_COLS, NUM_ROWS
 from tsumemi.src.tsumemi.board_gui.board_meas import BoardMeasurements
-from tsumemi.src.tsumemi.board_gui.img_handlers import KomadaiImgManager
 from tsumemi.src.tsumemi.board_gui.komadai_artist import KomadaiArtist
 
 if TYPE_CHECKING:
@@ -67,6 +66,7 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
         self.measurements = BoardMeasurements(width, height)
         # Load skins
         piece_skin, board_skin, komadai_skin = skin_settings.get()
+        self.komadai_skin = komadai_skin
         # Cached images and image settings
         self.koma_image_cache = KomaImageCache(
             self.measurements.sq_w, self.measurements.sq_h, piece_skin
@@ -76,7 +76,6 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
             self.measurements.komadai_piece_size,
             piece_skin,
         )
-        self.komadai_img_cache = KomadaiImgManager(self.measurements, komadai_skin)
         self.board_artist = BoardArtist(self.measurements, board_skin)
         # Currently highlighted tile [col_num, row_num]
         # Hand pieces would be [0, KomaType]
@@ -110,8 +109,8 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
 
     def apply_komadai_skin(self, skin: BoardSkin) -> None:
         # Can only figure out how to apply solid colours for now
+        self.komadai_skin = skin
         self.itemconfig("komadai-solid", fill=skin.colour)
-        self.komadai_img_cache.load(skin)
 
     def on_resize(self, event: tk.Event) -> None:
         # Callback for when the canvas itself is resized
@@ -127,7 +126,6 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
         self.board_artist.update_measurements(
             self.measurements.sq_w, self.measurements.sq_h
         )
-        self.komadai_img_cache.resize_images()
         # Redraw board after setting new dimensions
         self.draw()
 
@@ -222,7 +220,7 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
         artist = KomadaiArtist(x, y, self, hand, sente, align)
         # Draw the komadai base
         komadai_base = artist.draw_komadai_base(self)
-        skin = self.komadai_img_cache.skin
+        skin = self.komadai_skin
         assert isinstance(skin, BoardSkin)
         self.itemconfig(komadai_base, fill=skin.colour)
         artist.draw_komadai_header_text(self)
