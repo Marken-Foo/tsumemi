@@ -9,6 +9,7 @@ from tsumemi.src.tsumemi.board_gui.board_image_cache import BoardImageCache
 from tsumemi.src.tsumemi.board_gui.board_meas import BoardMeasurements
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from PIL import ImageTk
     from tsumemi.src.tsumemi.board_gui.board_canvas import BoardCanvas
     from tsumemi.src.tsumemi.skins import BoardSkin
@@ -27,16 +28,26 @@ class BoardLayer(ABC):
         self.tiles = [[-1] * NUM_COLS for _ in range(NUM_ROWS)]
 
     @abstractmethod
-    def draw_layer(self, canvas: BoardCanvas, tag: str = "") -> None:
+    def draw_layer(
+        self,
+        canvas: BoardCanvas,
+        idxs_to_xy: Callable[[int, int, str], tuple[int, int]],
+        tag: str = "",
+    ) -> None:
         raise NotImplementedError
 
 
 class BoardImageLayer(BoardLayer):
-    def draw_layer(self, canvas: BoardCanvas, tag: str = "") -> None:
+    def draw_layer(
+        self,
+        canvas: BoardCanvas,
+        idxs_to_xy: Callable[[int, int, str], tuple[int, int]],
+        tag: str = "",
+    ) -> None:
         for row_idx in range(NUM_ROWS):
             for col_idx in range(NUM_COLS):
                 id_ = canvas.create_image(
-                    *canvas.idxs_to_xy(
+                    *idxs_to_xy(
                         col_idx,
                         row_idx,
                         centering="xy" if self.is_centered else "",
@@ -59,11 +70,16 @@ class BoardImageLayer(BoardLayer):
 
 
 class BoardKomaTextLayer(BoardLayer):
-    def draw_layer(self, canvas: BoardCanvas, tag: str = "") -> None:
+    def draw_layer(
+        self,
+        canvas: BoardCanvas,
+        idxs_to_xy: Callable[[int, int, str], tuple[int, int]],
+        tag: str = "",
+    ) -> None:
         for row_idx in range(NUM_ROWS):
             for col_idx in range(NUM_COLS):
                 id_ = canvas.create_text(
-                    *canvas.idxs_to_xy(
+                    *idxs_to_xy(
                         col_idx,
                         row_idx,
                         centering="xy" if self.is_centered else "",
@@ -87,6 +103,20 @@ class BoardArtist:
         self.board_image_cache = BoardImageCache(
             measurements.sq_w, measurements.sq_h, skin
         )
+        self._board_top_left_x, self._board_top_left_y = (
+            measurements.get_board_top_left_xy()
+        )
+        self._sq_w = measurements.sq_w
+        self._sq_h = measurements.sq_h
+
+    def idxs_to_xy(
+        self, col_idx: int, row_idx: int, centering: str = ""
+    ) -> tuple[int, int]:
+        x_offset = 0.5 * self._sq_w if "x" in centering.lower() else 0
+        y_offset = 0.5 * self._sq_h if "y" in centering.lower() else 0
+        x = self._board_top_left_x + col_idx * self._sq_w + x_offset
+        y = self._board_top_left_y + row_idx * self._sq_h + y_offset
+        return int(x), int(y)
 
     def draw_board(self, canvas: BoardCanvas) -> None:
         self._draw_board_base_layer(canvas)
@@ -109,8 +139,13 @@ class BoardArtist:
         canvas.itemconfig(self.board_rect, fill=skin.colour)
         self.board_image_cache.update_skin(skin)
 
-    def update_measurements(self, sq_width: float, sq_height: float) -> None:
+    def update_measurements(
+        self, sq_width: float, sq_height: float, board_top_left_xy: tuple[float, float]
+    ) -> None:
         self.board_image_cache.update_dimensions(sq_width, sq_height)
+        self._sq_w = sq_width
+        self._sq_h = sq_height
+        self._board_top_left_x, self._board_top_left_y = board_top_left_xy
 
     def draw_koma(
         self,
@@ -144,7 +179,7 @@ class BoardArtist:
             return None
         id_: int
         id_ = canvas.create_image(
-            *canvas.idxs_to_xy(0, 0),
+            *self.idxs_to_xy(0, 0),
             image=img,
             anchor="nw",
             tags="promotion_prompt",
@@ -165,7 +200,7 @@ class BoardArtist:
             ktype, is_upside_down=is_upside_down
         )
         return canvas.create_image(
-            *canvas.idxs_to_xy(col_idx, row_idx, centering="xy"),
+            *self.idxs_to_xy(col_idx, row_idx, centering="xy"),
             image=img,
             anchor="center",
             tags=("promotion_prompt",),
@@ -195,40 +230,41 @@ class BoardArtist:
 
     def _draw_board_base_layer(self, canvas: BoardCanvas) -> int:
         id_: int = canvas.create_rectangle(
-            *canvas.idxs_to_xy(0, 0),
-            *canvas.idxs_to_xy(NUM_COLS, NUM_ROWS),
+            self._board_top_left_x,
+            self._board_top_left_y,
+            *self.idxs_to_xy(NUM_COLS, NUM_ROWS),
             fill="#ffffff",
         )
         self.board_rect = id_
         return id_
 
     def _draw_board_tile_layer(self, canvas: BoardCanvas) -> None:
-        self.board_tile_layer.draw_layer(canvas, tag="board_tile")
+        self.board_tile_layer.draw_layer(canvas, self.idxs_to_xy, tag="board_tile")
 
     def _draw_board_focus_layer(self, canvas: BoardCanvas) -> None:
-        self.highlight_layer.draw_layer(canvas, tag="highlight_tile")
+        self.highlight_layer.draw_layer(canvas, self.idxs_to_xy, tag="highlight_tile")
         transparent_img = self.board_image_cache.get_transparent_tile()
         if transparent_img is not None:
             self.highlight_layer.update_all_tiles(canvas, transparent_img)
 
     def _draw_koma_text_layer(self, canvas: BoardCanvas) -> None:
-        self.koma_text_layer.draw_layer(canvas)
+        self.koma_text_layer.draw_layer(canvas, self.idxs_to_xy)
 
     def _draw_koma_image_layer(self, canvas: BoardCanvas) -> None:
-        self.koma_image_layer.draw_layer(canvas)
+        self.koma_image_layer.draw_layer(canvas, self.idxs_to_xy)
 
     def _draw_board_grid_lines(self, canvas: BoardCanvas) -> None:
         for i in range(NUM_COLS + 1):
             canvas.create_line(
-                *canvas.idxs_to_xy(i, 0),
-                *canvas.idxs_to_xy(i, NUM_ROWS),
+                *self.idxs_to_xy(i, 0),
+                *self.idxs_to_xy(i, NUM_ROWS),
                 fill="black",
                 width=1,
             )
         for j in range(NUM_ROWS + 1):
             canvas.create_line(
-                *canvas.idxs_to_xy(0, j),
-                *canvas.idxs_to_xy(NUM_COLS, j),
+                *self.idxs_to_xy(0, j),
+                *self.idxs_to_xy(NUM_COLS, j),
                 fill="black",
                 width=1,
             )
@@ -239,7 +275,7 @@ class BoardArtist:
             row_num = canvas.row_idx_to_num(row_idx)
             row_label = " " + KanjiNumber(row_num).name
             canvas.create_text(
-                *canvas.idxs_to_xy(NUM_COLS, row_idx, centering="y"),
+                *self.idxs_to_xy(NUM_COLS, row_idx, centering="y"),
                 text=" " + row_label,
                 font=("", coords_text_size),
                 anchor="w",
@@ -247,14 +283,14 @@ class BoardArtist:
         for col_idx in range(9):
             col_num = canvas.col_idx_to_num(col_idx)
             canvas.create_text(
-                *canvas.idxs_to_xy(col_idx, 0, centering="x"),
+                *self.idxs_to_xy(col_idx, 0, centering="x"),
                 text=str(col_num),
                 font=("", coords_text_size),
                 anchor="s",
             )
 
     def _draw_click_layer(self, canvas: BoardCanvas) -> None:
-        self.click_layer.draw_layer(canvas, tag="click_tile")
+        self.click_layer.draw_layer(canvas, self.idxs_to_xy, tag="click_tile")
         transparent_img = self.board_image_cache.get_transparent_tile()
         if transparent_img is not None:
             self.click_layer.update_all_tiles(canvas, transparent_img)
@@ -267,3 +303,19 @@ class BoardArtist:
         self, canvas: BoardCanvas, img: ImageTk.PhotoImage
     ) -> None:
         self.board_tile_layer.update_all_tiles(canvas, img)
+
+
+def idxs_to_xy(
+    x_origin: float,
+    y_origin: float,
+    sq_w: float,
+    sq_h: float,
+    col_idx: int,
+    row_idx: int,
+    centering: str = "",
+) -> tuple[int, int]:
+    x_offset = 0.5 * sq_w if "x" in centering.lower() else 0
+    y_offset = 0.5 * sq_h if "y" in centering.lower() else 0
+    x = x_origin + col_idx * sq_w + x_offset
+    y = y_origin + row_idx * sq_h + y_offset
+    return int(x), int(y)

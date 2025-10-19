@@ -124,7 +124,9 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
             self.measurements.komadai_piece_size, self.measurements.komadai_piece_size
         )
         self.board_artist.update_measurements(
-            self.measurements.sq_w, self.measurements.sq_h
+            self.measurements.sq_w,
+            self.measurements.sq_h,
+            self.measurements.get_board_top_left_xy(),
         )
         # Redraw board after setting new dimensions
         self.draw()
@@ -302,18 +304,6 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
         col_idx = self._col_num_to_idx(col_num)
         row_idx = self._row_num_to_idx(row_num)
         return col_idx, row_idx
-
-    def idxs_to_xy(
-        self, col_idx: int, row_idx: int, centering: str = ""
-    ) -> tuple[int, int]:
-        board_top_left_x, board_top_left_y = self.measurements.get_board_top_left_xy()
-        sq_w = self.measurements.sq_w
-        sq_h = self.measurements.sq_h
-        x_offset = 0.5 * sq_w if "x" in centering.lower() else 0
-        y_offset = 0.5 * sq_h if "y" in centering.lower() else 0
-        x = board_top_left_x + col_idx * sq_w + x_offset
-        y = board_top_left_y + row_idx * sq_h + y_offset
-        return int(x), int(y)
 
     def _is_inverted(self, side: Side) -> bool:
         return not (side.is_sente() ^ self.is_upside_down)
