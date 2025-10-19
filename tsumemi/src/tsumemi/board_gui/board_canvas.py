@@ -237,11 +237,11 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
         col_idx, row_idx = self._sq_to_idxs(sq)
         invert = self._is_inverted(self.position.turn)
 
-        id_promoted = self._draw_promotion_prompt_koma(
-            row_idx, col_idx, ktype.promote(), invert
+        id_promoted = self.board_artist.draw_promotion_prompt_koma(
+            self, row_idx, col_idx, ktype.promote(), invert
         )
-        id_unpromoted = self._draw_promotion_prompt_koma(
-            row_idx + 1, col_idx, ktype, invert
+        id_unpromoted = self.board_artist.draw_promotion_prompt_koma(
+            self, row_idx + 1, col_idx, ktype, invert
         )
         callback = functools.partial(
             self._prompt_promotion_callback, sq=sq, ktype=ktype
@@ -314,19 +314,6 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
         x = board_top_left_x + col_idx * sq_w + x_offset
         y = board_top_left_y + row_idx * sq_h + y_offset
         return int(x), int(y)
-
-    def _draw_promotion_prompt_koma(
-        self, row_idx: int, col_idx: int, ktype: KomaType, is_upside_down: bool
-    ) -> int | None:
-        if ktype == KomaType.NONE:
-            return None
-        img = self.koma_image_cache.get_koma_image(ktype, is_upside_down=is_upside_down)
-        return self.create_image(  # type: ignore (tk typing issue)
-            *self.idxs_to_xy(col_idx, row_idx, centering="xy"),
-            image=img,
-            anchor="center",
-            tags=("promotion_prompt",),
-        )
 
     def _is_inverted(self, side: Side) -> bool:
         return not (side.is_sente() ^ self.is_upside_down)

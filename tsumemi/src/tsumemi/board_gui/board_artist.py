@@ -3,6 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
+from tsumemi.src.shogi.basetypes import KomaType
 from tsumemi.src.shogi.square import KanjiNumber
 from tsumemi.src.tsumemi.board_gui.board_image_cache import BoardImageCache
 from tsumemi.src.tsumemi.board_gui.board_meas import BoardMeasurements
@@ -149,6 +150,26 @@ class BoardArtist:
             tags="promotion_prompt",
         )
         return id_
+
+    def draw_promotion_prompt_koma(
+        self,
+        canvas: BoardCanvas,
+        row_idx: int,
+        col_idx: int,
+        ktype: KomaType,
+        is_upside_down: bool,
+    ) -> int | None:
+        if ktype == KomaType.NONE:
+            return None
+        img = canvas.koma_image_cache.get_koma_image(
+            ktype, is_upside_down=is_upside_down
+        )
+        return canvas.create_image(
+            *canvas.idxs_to_xy(col_idx, row_idx, centering="xy"),
+            image=img,
+            anchor="center",
+            tags=("promotion_prompt",),
+        )
 
     def clear_promotion_prompts(self, canvas: BoardCanvas) -> None:
         canvas.delete("promotion_prompt")
