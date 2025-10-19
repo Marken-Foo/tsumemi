@@ -152,13 +152,9 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
         komadai_w = self.measurements.komadai_w
         coords_text_size = self.measurements.coords_text_size
         w_pad = self.measurements.w_pad
-        x_sq = self.measurements.x_sq
-        y_sq = self.measurements.y_sq
-
-        north_side = Side.SENTE if self._is_inverted(Side.SENTE) else Side.GOTE
-        south_side = north_side.switch()
-        north_hand = position.get_hand_of_side(north_side)
-        south_hand = position.get_hand_of_side(south_side)
+        board_top_left_x, board_top_left_y = self.measurements.get_board_top_left_xy()
+        sq_w = self.measurements.sq_w
+        sq_h = self.measurements.sq_h
 
         self._draw_canvas_base_layer()
         # Draw board
@@ -182,16 +178,21 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
                     self.board_artist.draw_koma(self, img, row_idx, col_idx)
 
         # Draw komadai
+        north_side = Side.SENTE if self._is_inverted(Side.SENTE) else Side.GOTE
+        south_side = north_side.switch()
+        north_hand = position.get_hand_of_side(north_side)
+        south_hand = position.get_hand_of_side(south_side)
+
         self.draw_komadai(
             w_pad + komadai_w / 2,
-            y_sq(0),
+            board_top_left_y,
             north_hand,
             sente=north_side.is_sente(),
             align="top",
         )
         self.draw_komadai(
-            x_sq(9) + 2 * coords_text_size + komadai_w / 2,
-            y_sq(9),
+            board_top_left_x + sq_w * 9 + 2 * coords_text_size + komadai_w / 2,
+            board_top_left_y + sq_h * 9,
             south_hand,
             sente=south_side.is_sente(),
             align="bottom",
@@ -305,10 +306,13 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
     def idxs_to_xy(
         self, col_idx: int, row_idx: int, centering: str = ""
     ) -> tuple[int, int]:
-        x_sq = self.measurements.x_sq
-        y_sq = self.measurements.y_sq
-        x = x_sq(col_idx + 0.5) if "x" in centering.lower() else x_sq(col_idx)
-        y = y_sq(row_idx + 0.5) if "y" in centering.lower() else y_sq(row_idx)
+        board_top_left_x, board_top_left_y = self.measurements.get_board_top_left_xy()
+        sq_w = self.measurements.sq_w
+        sq_h = self.measurements.sq_h
+        x_offset = 0.5 * sq_w if "x" in centering.lower() else 0
+        y_offset = 0.5 * sq_h if "y" in centering.lower() else 0
+        x = board_top_left_x + col_idx * sq_w + x_offset
+        y = board_top_left_y + row_idx * sq_h + y_offset
         return int(x), int(y)
 
     def _draw_promotion_prompt_koma(
