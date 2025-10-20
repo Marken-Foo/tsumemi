@@ -222,9 +222,6 @@ class BoardArtist:
         self.tile_highlights.draw_layer(
             canvas, self._drawing_coords.idxs_to_xy, tag="highlight_tile"
         )
-        transparent_img = self.board_image_cache.get_transparent_tile()
-        if transparent_img is not None:
-            self.tile_highlights.update_all_tiles(canvas, transparent_img)
 
     def _create_koma_text_layer(self, canvas: BoardCanvas) -> None:
         for row_idx in range(NUM_ROWS):
