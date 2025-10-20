@@ -124,7 +124,10 @@ class KomadaiArtist:
             self.y_origin + self.height,
             fill="#ffffff",
             outline="",
-            tags=("komadai-solid",),
+            tags=(
+                "komadai",
+                "komadai-solid",
+            ),
         )
 
     def _draw_komadai_header_text(self, canvas: BoardCanvas) -> int:
@@ -135,6 +138,7 @@ class KomadaiArtist:
             text=header_text,
             font=("", self.text_size),
             anchor="n",
+            tags=("komadai",),
         )
         return id_
 
@@ -145,6 +149,7 @@ class KomadaiArtist:
             text="な\nし",
             font=("", self.text_size),
             anchor="n",
+            tags=("komadai",),
         )
         return id_
 
@@ -171,6 +176,7 @@ class KomadaiArtist:
         ktype: KomaType,
     ) -> int:
         tags = (
+            "komadai",
             "komadai_focus",
             ktype.to_csa(),
             "sente" if self.is_sente else "gote",
@@ -181,7 +187,12 @@ class KomadaiArtist:
     def _draw_komadai_koma(
         self, canvas: BoardCanvas, x: float, y: float, ktype: KomaType
     ) -> int:
-        tags = ("komadai_koma", ktype.to_csa(), "sente" if self.is_sente else "gote")
+        tags = (
+            "komadai",
+            "komadai_koma",
+            ktype.to_csa(),
+            "sente" if self.is_sente else "gote",
+        )
         if canvas.is_text():
             return self._draw_komadai_koma_text(canvas, x, y, ktype, tags)
         else:
@@ -227,5 +238,10 @@ class KomadaiArtist:
         count: int,
     ) -> int:
         return canvas.create_text(
-            x, y, text=str(count), font=("", self.text_size), anchor="center"
+            x,
+            y,
+            text=str(count),
+            font=("", self.text_size),
+            anchor="center",
+            tags=("komadai",),
         )

@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     import tkinter as tk
     from tkinter import ttk
     from typing import Callable, Optional
+    from tsumemi.src.shogi.position import Position
     from tsumemi.src.tsumemi.kif_browser_gui import RootController
 
 
@@ -16,6 +17,7 @@ class MainWindowViewController:
     """Controller for the view of the main window. Is aware of the
     entire view structure of the main window.
     """
+
     def __init__(self, root: tk.Tk, root_controller: RootController) -> None:
         self.controller = root_controller
         self.view = MainWindowView(root, root_controller, self)
@@ -30,12 +32,11 @@ class MainWindowViewController:
         self.board_canvas.apply_piece_skin(piece_skin)
         self.board_canvas.apply_board_skin(board_skin)
         self.board_canvas.apply_komadai_skin(komadai_skin)
-        self.refresh_main_board()
-        return
-
-    def refresh_main_board(self) -> None:
         self.board_canvas.draw()
         return
+
+    def set_main_board(self, pos: Position) -> None:
+        self.board_canvas.set_position(pos)
 
     def flip_main_board(self, want_upside_down: bool) -> None:
         self.board_canvas.flip_board(want_upside_down)
@@ -111,8 +112,8 @@ class MainWindowViewController:
         self.view.update_nav_control_pane()
         return
 
-    def set_nav_pane(self,
-            nav_pane_constructor: Callable[[tk.Widget], ttk.Frame]
-        ) -> None:
+    def set_nav_pane(
+        self, nav_pane_constructor: Callable[[tk.Widget], ttk.Frame]
+    ) -> None:
         self.view.update_nav_control_pane(nav_pane_constructor)
         return

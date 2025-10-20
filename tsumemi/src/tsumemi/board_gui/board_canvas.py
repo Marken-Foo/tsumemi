@@ -80,18 +80,17 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
             self.measurements, board_skin, self.is_upside_down
         )
 
-        north_side = Side.SENTE if self.is_inverted(Side.SENTE) else Side.GOTE
         self.north_komadai_artist = KomadaiArtist(
             self.measurements,
             is_north=True,
             is_text=self.is_text(),
-            side=north_side,
+            side=self.north_side,
         )
         self.south_komadai_artist = KomadaiArtist(
             self.measurements,
             is_north=False,
             is_text=self.is_text(),
-            side=north_side.switch(),
+            side=self.north_side.switch(),
         )
         # Currently highlighted tile [col_num, row_num]
         # Hand pieces would be [0, KomaType]
@@ -100,6 +99,10 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
         # Last move highlighted tiles
         self.last_move_start_sq = Square.NONE
         self.last_move_end_sq = Square.NONE
+
+    @property
+    def north_side(self) -> Side:
+        return Side.SENTE if self.is_inverted(Side.SENTE) else Side.GOTE
 
     def receive_position_and_last_move(self, pos: Position, last_move: Move) -> None:
         self.last_move_start_sq = last_move.start_sq
@@ -113,7 +116,9 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
         self.position = pos
         if self.move_input_handler is not None:
             self.move_input_handler.position = pos
-        self.draw()
+        self._draw_board_position()
+        self._draw_komadais()
+        self._add_all_komadai_koma_onclick_callbacks()
 
     def apply_piece_skin(self, skin: PieceSkin) -> None:
         self.koma_image_cache.update_skin(skin)
@@ -170,24 +175,13 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
         """Draw complete board with komadai and pieces."""
         # Clear board display - could also keep board and just redraw pieces
         self.delete("all")
-        position = self.position
 
         self._draw_canvas_base_layer()
         # Draw board
         self.board_artist.draw_board(self)
         self._add_board_onclick_callbacks()
-
-        # Draw board pieces
-        self.board_artist.draw(self, position.get_komas_by_square())
-
-        # Draw komadai
-        north_side = Side.SENTE if self.is_inverted(Side.SENTE) else Side.GOTE
-        south_side = north_side.switch()
-        north_hand = position.get_hand_of_side(north_side)
-        south_hand = position.get_hand_of_side(south_side)
-
-        self.north_komadai_artist.draw_komadai(self, north_hand)
-        self.south_komadai_artist.draw_komadai(self, south_hand)
+        self._draw_board_position()
+        self._draw_komadais()
         self._add_all_komadai_koma_onclick_callbacks()
 
         # set focus and highlights
@@ -198,6 +192,17 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
     def _draw_canvas_base_layer(self) -> int:
         id_: int = self.create_rectangle(0, 0, self.width, self.height, fill="#ffffff")
         return id_
+
+    def _draw_board_position(self) -> None:
+        self.board_artist.draw(self, self.position.get_komas_by_square())
+
+    def _draw_komadais(self) -> None:
+        north_hand = self.position.get_hand_of_side(self.north_side)
+        south_hand = self.position.get_hand_of_side(self.north_side.switch())
+
+        self.delete(*self.find_withtag("komadai"))
+        self.north_komadai_artist.draw_komadai(self, north_hand)
+        self.south_komadai_artist.draw_komadai(self, south_hand)
 
     def prompt_promotion(self, sq: Square, ktype: KomaType) -> None:
         invert = self.is_inverted(self.position.turn)

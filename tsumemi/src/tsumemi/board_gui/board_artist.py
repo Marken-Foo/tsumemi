@@ -8,7 +8,7 @@ from tsumemi.src.tsumemi.board_gui.board_image_cache import BoardImageCache
 from tsumemi.src.tsumemi.board_gui.board_meas import BoardMeasurements
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Iterator
     from PIL import ImageTk
     from tsumemi.src.shogi.basetypes import Koma
     from tsumemi.src.tsumemi.board_gui.board_canvas import BoardCanvas
@@ -61,7 +61,16 @@ class BoardArtist:
     def flip(self) -> None:
         self.is_upside_down = not self.is_upside_down
 
+    def _clear(self, canvas: BoardCanvas) -> None:
+        if canvas.is_text():
+            for _, id_ in self.tile_texts:
+                if id_ is not None:
+                    canvas.itemconfig(id_, text="")
+        else:
+            self.tile_images.update_all_tiles(canvas, "")
+
     def draw(self, canvas: BoardCanvas, komas_by_square: dict[Square, Koma]) -> None:
+        self._clear(canvas)
         for sq, koma in komas_by_square.items():
             col_idx, row_idx = self.sq_to_idxs(sq)
             ktype = KomaType.get(koma)
@@ -306,6 +315,11 @@ class TileIdStore:
         self, num_cols: int, num_rows: int, default: int | None = None
     ) -> None:
         self.tiles = [[default] * num_cols for _ in range(num_rows)]
+
+    def __iter__(self) -> Iterator[tuple[tuple[int, int], int | None]]:
+        for row_idx, row in enumerate(self.tiles):
+            for col_idx, id_ in enumerate(row):
+                yield ((row_idx, col_idx), id_)
 
     def set_id(self, row_idx: int, col_idx: int, id_: int) -> None:
         self.tiles[row_idx][col_idx] = id_

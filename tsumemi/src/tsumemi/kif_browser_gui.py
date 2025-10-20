@@ -117,7 +117,7 @@ class RootController(evt.IObserver):
         self.main_viewcon.set_solution(self.solution_str_from_game(game))
         self.main_game.set_game(game)
 
-        self.main_viewcon.refresh_main_board()
+        self.main_viewcon.set_main_board(game.position)
         self.main_viewcon.refresh_move_list()
         self.main_viewcon.enable_move_input()
         self.main_viewcon.hide_solution()
