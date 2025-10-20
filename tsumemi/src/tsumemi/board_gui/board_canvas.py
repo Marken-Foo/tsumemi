@@ -18,7 +18,6 @@ from tsumemi.src.tsumemi.board_gui.komadai_artist import KomadaiArtist
 if TYPE_CHECKING:
     from typing import Any
     from tsumemi.src.shogi.position import Position
-    from tsumemi.src.shogi.position_internals import HandRepresentation
     from tsumemi.src.tsumemi.game.game_model import GameStepEvent, GameUpdateEvent
     from tsumemi.src.tsumemi.move_input_handler import MoveInputHandler
 
@@ -76,7 +75,22 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
             self.measurements.komadai_piece_size,
             piece_skin,
         )
+
         self.board_artist = BoardArtist(self.measurements, board_skin)
+
+        north_side = Side.SENTE if self._is_inverted(Side.SENTE) else Side.GOTE
+        self.north_komadai_artist = KomadaiArtist(
+            self.measurements,
+            is_north=True,
+            is_text=self.is_text(),
+            side=north_side,
+        )
+        self.south_komadai_artist = KomadaiArtist(
+            self.measurements,
+            is_north=False,
+            is_text=self.is_text(),
+            side=north_side.switch(),
+        )
         # Currently highlighted tile [col_num, row_num]
         # Hand pieces would be [0, KomaType]
         self.highlighted_sq = Square.NONE
@@ -128,6 +142,8 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
             self.measurements.sq_h,
             self.measurements.get_board_top_left_xy(),
         )
+        self.north_komadai_artist.update_measurements(self.measurements)
+        self.south_komadai_artist.update_measurements(self.measurements)
         # Redraw board after setting new dimensions
         self.draw()
 
@@ -177,18 +193,10 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
         north_hand = position.get_hand_of_side(north_side)
         south_hand = position.get_hand_of_side(south_side)
 
-        self.draw_komadai(
-            is_north=True,
-            hand=north_hand,
-            side=north_side,
-            align="top",
-        )
-        self.draw_komadai(
-            is_north=False,
-            hand=south_hand,
-            side=south_side,
-            align="bottom",
-        )
+        self.north_komadai_artist.draw_komadai(self, north_hand)
+        self.south_komadai_artist.draw_komadai(self, south_hand)
+        self._add_all_komadai_koma_onclick_callbacks()
+
         # set focus and highlights
         self.set_focus(self.highlighted_sq)
         self.board_artist.lift_click_layer(self)
@@ -197,21 +205,6 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
     def _draw_canvas_base_layer(self) -> int:
         id_: int = self.create_rectangle(0, 0, self.width, self.height, fill="#ffffff")
         return id_
-
-    def draw_komadai(
-        self,
-        is_north: bool,
-        hand: HandRepresentation,
-        side: Side,
-        align: str = "top",
-    ) -> None:
-        """Draw komadai with pieces given by hand argument, anchored
-        at canvas position (x,y). "Anchoring" north or south achieved
-        with align="top" or "bottom".
-        """
-        artist = KomadaiArtist(self.measurements, is_north, self.is_text(), side, align)
-        artist.draw_komadai(self, hand)
-        self._add_all_komadai_koma_onclick_callbacks()
 
     def prompt_promotion(self, sq: Square, ktype: KomaType) -> None:
         """Display the visual cues prompting user to choose promotion

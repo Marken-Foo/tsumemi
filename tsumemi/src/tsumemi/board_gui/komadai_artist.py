@@ -50,63 +50,51 @@ class KomadaiArtist:
         is_north: bool,  # North side or south
         is_text: bool,
         side: Side,
-        align: str = "top",
     ) -> None:
-        x_anchor, y_anchor = (
-            measurements.get_north_komadai_anchor()
-            if is_north
-            else measurements.get_south_komadai_anchor()
-        )
-
         self.measurements = measurements
-        self.is_north = is_north
-        self.align = align
+        self.is_north: bool = is_north
+        self.is_sente: bool = side.is_sente()
+        self.is_text = is_text
+        self.hand_counts: dict[KomaType, int] = {}
+        self.update_measurements(measurements)
 
-        self.is_sente = side.is_sente()
-        self.text_size = measurements.komadai_text_size
+    def update_measurements(self, measurements: BoardMeasurements) -> None:
+        self.measurements = measurements
+        self._update_content_measurements(measurements)
+        self._update_origin_and_height(len(self.hand_counts))
+
+    def _update_content_measurements(self, measurements: BoardMeasurements) -> None:
         piece_size = measurements.komadai_piece_size
-        self.koma_size = self.text_size * 3 / 2 if is_text else piece_size
-        self.vertical_pad = self.text_size / 8 if is_text else piece_size / 8
+        self.text_size = measurements.komadai_text_size
+        self.koma_size = self.text_size * 3 / 2 if self.is_text else piece_size
+        self.vertical_pad = self.text_size / 8 if self.is_text else piece_size / 8
         self.mochigoma_heading_size = 6 * self.text_size  # "▲\n持\n駒\n"
 
-        self.hand_counts: dict[KomaType, int] = {}
-
-        self.width: int = komadai_width(piece_size)
+    def _update_origin_and_height(self, num_koma_types: int) -> None:
+        self.width: int = komadai_width(self.measurements.komadai_piece_size)
         self.height: int = komadai_height(
             self.mochigoma_heading_size,
             # Actual size of each character in px is about 1.5*text_size
             1.5 * self.text_size,
-            len(self.hand_counts),
+            num_koma_types,
             self.koma_size,
             self.vertical_pad,
         )
-        self.x_origin: int = int(x_anchor - self.width / 2)
-        self.y_origin: int = int(
-            y_anchor - self.height if align == "bottom" else y_anchor
-        )
-
-    def draw_komadai(self, canvas: BoardCanvas, hand: HandRepresentation) -> None:
-        for ktype in HAND_TYPES:
-            count = hand.get_komatype_count(ktype)
-            if count > 0:
-                self.hand_counts[ktype] = count
-
-        self.height: int = komadai_height(
-            self.mochigoma_heading_size,
-            # Actual size of each character in px is about 1.5*text_size
-            1.5 * self.text_size,
-            len(self.hand_counts),
-            self.koma_size,
-            self.vertical_pad,
-        )
-        _, y_anchor = (
+        x_anchor, y_anchor = (
             self.measurements.get_north_komadai_anchor()
             if self.is_north
             else self.measurements.get_south_komadai_anchor()
         )
-        self.y_origin: int = int(
-            y_anchor - self.height if self.align == "bottom" else y_anchor
-        )
+        self.x_origin: int = int(x_anchor - self.width / 2)
+        self.y_origin: int = int(y_anchor if self.is_north else y_anchor - self.height)
+
+    def draw_komadai(self, canvas: BoardCanvas, hand: HandRepresentation) -> None:
+        self.hand_counts = {
+            ktype: count
+            for ktype in HAND_TYPES
+            if (count := hand.get_komatype_count(ktype)) > 0
+        }
+        self._update_origin_and_height(len(self.hand_counts))
 
         komadai_base = self._draw_komadai_base(canvas)
         skin = canvas.komadai_skin
