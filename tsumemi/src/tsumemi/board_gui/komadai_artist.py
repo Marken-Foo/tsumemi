@@ -11,6 +11,27 @@ if TYPE_CHECKING:
     from tsumemi.src.tsumemi.board_gui.board_canvas import BoardCanvas
 
 
+def komadai_width(koma_size: int) -> int:
+    return 2 * koma_size
+
+
+def komadai_height(
+    heading_height: float,
+    char_height: float,
+    num_koma_types: int,
+    koma_height: float,
+    koma_vertical_padding: float,
+) -> int:
+    if num_koma_types <= 0:
+        return int(heading_height + 2 * char_height)
+    else:
+        return int(
+            heading_height
+            + num_koma_types * (koma_height + koma_vertical_padding)
+            - koma_vertical_padding
+        )
+
+
 class KomadaiArtist:
     def __init__(
         self,
@@ -37,14 +58,13 @@ class KomadaiArtist:
             if count > 0:
                 self.hand_counts[ktype] = count
 
-        self.width: int = 2 * self.piece_size
-        self.height: int = int(
-            self.mochigoma_heading_size
-            + (
-                2 * char_height
-                if not self.hand_counts
-                else len(self.hand_counts) * (self.symbol_size + self.pad) - self.pad
-            )
+        self.width: int = komadai_width(self.piece_size)
+        self.height: int = komadai_height(
+            self.mochigoma_heading_size,
+            char_height,
+            len(self.hand_counts),
+            self.symbol_size,
+            self.pad,
         )
         self.x_anchor: int = int(x_anchor)
         self.y_anchor: int = int(
@@ -149,7 +169,9 @@ class KomadaiArtist:
         ktype: KomaType,
         tags: tuple[str, ...],
     ) -> Optional[int]:
-        img = canvas.komadai_koma_image_cache.get_koma_image(ktype, False)
+        img = canvas.komadai_koma_image_cache.get_koma_image(
+            ktype, is_upside_down=False
+        )
         return canvas.create_image(x, y, image=img, anchor="center", tags=tags)
 
     def _draw_komadai_koma_text(
