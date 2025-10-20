@@ -16,7 +16,6 @@ class ProblemListViewModel:
 
     def __init__(self, problem_list: ProblemList) -> None:
         self.problem_list = problem_list
-        return
 
     def go_next_problem(self, _event: Optional[tk.Event] = None) -> Optional[Problem]:
         return self.problem_list.go_to_next()
@@ -29,16 +28,12 @@ class ProblemListViewModel:
 
     def sort_by_file(self) -> None:
         self.problem_list.sort_by_file()
-        return
 
     def sort_by_time(self) -> None:
         self.problem_list.sort_by_time()
-        return
 
     def sort_by_status(self) -> None:
         self.problem_list.sort_by_status()
-        return
 
     def randomise(self) -> None:
         self.problem_list.randomise()
-        return

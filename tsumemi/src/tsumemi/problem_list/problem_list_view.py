@@ -12,7 +12,6 @@ import tsumemi.src.tsumemi.problem_list.problem_list_model as plist
 from tsumemi.src.tsumemi import utils
 
 if TYPE_CHECKING:
-    from typing import Dict, Optional
     from tsumemi.src.tsumemi.problem_list.problem_list_viewmodel import (
         ProblemListViewModel,
     )
@@ -36,7 +35,7 @@ class ProblemsTreeviewFrame(utils.ScrollableTreeviewFrame, evt.IObserver):
             }
         )
 
-        self.status_strings: Dict[pb.ProblemStatus, str] = {
+        self.status_strings: dict[pb.ProblemStatus, str] = {
             pb.ProblemStatus.NONE: "",
             pb.ProblemStatus.SKIP: "-",
             pb.ProblemStatus.CORRECT: "O",
@@ -57,7 +56,6 @@ class ProblemsTreeviewFrame(utils.ScrollableTreeviewFrame, evt.IObserver):
         self._bind_double_click()
         self._bind_heading_commands()
         self._bind_focus()
-        return
 
     def _bind_double_click(self) -> None:
         # Bind double click to go to problem
@@ -66,65 +64,53 @@ class ProblemsTreeviewFrame(utils.ScrollableTreeviewFrame, evt.IObserver):
             if iid:
                 self.set_focus(iid)
                 self.viewmodel.go_to_problem(self.tvw.index(iid))
-            return
 
         self.tvw.bind("<Double-1>", _click_to_prob)
-        return
 
     def _unbind_double_click(self) -> None:
         self.tvw.unbind("<Double-1>")
-        return
 
-    def _bind_up_down(self, _event: Optional[tk.Event] = None) -> None:
+    def _bind_up_down(self, _event: tk.Event | None = None) -> None:
         self.tvw.bind("<Key-Up>", self.viewmodel.go_prev_problem)
         self.tvw.bind("<Key-Down>", self.viewmodel.go_next_problem)
-        return
 
-    def _unbind_up_down(self, _event: Optional[tk.Event] = None) -> None:
+    def _unbind_up_down(self, _event: tk.Event | None = None) -> None:
         self.tvw.unbind("<Key-Up>")
         self.tvw.unbind("<Key-Down>")
-        return
 
     def _bind_heading_commands(self) -> None:
         self.tvw.heading("filename", command=self.viewmodel.sort_by_file)
         self.tvw.heading("time", command=self.viewmodel.sort_by_time)
         self.tvw.heading("status", command=self.viewmodel.sort_by_status)
-        return
 
     def _unbind_heading_commands(self) -> None:
         self.tvw.heading("filename", command="")
         self.tvw.heading("time", command="")
         self.tvw.heading("status", command="")
-        return
 
     def _bind_focus(self) -> None:
         self.tvw.bind("<FocusIn>", self._bind_up_down)
         self.tvw.bind("<FocusOut>", self._unbind_up_down)
-        return
 
     def _unbind_focus(self) -> None:
         self.tvw.unbind("<FocusIn>")
         self.tvw.unbind("<FocusOut>")
-        return
 
     def set_focus(self, iid: str) -> None:
         self.tvw.focus(iid)
         self.tvw.selection_set(iid)
         self.tvw.see(iid)
-        return
 
     def disable_input(self) -> None:
         self._unbind_heading_commands()
         self._unbind_double_click()
         self._unbind_up_down()
         self._unbind_focus()
-        return
 
     def enable_input(self) -> None:
         self._bind_heading_commands()
         self._bind_double_click()
         self._bind_focus()
-        return
 
     def display_time(self, event: plist.ProbTimeEvent) -> None:
         idx = event.idx
@@ -132,7 +118,6 @@ class ProblemsTreeviewFrame(utils.ScrollableTreeviewFrame, evt.IObserver):
         # Set time column for item at given index
         id_ = self._idx_to_iid(idx)
         self.tvw.set(id_, column="time", value=str(time))
-        return
 
     def display_status(self, event: plist.ProbStatusEvent) -> None:
         idx = event.idx
@@ -140,7 +125,6 @@ class ProblemsTreeviewFrame(utils.ScrollableTreeviewFrame, evt.IObserver):
         id_ = self._idx_to_iid(idx)
         self.tvw.set(id_, column="status", value=self.status_strings[status])
         self.tvw.item(id_, tags=[status.name])  # overrides existing tags
-        return
 
     def go_to_problem(self, event: plist.ProbSelectedEvent) -> None:
         idx = event.sender.curr_prob_idx
@@ -148,7 +132,6 @@ class ProblemsTreeviewFrame(utils.ScrollableTreeviewFrame, evt.IObserver):
             return
         id_ = self._idx_to_iid(idx)
         self.set_focus(id_)
-        return
 
     def refresh_view(self, event: plist.ProbListEvent) -> None:
         # Refresh the entire view as the model changed, e.g. on opening folder
@@ -164,7 +147,6 @@ class ProblemsTreeviewFrame(utils.ScrollableTreeviewFrame, evt.IObserver):
                 "", "end", values=(problem.name, time_str, status_str), tags=tag_list
             )
         self.refresh_vsb()
-        return
 
     def _idx_to_iid(self, idx: int) -> str:
         return self.tvw.get_children()[idx]
@@ -192,4 +174,3 @@ class ProblemListPane(ttk.Frame):
         self.grid_rowconfigure(1, weight=0)
         self.tvwfrm_problems.grid(row=0, column=0, sticky="NSEW")
         self.btn_randomise.grid(row=1, column=0)
-        return
