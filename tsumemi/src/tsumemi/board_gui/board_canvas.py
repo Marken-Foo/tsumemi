@@ -118,9 +118,11 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
     def apply_piece_skin(self, skin: PieceSkin) -> None:
         self.koma_image_cache.update_skin(skin)
         self.komadai_koma_image_cache.update_skin(skin)
+        self._draw_board_position()
+        self._draw_komadais()
 
     def apply_board_skin(self, skin: BoardSkin) -> None:
-        self.board_artist.apply_skin(self, skin)
+        self.board_artist.apply_board_skin(self, skin)
 
     def apply_komadai_skin(self, skin: BoardSkin) -> None:
         # Can only figure out how to apply solid colours for now

@@ -31,7 +31,6 @@ class MainWindowViewController:
         self.board_canvas.apply_piece_skin(piece_skin)
         self.board_canvas.apply_board_skin(board_skin)
         self.board_canvas.apply_komadai_skin(komadai_skin)
-        self.board_canvas.draw()
 
     def set_main_board(self, pos: Position) -> None:
         self.board_canvas.set_position(pos)

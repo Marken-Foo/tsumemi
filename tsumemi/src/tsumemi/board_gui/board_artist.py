@@ -54,7 +54,7 @@ class BoardArtist:
         self._create_notation_labels(canvas)
         self._create_clickbox_layer(canvas)
 
-        self._update_base_layer(canvas)
+        self._update_base_layer(canvas, self.board_image_cache.skin)
         if not self.board_image_cache.skin.path:
             return
 
@@ -65,16 +65,14 @@ class BoardArtist:
     def flip(self) -> None:
         self.is_upside_down = not self.is_upside_down
 
-    def _clear(self, canvas: BoardCanvas) -> None:
-        if canvas.is_text():
-            for _, id_ in self.tile_texts:
-                if id_ is not None:
-                    canvas.itemconfig(id_, text="")
-        else:
-            self.tile_images.update_all_tiles(canvas, "")
+    def _clear_komas(self, canvas: BoardCanvas) -> None:
+        for _, id_ in self.tile_texts:
+            if id_ is not None:
+                canvas.itemconfig(id_, text="")
+        self.tile_images.update_all_tiles(canvas, "")
 
     def draw(self, canvas: BoardCanvas, komas_by_square: dict[Square, Koma]) -> None:
-        self._clear(canvas)
+        self._clear_komas(canvas)
         for sq, koma in komas_by_square.items():
             col_idx, row_idx = self.sq_to_idxs(sq)
             ktype = KomaType.get(koma)
@@ -84,10 +82,11 @@ class BoardArtist:
             else:
                 self.display_koma(canvas, ktype, invert, row_idx, col_idx)
 
-    def apply_skin(self, canvas: BoardCanvas, skin: BoardSkin) -> None:
+    def apply_board_skin(self, canvas: BoardCanvas, skin: BoardSkin) -> None:
         if self.background_id is not None:
             canvas.itemconfig(self.background_id, fill=skin.colour)
         self.board_image_cache.update_skin(skin)
+        self._update_base_layer(canvas, skin)
 
     def update_measurements(
         self, sq_width: float, sq_height: float, board_top_left_xy: tuple[float, float]
@@ -271,10 +270,9 @@ class BoardArtist:
         if transparent_img is not None:
             self.tile_clickboxes.update_all_tiles(canvas, transparent_img)
 
-    def _update_base_layer(self, canvas: BoardCanvas) -> None:
+    def _update_base_layer(self, canvas: BoardCanvas, skin: BoardSkin) -> None:
         if self.background_id is not None:
-            base_colour = self.board_image_cache.skin.colour
-            canvas.itemconfig(self.background_id, fill=base_colour)
+            canvas.itemconfig(self.background_id, fill=skin.colour)
 
     def _update_tile_backgrounds(
         self, canvas: BoardCanvas, img: ImageTk.PhotoImage
