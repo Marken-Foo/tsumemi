@@ -169,11 +169,13 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
                 ktype = KomaType.get(koma)
                 invert = self._is_inverted(koma.side())
                 if self.is_text():
-                    self.board_artist.draw_text_koma(
+                    self.board_artist.display_text_koma(
                         self, ktype, invert, row_idx, col_idx
                     )
                 else:
-                    self.board_artist.draw_koma(self, ktype, invert, row_idx, col_idx)
+                    self.board_artist.display_koma(
+                        self, ktype, invert, row_idx, col_idx
+                    )
 
         # Draw komadai
         north_side = Side.SENTE if self._is_inverted(Side.SENTE) else Side.GOTE
@@ -377,7 +379,7 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
         if sq == Square.NONE:
             return
         col_idx, row_idx = self._sq_to_idxs(sq)
-        self.board_artist.highlight_square_2(self, row_idx, col_idx)
+        self.board_artist.highlight_last_move_square(self, row_idx, col_idx)
 
     def _highlight_last_move(self) -> None:
         self._highlight_last_move_square(self.last_move_start_sq)
