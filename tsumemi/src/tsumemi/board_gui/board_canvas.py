@@ -180,13 +180,13 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
         self.draw_komadai(
             is_north=True,
             hand=north_hand,
-            sente=north_side.is_sente(),
+            side=north_side,
             align="top",
         )
         self.draw_komadai(
             is_north=False,
             hand=south_hand,
-            sente=south_side.is_sente(),
+            side=south_side,
             align="bottom",
         )
         # set focus and highlights
@@ -202,17 +202,15 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
         self,
         is_north: bool,
         hand: HandRepresentation,
-        sente: bool = True,
+        side: Side,
         align: str = "top",
     ) -> None:
         """Draw komadai with pieces given by hand argument, anchored
         at canvas position (x,y). "Anchoring" north or south achieved
         with align="top" or "bottom".
         """
-        artist = KomadaiArtist(
-            self.measurements, is_north, self.is_text(), hand, sente, align
-        )
-        artist.draw_komadai(self)
+        artist = KomadaiArtist(self.measurements, is_north, self.is_text(), side, align)
+        artist.draw_komadai(self, hand)
         self._add_all_komadai_koma_onclick_callbacks()
 
     def prompt_promotion(self, sq: Square, ktype: KomaType) -> None:
