@@ -212,13 +212,7 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
         artist = KomadaiArtist(
             self.measurements, is_north, self.is_text(), hand, sente, align
         )
-        # Draw the komadai base
-        komadai_base = artist.draw_komadai_base(self)
-        skin = self.komadai_skin
-        assert isinstance(skin, BoardSkin)
-        self.itemconfig(komadai_base, fill=skin.colour)
-        artist.draw_komadai_header_text(self)
-        artist.draw_all_komadai_koma(self)
+        artist.draw_komadai(self)
         self._add_all_komadai_koma_onclick_callbacks()
 
     def prompt_promotion(self, sq: Square, ktype: KomaType) -> None:

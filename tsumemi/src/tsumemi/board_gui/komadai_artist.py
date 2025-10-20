@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from tsumemi.src.shogi.basetypes import HAND_TYPES, KANJI_FROM_KTYPE
+from tsumemi.src.tsumemi.skins import BoardSkin
 
 if TYPE_CHECKING:
     from tsumemi.src.shogi.basetypes import KomaType
@@ -86,17 +87,25 @@ class KomadaiArtist:
             y_anchor - self.height if align == "bottom" else y_anchor
         )
 
-    def draw_all_komadai_koma(self, canvas: BoardCanvas) -> None:
+    def draw_komadai(self, canvas: BoardCanvas) -> None:
+        komadai_base = self._draw_komadai_base(canvas)
+        skin = canvas.komadai_skin
+        assert isinstance(skin, BoardSkin)
+        canvas.itemconfig(komadai_base, fill=skin.colour)
+        self._draw_komadai_header_text(canvas)
+        self._draw_all_komadai_koma(canvas)
+
+    def _draw_all_komadai_koma(self, canvas: BoardCanvas) -> None:
         if not self.hand_counts:
-            self.draw_komadai_text_nashi(canvas)
+            self._draw_komadai_text_nashi(canvas)
             return
         for n, (ktype, count) in enumerate(self.hand_counts.items()):
             y_offset = _koma_group_offset(
                 n, self.mochigoma_heading_size, self.koma_size, self.vertical_pad
             )
-            self.draw_komadai_koma_group(canvas, y_offset, ktype, count)
+            self._draw_komadai_koma_group(canvas, y_offset, ktype, count)
 
-    def draw_komadai_base(self, canvas: BoardCanvas) -> int:
+    def _draw_komadai_base(self, canvas: BoardCanvas) -> int:
         return canvas.create_rectangle(
             self.x_origin,
             self.y_origin,
@@ -107,7 +116,7 @@ class KomadaiArtist:
             tags=("komadai-solid",),
         )
 
-    def draw_komadai_header_text(self, canvas: BoardCanvas) -> int:
+    def _draw_komadai_header_text(self, canvas: BoardCanvas) -> int:
         header_text = "▲\n持\n駒" if self.is_sente else "△\n持\n駒"
         id_: int = canvas.create_text(
             self.x_origin + self.width / 2,
@@ -118,7 +127,7 @@ class KomadaiArtist:
         )
         return id_
 
-    def draw_komadai_text_nashi(self, canvas: BoardCanvas) -> int:
+    def _draw_komadai_text_nashi(self, canvas: BoardCanvas) -> int:
         id_: int = canvas.create_text(
             self.x_origin + self.width / 2,
             self.y_origin + self.mochigoma_heading_size,
@@ -128,7 +137,7 @@ class KomadaiArtist:
         )
         return id_
 
-    def draw_komadai_koma_group(
+    def _draw_komadai_koma_group(
         self,
         canvas: BoardCanvas,
         y_offset: float,
