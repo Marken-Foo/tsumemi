@@ -8,6 +8,7 @@ if TYPE_CHECKING:
     from tsumemi.src.shogi.basetypes import KomaType
     from tsumemi.src.shogi.position_internals import HandRepresentation
     from tsumemi.src.tsumemi.board_gui.board_canvas import BoardCanvas
+    from tsumemi.src.tsumemi.board_gui.board_meas import BoardMeasurements
 
 
 def komadai_width(koma_size: int) -> int:
@@ -44,21 +45,26 @@ def _koma_group_offset(
 class KomadaiArtist:
     def __init__(
         self,
-        x_anchor: float,
-        y_anchor: float,
-        canvas: BoardCanvas,
+        measurements: BoardMeasurements,
+        is_north: bool,  # North side or south
+        is_text: bool,
         hand: HandRepresentation,
         is_sente: bool,
         align: str = "top",
     ) -> None:
+        x_anchor, y_anchor = (
+            measurements.get_north_komadai_anchor()
+            if is_north
+            else measurements.get_south_komadai_anchor()
+        )
+
         self.is_sente = is_sente
-        is_text = canvas.is_text()
-        self.text_size = canvas.measurements.komadai_text_size
+        self.text_size = measurements.komadai_text_size
         # Actual size of each character in px is about 1.5*text_size
         char_height = 1.5 * self.text_size
-        self.piece_size = canvas.measurements.komadai_piece_size
-        self.symbol_size = self.text_size * 3 / 2 if is_text else self.piece_size
-        self.pad = self.text_size / 8 if is_text else self.piece_size / 8
+        piece_size = measurements.komadai_piece_size
+        self.koma_size = self.text_size * 3 / 2 if is_text else piece_size
+        self.vertical_pad = self.text_size / 8 if is_text else piece_size / 8
         self.mochigoma_heading_size = 4 * char_height  # "▲\n持\n駒\n"
 
         self.hand_counts: dict[KomaType, int] = {}
@@ -67,16 +73,16 @@ class KomadaiArtist:
             if count > 0:
                 self.hand_counts[ktype] = count
 
-        self.width: int = komadai_width(self.piece_size)
+        self.width: int = komadai_width(piece_size)
         self.height: int = komadai_height(
             self.mochigoma_heading_size,
             char_height,
             len(self.hand_counts),
-            self.symbol_size,
-            self.pad,
+            self.koma_size,
+            self.vertical_pad,
         )
-        self.x_anchor: int = int(x_anchor)
-        self.y_anchor: int = int(
+        self.x_origin: int = int(x_anchor - self.width / 2)
+        self.y_origin: int = int(
             y_anchor - self.height if align == "bottom" else y_anchor
         )
 
@@ -86,16 +92,16 @@ class KomadaiArtist:
             return
         for n, (ktype, count) in enumerate(self.hand_counts.items()):
             y_offset = _koma_group_offset(
-                n, self.mochigoma_heading_size, self.symbol_size, self.pad
+                n, self.mochigoma_heading_size, self.koma_size, self.vertical_pad
             )
             self.draw_komadai_koma_group(canvas, y_offset, ktype, count)
 
     def draw_komadai_base(self, canvas: BoardCanvas) -> int:
         return canvas.create_rectangle(
-            self.x_anchor - (self.width / 2),
-            self.y_anchor,
-            self.x_anchor + (self.width / 2),
-            self.y_anchor + self.height,
+            self.x_origin,
+            self.y_origin,
+            self.x_origin + self.width,
+            self.y_origin + self.height,
             fill="#ffffff",
             outline="",
             tags=("komadai-solid",),
@@ -104,8 +110,8 @@ class KomadaiArtist:
     def draw_komadai_header_text(self, canvas: BoardCanvas) -> int:
         header_text = "▲\n持\n駒" if self.is_sente else "△\n持\n駒"
         id_: int = canvas.create_text(
-            self.x_anchor,
-            self.y_anchor,
+            self.x_origin + self.width / 2,
+            self.y_origin,
             text=header_text,
             font=("", self.text_size),
             anchor="n",
@@ -114,8 +120,8 @@ class KomadaiArtist:
 
     def draw_komadai_text_nashi(self, canvas: BoardCanvas) -> int:
         id_: int = canvas.create_text(
-            self.x_anchor,
-            self.y_anchor + self.mochigoma_heading_size,
+            self.x_origin + self.width / 2,
+            self.y_origin + self.mochigoma_heading_size,
             text="な\nし",
             font=("", self.text_size),
             anchor="n",
@@ -128,16 +134,14 @@ class KomadaiArtist:
         y_offset: float,
         ktype: KomaType,
         count: int,
-    ) -> int:
-        x = self.x_anchor - (self.width / 5)
-        y = self.y_anchor + y_offset
+    ) -> None:
+        x = self.x_origin + self.width / 2 - self.width / 5
+        y = self.y_origin + y_offset
         self._draw_komadai_focus_tile(canvas, x, y, ktype)
-        # returns the id of the koma drawing
-        id_: int = self._draw_komadai_koma(canvas, x, y, ktype)
+        self._draw_komadai_koma(canvas, x, y, ktype)
 
-        x = self.x_anchor + 0.5 * self.piece_size
+        x = self.x_origin + self.width / 2 + 0.5 * self.koma_size
         self._draw_komadai_koma_count(canvas, x, y, count)
-        return id_
 
     def _draw_komadai_focus_tile(
         self,

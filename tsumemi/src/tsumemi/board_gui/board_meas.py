@@ -85,3 +85,17 @@ class BoardMeasurements:
 
     def get_board_top_left_xy(self) -> tuple[float, float]:
         return (self.w_pad + self.komadai_w, self.h_pad)
+
+    def get_north_komadai_anchor(self) -> tuple[float, float]:
+        return (self.w_pad + self.komadai_w / 2, self.h_pad)
+
+    def get_south_komadai_anchor(self) -> tuple[float, float]:
+        x = (
+            self.w_pad
+            + self.komadai_w
+            + 9 * self.sq_w
+            + 2 * self.coords_text_size
+            + self.komadai_w / 2
+        )
+        y = self.h_pad + 9 * self.sq_h
+        return (x, y)

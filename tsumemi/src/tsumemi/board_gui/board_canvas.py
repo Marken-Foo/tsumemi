@@ -151,12 +151,6 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
         # Clear board display - could also keep board and just redraw pieces
         self.delete("all")
         position = self.position
-        komadai_w = self.measurements.komadai_w
-        coords_text_size = self.measurements.coords_text_size
-        w_pad = self.measurements.w_pad
-        board_top_left_x, board_top_left_y = self.measurements.get_board_top_left_xy()
-        sq_w = self.measurements.sq_w
-        sq_h = self.measurements.sq_h
 
         self._draw_canvas_base_layer()
         # Draw board
@@ -184,16 +178,14 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
         south_hand = position.get_hand_of_side(south_side)
 
         self.draw_komadai(
-            w_pad + komadai_w / 2,
-            board_top_left_y,
-            north_hand,
+            is_north=True,
+            hand=north_hand,
             sente=north_side.is_sente(),
             align="top",
         )
         self.draw_komadai(
-            board_top_left_x + sq_w * 9 + 2 * coords_text_size + komadai_w / 2,
-            board_top_left_y + sq_h * 9,
-            south_hand,
+            is_north=False,
+            hand=south_hand,
             sente=south_side.is_sente(),
             align="bottom",
         )
@@ -208,8 +200,7 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
 
     def draw_komadai(
         self,
-        x: float,
-        y: float,
+        is_north: bool,
         hand: HandRepresentation,
         sente: bool = True,
         align: str = "top",
@@ -218,7 +209,9 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
         at canvas position (x,y). "Anchoring" north or south achieved
         with align="top" or "bottom".
         """
-        artist = KomadaiArtist(x, y, self, hand, sente, align)
+        artist = KomadaiArtist(
+            self.measurements, is_north, self.is_text(), hand, sente, align
+        )
         # Draw the komadai base
         komadai_base = artist.draw_komadai_base(self)
         skin = self.komadai_skin
