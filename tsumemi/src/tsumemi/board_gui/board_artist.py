@@ -10,6 +10,8 @@ from tsumemi.src.tsumemi.board_gui.board_meas import BoardMeasurements
 if TYPE_CHECKING:
     from collections.abc import Callable
     from PIL import ImageTk
+    from tsumemi.src.shogi.basetypes import Koma
+    from tsumemi.src.shogi.square import Square
     from tsumemi.src.tsumemi.board_gui.board_canvas import BoardCanvas
     from tsumemi.src.tsumemi.skins import BoardSkin
 
@@ -146,6 +148,16 @@ class BoardArtist:
         if tile_image is not None:
             self._update_tile_backgrounds(canvas, tile_image)
 
+    def draw(self, canvas: BoardCanvas, komas_by_square: dict[Square, Koma]) -> None:
+        for sq, koma in komas_by_square.items():
+            col_idx, row_idx = canvas.sq_to_idxs(sq)
+            ktype = KomaType.get(koma)
+            invert = canvas.is_inverted(koma.side())
+            if canvas.is_text():
+                self.display_text_koma(canvas, ktype, invert, row_idx, col_idx)
+            else:
+                self.display_koma(canvas, ktype, invert, row_idx, col_idx)
+
     def apply_skin(self, canvas: BoardCanvas, skin: BoardSkin) -> None:
         if self.background_id is not None:
             canvas.itemconfig(self.background_id, fill=skin.colour)
@@ -192,7 +204,28 @@ class BoardArtist:
     def lift_click_layer(self, canvas: BoardCanvas) -> None:
         canvas.lift("click_tile")
 
-    def draw_promotion_cover(self, canvas: BoardCanvas) -> int | None:
+    def draw_promotion_interface(
+        self,
+        canvas: BoardCanvas,
+        ktype: KomaType,
+        promotion_square: Square,
+        is_upside_down: bool,
+    ) -> tuple[int | None, int | None, int | None]:
+        """
+        Display on a `canvas` the interface for user to choose whether to promote a koma.
+        Return the tkinter canvas IDs of the board covering, promoted koma, and unpromoted koma.
+        """
+        id_cover = self._draw_promotion_cover(canvas)
+        col_idx, row_idx = canvas.sq_to_idxs(promotion_square)
+        id_promoted = self._draw_promotion_prompt_koma(
+            canvas, row_idx, col_idx, ktype.promote(), is_upside_down
+        )
+        id_unpromoted = self._draw_promotion_prompt_koma(
+            canvas, row_idx + 1, col_idx, ktype, is_upside_down
+        )
+        return (id_cover, id_promoted, id_unpromoted)
+
+    def _draw_promotion_cover(self, canvas: BoardCanvas) -> int | None:
         img = self.board_image_cache.get_semi_transparent_board_cover()
         if img is None:
             return None
@@ -201,7 +234,7 @@ class BoardArtist:
             x, y, image=img, anchor="nw", tags="promotion_prompt"
         )
 
-    def draw_promotion_prompt_koma(
+    def _draw_promotion_prompt_koma(
         self,
         canvas: BoardCanvas,
         row_idx: int,

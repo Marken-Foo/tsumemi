@@ -78,7 +78,7 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
 
         self.board_artist = BoardArtist(self.measurements, board_skin)
 
-        north_side = Side.SENTE if self._is_inverted(Side.SENTE) else Side.GOTE
+        north_side = Side.SENTE if self.is_inverted(Side.SENTE) else Side.GOTE
         self.north_komadai_artist = KomadaiArtist(
             self.measurements,
             is_north=True,
@@ -172,23 +172,12 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
         # Draw board
         self.board_artist.draw_board(self)
         self._add_board_onclick_callbacks()
+
         # Draw board pieces
-        for koma, sqset in position.get_koma_sets().items():
-            for sq in sqset:
-                col_idx, row_idx = self._sq_to_idxs(sq)
-                ktype = KomaType.get(koma)
-                invert = self._is_inverted(koma.side())
-                if self.is_text():
-                    self.board_artist.display_text_koma(
-                        self, ktype, invert, row_idx, col_idx
-                    )
-                else:
-                    self.board_artist.display_koma(
-                        self, ktype, invert, row_idx, col_idx
-                    )
+        self.board_artist.draw(self, position.get_komas_by_square())
 
         # Draw komadai
-        north_side = Side.SENTE if self._is_inverted(Side.SENTE) else Side.GOTE
+        north_side = Side.SENTE if self.is_inverted(Side.SENTE) else Side.GOTE
         south_side = north_side.switch()
         north_hand = position.get_hand_of_side(north_side)
         south_hand = position.get_hand_of_side(south_side)
@@ -207,19 +196,9 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
         return id_
 
     def prompt_promotion(self, sq: Square, ktype: KomaType) -> None:
-        """Display the visual cues prompting user to choose promotion
-        or non-promotion.
-        """
-        id_cover = self.board_artist.draw_promotion_cover(self)
-
-        col_idx, row_idx = self._sq_to_idxs(sq)
-        invert = self._is_inverted(self.position.turn)
-
-        id_promoted = self.board_artist.draw_promotion_prompt_koma(
-            self, row_idx, col_idx, ktype.promote(), invert
-        )
-        id_unpromoted = self.board_artist.draw_promotion_prompt_koma(
-            self, row_idx + 1, col_idx, ktype, invert
+        invert = self.is_inverted(self.position.turn)
+        id_cover, id_promoted, id_unpromoted = (
+            self.board_artist.draw_promotion_interface(self, ktype, sq, invert)
         )
         callback = functools.partial(
             self._prompt_promotion_callback, sq=sq, ktype=ktype
@@ -275,13 +254,13 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
     def _row_num_to_idx(self, row_num: int) -> int:
         return NUM_ROWS - row_num if self.is_upside_down else row_num - 1
 
-    def _sq_to_idxs(self, sq: Square) -> tuple[int, int]:
+    def sq_to_idxs(self, sq: Square) -> tuple[int, int]:
         col_num, row_num = sq.get_cr()
         col_idx = self._col_num_to_idx(col_num)
         row_idx = self._row_num_to_idx(row_num)
         return col_idx, row_idx
 
-    def _is_inverted(self, side: Side) -> bool:
+    def is_inverted(self, side: Side) -> bool:
         return not (side.is_sente() ^ self.is_upside_down)
 
     def is_text(self) -> bool:
@@ -325,7 +304,7 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
             for id_ in self.find_withtag("komadai_focus"):
                 self.itemconfig(id_, image="")
             return
-        col_idx, row_idx = self._sq_to_idxs(self.highlighted_sq)
+        col_idx, row_idx = self.sq_to_idxs(self.highlighted_sq)
         self.board_artist.unhighlight_square(self, row_idx, col_idx)
 
     def _highlight_square(self, sq: Square) -> None:
@@ -334,7 +313,7 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
         if sq == Square.NONE:
             self.highlighted_sq = sq
             return
-        col_idx, row_idx = self._sq_to_idxs(sq)
+        col_idx, row_idx = self.sq_to_idxs(sq)
         self.board_artist.highlight_square(self, row_idx, col_idx)
         self.highlighted_sq = sq
 
@@ -356,7 +335,7 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
             return
         if sq == Square.NONE:
             return
-        col_idx, row_idx = self._sq_to_idxs(sq)
+        col_idx, row_idx = self.sq_to_idxs(sq)
         self.board_artist.highlight_last_move_square(self, row_idx, col_idx)
 
     def _highlight_last_move(self) -> None:
