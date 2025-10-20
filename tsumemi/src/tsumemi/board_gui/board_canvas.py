@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from tsumemi.src.tsumemi.board_gui.koma_image_cache import KomaImageCache
 import tsumemi.src.tsumemi.event as evt
 
-from tsumemi.src.shogi.basetypes import HAND_TYPES, KANJI_FROM_KTYPE, KomaType, Side
+from tsumemi.src.shogi.basetypes import HAND_TYPES, KomaType, Side
 from tsumemi.src.shogi.square import Square
 from tsumemi.src.tsumemi.skins import BoardSkin, PieceSkin, SkinSettings
 from tsumemi.src.tsumemi.board_gui.board_artist import BoardArtist, NUM_COLS, NUM_ROWS
@@ -169,15 +169,11 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
                 ktype = KomaType.get(koma)
                 invert = self._is_inverted(koma.side())
                 if self.is_text():
-                    text = str(KANJI_FROM_KTYPE[ktype])
                     self.board_artist.draw_text_koma(
-                        self, text, invert, row_idx, col_idx
+                        self, ktype, invert, row_idx, col_idx
                     )
                 else:
-                    img = self.koma_image_cache.get_koma_image(ktype, invert)
-                    if img is None:
-                        continue
-                    self.board_artist.draw_koma(self, img, row_idx, col_idx)
+                    self.board_artist.draw_koma(self, ktype, invert, row_idx, col_idx)
 
         # Draw komadai
         north_side = Side.SENTE if self._is_inverted(Side.SENTE) else Side.GOTE
@@ -322,11 +318,9 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
                 callback = functools.partial(
                     self.move_input_handler.receive_square, sq=sq
                 )
-                self.tag_bind(
-                    self.board_artist.tile_clickboxes.tiles[row_idx][col_idx],
-                    TK_SINGLE_LEFT_CLICK,
-                    callback,
-                )
+                id_ = self.board_artist.tile_clickboxes.get_id(row_idx, col_idx)
+                if id_ is not None:
+                    self.tag_bind(id_, TK_SINGLE_LEFT_CLICK, callback)
 
     def _add_all_komadai_koma_onclick_callbacks(self) -> None:
         if self.move_input_handler is None:

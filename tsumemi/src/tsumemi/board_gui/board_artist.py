@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
-from tsumemi.src.shogi.basetypes import KomaType
+from tsumemi.src.shogi.basetypes import KANJI_FROM_KTYPE, KomaType
 from tsumemi.src.shogi.square import KanjiNumber
 from tsumemi.src.tsumemi.board_gui.board_image_cache import BoardImageCache
 from tsumemi.src.tsumemi.board_gui.board_meas import BoardMeasurements
@@ -18,6 +17,19 @@ if TYPE_CHECKING:
 # Shogi board dimensions in squares
 NUM_COLS = 9
 NUM_ROWS = 9
+
+
+class TileIdStore:
+    def __init__(
+        self, num_cols: int, num_rows: int, default: int | None = None
+    ) -> None:
+        self.tiles = [[default] * num_cols for _ in range(num_rows)]
+
+    def set_id(self, row_idx: int, col_idx: int, id_: int) -> None:
+        self.tiles[row_idx][col_idx] = id_
+
+    def get_id(self, row_idx: int, col_idx: int) -> int | None:
+        return self.tiles[row_idx][col_idx]
 
 
 class BoardDrawingCoords:
@@ -64,59 +76,40 @@ def draw_board_tile_text(
     )
 
 
-class BoardLayer(ABC):
+class BoardImageLayer:
     def __init__(self, is_centered: bool = False) -> None:
         self.is_centered = is_centered
         # Stored canvas item ids for later alteration.
         # FEN ordering. (row_idx, col_idx), zero-based
-        self.tiles = [[-1] * NUM_COLS for _ in range(NUM_ROWS)]
+        self.tiles: list[list[int | None]] = [[-1] * NUM_COLS for _ in range(NUM_ROWS)]
 
-    @abstractmethod
     def draw_layer(
         self,
         canvas: BoardCanvas,
         idxs_to_xy: Callable[[int, int, str], tuple[int, int]],
         tag: str = "",
     ) -> None:
-        raise NotImplementedError
-
-
-class BoardImageLayer(BoardLayer):
-    def draw_layer(
-        self,
-        canvas: BoardCanvas,
-        idxs_to_xy: Callable[[int, int, str], tuple[int, int]],
-        tag: str = "",
-    ) -> None:
-        for row_idx in range(NUM_ROWS):
-            for col_idx in range(NUM_COLS):
+        for row_idx, row in enumerate(self.tiles):
+            for col_idx, _ in enumerate(row):
                 x, y = idxs_to_xy(col_idx, row_idx, "xy" if self.is_centered else "")
                 id_ = draw_board_tile_image(canvas, x, y, self.is_centered, tag)
                 self.tiles[row_idx][col_idx] = id_
 
+    def get_id(self, row_idx: int, col_idx: int) -> int | None:
+        return self.tiles[row_idx][col_idx]
+
     def update_tile(
         self, canvas: BoardCanvas, img: ImageTk.PhotoImage, row_idx: int, col_idx: int
     ) -> None:
-        canvas.itemconfig(self.tiles[row_idx][col_idx], image=img)
+        id_ = self.get_id(row_idx, col_idx)
+        if id_ is not None:
+            canvas.itemconfig(id_, image=img)
 
     def update_all_tiles(self, canvas: BoardCanvas, img: ImageTk.PhotoImage) -> None:
         for row in self.tiles:
-            for tile in row:
-                canvas.itemconfig(tile, image=img)
-
-
-class BoardKomaTextLayer(BoardLayer):
-    def draw_layer(
-        self,
-        canvas: BoardCanvas,
-        idxs_to_xy: Callable[[int, int, str], tuple[int, int]],
-        tag: str = "",
-    ) -> None:
-        for row_idx in range(NUM_ROWS):
-            for col_idx in range(NUM_COLS):
-                x, y = idxs_to_xy(col_idx, row_idx, "xy" if self.is_centered else "")
-                id_ = draw_board_tile_text(canvas, x, y, self.is_centered, tag)
-                self.tiles[row_idx][col_idx] = id_
+            for id_ in row:
+                if id_ is not None:
+                    canvas.itemconfig(id_, image=img)
 
 
 class BoardArtist:
@@ -125,7 +118,7 @@ class BoardArtist:
         self.tile_backgrounds = BoardImageLayer()
         self.tile_highlights = BoardImageLayer()
         self.tile_images = BoardImageLayer(is_centered=True)
-        self.tile_texts = BoardKomaTextLayer(is_centered=True)
+        self.tile_texts = TileIdStore(NUM_COLS, NUM_ROWS)
         self.tile_clickboxes = BoardImageLayer()
 
         self.board_image_cache = BoardImageCache(
@@ -145,12 +138,13 @@ class BoardArtist:
         self._draw_board_coordinates(canvas)
         self._draw_click_layer(canvas)
         self._update_board_base_colour(canvas)
+
         if not self.board_image_cache.skin.path:
             return
 
-        board_image = self.board_image_cache.get_board_image()
-        if board_image is not None:
-            self._update_board_tile_images(canvas, board_image)
+        tile_image = self.board_image_cache.get_board_image()
+        if tile_image is not None:
+            self._update_board_tile_images(canvas, tile_image)
 
     def apply_skin(self, canvas: BoardCanvas, skin: BoardSkin) -> None:
         if self.background_id is not None:
@@ -170,25 +164,30 @@ class BoardArtist:
     def draw_koma(
         self,
         canvas: BoardCanvas,
-        img: ImageTk.PhotoImage,
+        ktype: KomaType,
+        is_upside_down: bool,
         row_idx: int,
         col_idx: int,
     ) -> None:
-        self.tile_images.update_tile(canvas, img, row_idx, col_idx)
+        img = canvas.koma_image_cache.get_koma_image(
+            ktype, is_upside_down=is_upside_down
+        )
+        id_ = self.tile_images.get_id(row_idx, col_idx)
+        if id_ is not None and img is not None:
+            canvas.itemconfig(id_, image=img)
 
     def draw_text_koma(
         self,
         canvas: BoardCanvas,
-        text: str,
-        invert: bool,
+        ktype: KomaType,
+        is_upside_down: bool,
         row_idx: int,
         col_idx: int,
     ) -> None:
-        canvas.itemconfig(
-            self.tile_texts.tiles[row_idx][col_idx],
-            text=text,
-            angle=180 if invert else 0,
-        )
+        id_ = self.tile_texts.get_id(row_idx=row_idx, col_idx=col_idx)
+        if id_ is not None:
+            text = str(KANJI_FROM_KTYPE[ktype])
+            canvas.itemconfig(id_, text=text, angle=180 if is_upside_down else 0)
 
     def lift_click_layer(self, canvas: BoardCanvas) -> None:
         canvas.lift("click_tile")
@@ -262,7 +261,11 @@ class BoardArtist:
             self.tile_highlights.update_all_tiles(canvas, transparent_img)
 
     def _draw_koma_text_layer(self, canvas: BoardCanvas) -> None:
-        self.tile_texts.draw_layer(canvas, self._drawing_coords.idxs_to_xy)
+        for row_idx in range(NUM_ROWS):
+            for col_idx in range(NUM_COLS):
+                x, y = self._drawing_coords.idxs_to_xy(col_idx, row_idx, "xy")
+                id_ = draw_board_tile_text(canvas, x, y, is_centered=True)
+                self.tile_texts.set_id(row_idx, col_idx, id_)
 
     def _draw_koma_image_layer(self, canvas: BoardCanvas) -> None:
         self.tile_images.draw_layer(canvas, self._drawing_coords.idxs_to_xy)
