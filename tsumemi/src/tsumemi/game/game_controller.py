@@ -95,27 +95,29 @@ class GameController(evt.Emitter, evt.IObserver):
         self.add_callback(mih.MoveEvent, self._add_move)
 
     def _add_move(self, event: mih.MoveEvent) -> None:
-        """Make the move, regardless of whether the move is in the
+        """
+        Make the move, regardless of whether the move is in the
         game or not.
         """
         move = event.move
         self.game.add_move(move)
 
     def verify_move(self, event: mih.MoveEvent) -> None:
-        # Used only in speedrun mode
+        """
+        Issues events for when moves are made in speedrun mode.
+        """
         move = event.move
-        if self.game.game.is_mainline(move):
-            # the move is the mainline, so it is correct
-            self.game.make_move(move)
-            if self.game.game.is_end():
-                self._notify_observers(GameEndEvent())
-                return
-            response_move = self.game.game.get_mainline_move()
-            if isinstance(response_move, TerminationMove):
-                self._notify_observers(GameEndEvent())
-                return
-            self.game.make_move(response_move)
-            if self.game.game.is_end():
-                self._notify_observers(GameEndEvent())
+        if not self.game.game.is_mainline(move):
+            self._notify_observers(WrongMoveEvent())
             return
-        self._notify_observers(WrongMoveEvent())
+        self.game.make_move(move)
+        if self.game.game.is_end():
+            self._notify_observers(GameEndEvent())
+            return
+        response_move = self.game.game.get_mainline_move()
+        if isinstance(response_move, TerminationMove):
+            self._notify_observers(GameEndEvent())
+            return
+        self.game.make_move(response_move)
+        if self.game.game.is_end():
+            self._notify_observers(GameEndEvent())
