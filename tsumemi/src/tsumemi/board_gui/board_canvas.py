@@ -76,7 +76,9 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
             piece_skin,
         )
 
-        self.board_artist = BoardArtist(self.measurements, board_skin)
+        self.board_artist = BoardArtist(
+            self.measurements, board_skin, self.is_upside_down
+        )
 
         north_side = Side.SENTE if self.is_inverted(Side.SENTE) else Side.GOTE
         self.north_komadai_artist = KomadaiArtist(
@@ -151,6 +153,9 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
         # For upside-down mode
         if self.is_upside_down != want_upside_down:
             self.is_upside_down = want_upside_down
+            self.board_artist.flip()
+            self.north_komadai_artist.switch_side()
+            self.south_komadai_artist.switch_side()
             self.draw()
 
     def set_focus(self, sq: Square, ktype: KomaType = KomaType.NONE) -> None:
@@ -248,18 +253,6 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
     def row_idx_to_num(self, row_idx: int) -> int:
         return NUM_ROWS - row_idx if self.is_upside_down else row_idx + 1
 
-    def _col_num_to_idx(self, col_num: int) -> int:
-        return col_num - 1 if self.is_upside_down else NUM_COLS - col_num
-
-    def _row_num_to_idx(self, row_num: int) -> int:
-        return NUM_ROWS - row_num if self.is_upside_down else row_num - 1
-
-    def sq_to_idxs(self, sq: Square) -> tuple[int, int]:
-        col_num, row_num = sq.get_cr()
-        col_idx = self._col_num_to_idx(col_num)
-        row_idx = self._row_num_to_idx(row_num)
-        return col_idx, row_idx
-
     def is_inverted(self, side: Side) -> bool:
         return not (side.is_sente() ^ self.is_upside_down)
 
@@ -304,8 +297,7 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
             for id_ in self.find_withtag("komadai_focus"):
                 self.itemconfig(id_, image="")
             return
-        col_idx, row_idx = self.sq_to_idxs(self.highlighted_sq)
-        self.board_artist.unhighlight_square(self, row_idx, col_idx)
+        self.board_artist.unhighlight_square(self, self.highlighted_sq)
 
     def _highlight_square(self, sq: Square) -> None:
         if sq == Square.HAND:
@@ -313,8 +305,7 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
         if sq == Square.NONE:
             self.highlighted_sq = sq
             return
-        col_idx, row_idx = self.sq_to_idxs(sq)
-        self.board_artist.highlight_square(self, row_idx, col_idx)
+        self.board_artist.highlight_square(self, sq)
         self.highlighted_sq = sq
 
     def _highlight_hand_koma(self, ktype: KomaType) -> None:
@@ -330,14 +321,6 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
             self.itemconfig(item[0], image=highlight_image)
         self.highlighted_sq = Square.HAND
 
-    def _highlight_last_move_square(self, sq: Square) -> None:
-        if sq == Square.HAND:
-            return
-        if sq == Square.NONE:
-            return
-        col_idx, row_idx = self.sq_to_idxs(sq)
-        self.board_artist.highlight_last_move_square(self, row_idx, col_idx)
-
     def _highlight_last_move(self) -> None:
-        self._highlight_last_move_square(self.last_move_start_sq)
-        self._highlight_last_move_square(self.last_move_end_sq)
+        self.board_artist.highlight_last_move_square(self, self.last_move_start_sq)
+        self.board_artist.highlight_last_move_square(self, self.last_move_end_sq)

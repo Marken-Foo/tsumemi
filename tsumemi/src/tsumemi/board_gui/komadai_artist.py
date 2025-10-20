@@ -88,6 +88,9 @@ class KomadaiArtist:
         self.x_origin: int = int(x_anchor - self.width / 2)
         self.y_origin: int = int(y_anchor if self.is_north else y_anchor - self.height)
 
+    def switch_side(self) -> None:
+        self.is_sente = not self.is_sente
+
     def draw_komadai(self, canvas: BoardCanvas, hand: HandRepresentation) -> None:
         self.hand_counts = {
             ktype: count

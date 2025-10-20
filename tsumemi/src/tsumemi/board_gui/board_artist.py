@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from tsumemi.src.shogi.basetypes import KANJI_FROM_KTYPE, KomaType
-from tsumemi.src.shogi.square import KanjiNumber
+from tsumemi.src.shogi.square import KanjiNumber, Square
 from tsumemi.src.tsumemi.board_gui.board_image_cache import BoardImageCache
 from tsumemi.src.tsumemi.board_gui.board_meas import BoardMeasurements
 
@@ -11,7 +11,6 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from PIL import ImageTk
     from tsumemi.src.shogi.basetypes import Koma
-    from tsumemi.src.shogi.square import Square
     from tsumemi.src.tsumemi.board_gui.board_canvas import BoardCanvas
     from tsumemi.src.tsumemi.skins import BoardSkin
 
@@ -115,7 +114,11 @@ class BoardImageLayer:
 
 
 class BoardArtist:
-    def __init__(self, measurements: BoardMeasurements, skin: BoardSkin) -> None:
+    def __init__(
+        self, measurements: BoardMeasurements, skin: BoardSkin, is_upside_down: bool
+    ) -> None:
+        self.is_upside_down = is_upside_down
+
         self.background_id: int | None = None
         self.tile_backgrounds = BoardImageLayer()
         self.tile_highlights = BoardImageLayer()
@@ -148,9 +151,12 @@ class BoardArtist:
         if tile_image is not None:
             self._update_tile_backgrounds(canvas, tile_image)
 
+    def flip(self) -> None:
+        self.is_upside_down = not self.is_upside_down
+
     def draw(self, canvas: BoardCanvas, komas_by_square: dict[Square, Koma]) -> None:
         for sq, koma in komas_by_square.items():
-            col_idx, row_idx = canvas.sq_to_idxs(sq)
+            col_idx, row_idx = self.sq_to_idxs(sq)
             ktype = KomaType.get(koma)
             invert = canvas.is_inverted(koma.side())
             if canvas.is_text():
@@ -216,7 +222,7 @@ class BoardArtist:
         Return the tkinter canvas IDs of the board covering, promoted koma, and unpromoted koma.
         """
         id_cover = self._draw_promotion_cover(canvas)
-        col_idx, row_idx = canvas.sq_to_idxs(promotion_square)
+        col_idx, row_idx = self.sq_to_idxs(promotion_square)
         id_promoted = self._draw_promotion_prompt_koma(
             canvas, row_idx, col_idx, ktype.promote(), is_upside_down
         )
@@ -255,21 +261,26 @@ class BoardArtist:
     def clear_promotion_prompts(self, canvas: BoardCanvas) -> None:
         canvas.delete("promotion_prompt")
 
-    def unhighlight_square(
-        self, canvas: BoardCanvas, row_idx: int, col_idx: int
-    ) -> None:
+    def unhighlight_square(self, canvas: BoardCanvas, sq: Square) -> None:
+        if sq == Square.NONE or sq == Square.HAND:
+            return
+        col_idx, row_idx = self.sq_to_idxs(sq)
         img = self.board_image_cache.get_transparent_tile()
         if img is not None:
             self.tile_highlights.update_tile(canvas, img, row_idx, col_idx)
 
-    def highlight_square(self, canvas: BoardCanvas, row_idx: int, col_idx: int) -> None:
+    def highlight_square(self, canvas: BoardCanvas, sq: Square) -> None:
+        if sq == Square.NONE or sq == Square.HAND:
+            return
+        col_idx, row_idx = self.sq_to_idxs(sq)
         img = self.board_image_cache.get_selected_tile_highlight()
         if img is not None:
             self.tile_highlights.update_tile(canvas, img, row_idx, col_idx)
 
-    def highlight_last_move_square(
-        self, canvas: BoardCanvas, row_idx: int, col_idx: int
-    ) -> None:
+    def highlight_last_move_square(self, canvas: BoardCanvas, sq: Square) -> None:
+        if sq == Square.NONE or sq == Square.HAND:
+            return
+        col_idx, row_idx = self.sq_to_idxs(sq)
         img = self.board_image_cache.get_last_move_tile_highlight()
         if img is not None:
             self.tile_highlights.update_tile(canvas, img, row_idx, col_idx)
@@ -346,3 +357,15 @@ class BoardArtist:
         self, canvas: BoardCanvas, img: ImageTk.PhotoImage
     ) -> None:
         self.tile_backgrounds.update_all_tiles(canvas, img)
+
+    def _col_num_to_idx(self, col_num: int) -> int:
+        return col_num - 1 if self.is_upside_down else NUM_COLS - col_num
+
+    def _row_num_to_idx(self, row_num: int) -> int:
+        return NUM_ROWS - row_num if self.is_upside_down else row_num - 1
+
+    def sq_to_idxs(self, sq: Square) -> tuple[int, int]:
+        col_num, row_num = sq.get_cr()
+        col_idx = self._col_num_to_idx(col_num)
+        row_idx = self._row_num_to_idx(row_num)
+        return col_idx, row_idx
