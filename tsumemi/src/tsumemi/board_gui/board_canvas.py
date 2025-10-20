@@ -11,7 +11,7 @@ import tsumemi.src.tsumemi.event as evt
 from tsumemi.src.shogi.basetypes import HAND_TYPES, KomaType, Side
 from tsumemi.src.shogi.square import Square
 from tsumemi.src.tsumemi.skins import BoardSkin, PieceSkin, SkinSettings
-from tsumemi.src.tsumemi.board_gui.board_artist import BoardArtist, NUM_COLS, NUM_ROWS
+from tsumemi.src.tsumemi.board_gui.board_artist import BoardArtist
 from tsumemi.src.tsumemi.board_gui.board_meas import BoardMeasurements
 from tsumemi.src.tsumemi.board_gui.komadai_artist import KomadaiArtist
 
@@ -28,10 +28,6 @@ DEFAULT_CANVAS_HEIGHT = 500
 
 # tk input
 TK_SINGLE_LEFT_CLICK = "<Button-1>"
-
-
-# IDX = zero-based, top left to bottom right, row-column (like FEN)
-# NUM = one-based, top right to bottom left, column-row (like JP notation)
 
 
 class BoardCanvas(tk.Canvas, evt.IObserver):
@@ -92,11 +88,9 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
             is_text=self.is_text(),
             side=self.north_side.switch(),
         )
-        # Currently highlighted tile [col_num, row_num]
-        # Hand pieces would be [0, KomaType]
+
         self.highlighted_sq = Square.NONE
         self.highlighted_ktype = KomaType.NONE
-        # Last move highlighted tiles
         self.last_move_start_sq = Square.NONE
         self.last_move_end_sq = Square.NONE
 
@@ -119,6 +113,7 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
         self._draw_board_position()
         self._draw_komadais()
         self._add_all_komadai_koma_onclick_callbacks()
+        self.board_artist.clear_highlights(self)
 
     def apply_piece_skin(self, skin: PieceSkin) -> None:
         self.koma_image_cache.update_skin(skin)
@@ -251,12 +246,6 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
     def clear_promotion_prompts(self) -> None:
         self.board_artist.clear_promotion_prompts(self)
 
-    def col_idx_to_num(self, col_idx: int) -> int:
-        return col_idx + 1 if self.is_upside_down else NUM_COLS - col_idx
-
-    def row_idx_to_num(self, row_idx: int) -> int:
-        return NUM_ROWS - row_idx if self.is_upside_down else row_idx + 1
-
     def is_inverted(self, side: Side) -> bool:
         return not (side.is_sente() ^ self.is_upside_down)
 
@@ -266,17 +255,9 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
     def _add_board_onclick_callbacks(self) -> None:
         if self.move_input_handler is None:
             return
-        for row_idx in range(NUM_ROWS):
-            for col_idx in range(NUM_COLS):
-                col_num = self.col_idx_to_num(col_idx)
-                row_num = self.row_idx_to_num(row_idx)
-                sq = Square.from_cr(col_num, row_num)
-                callback = functools.partial(
-                    self.move_input_handler.receive_square, sq=sq
-                )
-                id_ = self.board_artist.tile_clickboxes.get_id(row_idx, col_idx)
-                if id_ is not None:
-                    self.tag_bind(id_, TK_SINGLE_LEFT_CLICK, callback)
+        for sq, id_ in self.board_artist.clickboxes():
+            callback = functools.partial(self.move_input_handler.receive_square, sq=sq)
+            self.tag_bind(id_, TK_SINGLE_LEFT_CLICK, callback)
 
     def _add_all_komadai_koma_onclick_callbacks(self) -> None:
         if self.move_input_handler is None:

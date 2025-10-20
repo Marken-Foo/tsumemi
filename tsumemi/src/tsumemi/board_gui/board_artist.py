@@ -9,6 +9,7 @@ from tsumemi.src.tsumemi.board_gui.board_meas import BoardMeasurements
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
+    from typing import Literal
     from PIL import ImageTk
     from tsumemi.src.shogi.basetypes import Koma
     from tsumemi.src.tsumemi.board_gui.board_canvas import BoardCanvas
@@ -18,6 +19,9 @@ if TYPE_CHECKING:
 # Shogi board dimensions in squares
 NUM_COLS = 9
 NUM_ROWS = 9
+
+# IDX = zero-based, top left to bottom right, row-column (like FEN)
+# NUM = one-based, top right to bottom left, column-row (like JP notation)
 
 
 class BoardArtist:
@@ -177,6 +181,9 @@ class BoardArtist:
     def clear_promotion_prompts(self, canvas: BoardCanvas) -> None:
         canvas.delete("promotion_prompt")
 
+    def clear_highlights(self, canvas: BoardCanvas) -> None:
+        self.tile_highlights.update_all_tiles(canvas, "")
+
     def unhighlight_square(self, canvas: BoardCanvas, sq: Square) -> None:
         if sq == Square.NONE or sq == Square.HAND:
             return
@@ -243,14 +250,14 @@ class BoardArtist:
     def _create_notation_labels(self, canvas: BoardCanvas) -> None:
         coords_text_size = canvas.measurements.coords_text_size
         for row_idx in range(NUM_ROWS):
-            row_num = canvas.row_idx_to_num(row_idx)
+            row_num = self._row_idx_to_num(row_idx)
             row_label = " " + KanjiNumber(row_num).name
             x, y = self._drawing_coords.idxs_to_xy(NUM_COLS, row_idx, centering="y")
             canvas.create_text(
                 x, y, text=" " + row_label, font=("", coords_text_size), anchor="w"
             )
-        for col_idx in range(9):
-            col_num = canvas.col_idx_to_num(col_idx)
+        for col_idx in range(NUM_COLS):
+            col_num = self._col_idx_to_num(col_idx)
             x, y = self._drawing_coords.idxs_to_xy(col_idx, 0, centering="x")
             canvas.create_text(
                 x, y, text=str(col_num), font=("", coords_text_size), anchor="s"
@@ -273,6 +280,20 @@ class BoardArtist:
         self, canvas: BoardCanvas, img: ImageTk.PhotoImage
     ) -> None:
         self.tile_backgrounds.update_all_tiles(canvas, img)
+
+    def clickboxes(self) -> Iterator[tuple[Square, int]]:
+        for (row_idx, col_idx), id_ in self.tile_clickboxes:
+            sq = Square.from_cr(
+                self._col_idx_to_num(col_idx), self._row_idx_to_num(row_idx)
+            )
+            if id_ is not None:
+                yield (sq, id_)
+
+    def _col_idx_to_num(self, col_idx: int) -> int:
+        return col_idx + 1 if self.is_upside_down else NUM_COLS - col_idx
+
+    def _row_idx_to_num(self, row_idx: int) -> int:
+        return NUM_ROWS - row_idx if self.is_upside_down else row_idx + 1
 
     def _col_num_to_idx(self, col_num: int) -> int:
         return col_num - 1 if self.is_upside_down else NUM_COLS - col_num
@@ -335,6 +356,11 @@ class BoardImageLayer:
         # FEN ordering. (row_idx, col_idx), zero-based
         self.tiles: list[list[int | None]] = [[-1] * NUM_COLS for _ in range(NUM_ROWS)]
 
+    def __iter__(self) -> Iterator[tuple[tuple[int, int], int | None]]:
+        for row_idx, row in enumerate(self.tiles):
+            for col_idx, id_ in enumerate(row):
+                yield ((row_idx, col_idx), id_)
+
     def draw_layer(
         self,
         canvas: BoardCanvas,
@@ -357,7 +383,9 @@ class BoardImageLayer:
         if id_ is not None:
             canvas.itemconfig(id_, image=img)
 
-    def update_all_tiles(self, canvas: BoardCanvas, img: ImageTk.PhotoImage) -> None:
+    def update_all_tiles(
+        self, canvas: BoardCanvas, img: ImageTk.PhotoImage | Literal[""]
+    ) -> None:
         for row in self.tiles:
             for id_ in row:
                 if id_ is not None:
