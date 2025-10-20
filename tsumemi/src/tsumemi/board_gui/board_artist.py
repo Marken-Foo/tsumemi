@@ -20,99 +20,6 @@ NUM_COLS = 9
 NUM_ROWS = 9
 
 
-class TileIdStore:
-    def __init__(
-        self, num_cols: int, num_rows: int, default: int | None = None
-    ) -> None:
-        self.tiles = [[default] * num_cols for _ in range(num_rows)]
-
-    def set_id(self, row_idx: int, col_idx: int, id_: int) -> None:
-        self.tiles[row_idx][col_idx] = id_
-
-    def get_id(self, row_idx: int, col_idx: int) -> int | None:
-        return self.tiles[row_idx][col_idx]
-
-
-class BoardDrawingCoords:
-    def __init__(
-        self, sq_width: float, sq_height: float, board_top_left_xy: tuple[float, float]
-    ) -> None:
-        self.update_coords(sq_width, sq_height, board_top_left_xy)
-
-    def update_coords(
-        self, sq_width: float, sq_height: float, board_top_left_xy: tuple[float, float]
-    ) -> None:
-        self._sq_w = sq_width
-        self._sq_h = sq_height
-        self._board_top_left_x, self._board_top_left_y = board_top_left_xy
-
-    def idxs_to_xy(
-        self, col_idx: int, row_idx: int, centering: str = ""
-    ) -> tuple[int, int]:
-        x_offset = 0.5 * self._sq_w if "x" in centering.lower() else 0
-        y_offset = 0.5 * self._sq_h if "y" in centering.lower() else 0
-        x = self._board_top_left_x + col_idx * self._sq_w + x_offset
-        y = self._board_top_left_y + row_idx * self._sq_h + y_offset
-        return int(x), int(y)
-
-
-def draw_board_tile_image(
-    canvas: BoardCanvas, x: int, y: int, is_centered: bool, tag: str = ""
-) -> int:
-    return canvas.create_image(
-        x, y, image="", anchor="center" if is_centered else "nw", tags=tag
-    )
-
-
-def draw_board_tile_text(
-    canvas: BoardCanvas, x: int, y: int, is_centered: bool, tag: str = ""
-) -> int:
-    return canvas.create_text(
-        x,
-        y,
-        text="",
-        font=("", canvas.measurements.sq_text_size),
-        anchor="center" if is_centered else "nw",
-        tags=tag,
-    )
-
-
-class BoardImageLayer:
-    def __init__(self, is_centered: bool = False) -> None:
-        self.is_centered = is_centered
-        # Stored canvas item ids for later alteration.
-        # FEN ordering. (row_idx, col_idx), zero-based
-        self.tiles: list[list[int | None]] = [[-1] * NUM_COLS for _ in range(NUM_ROWS)]
-
-    def draw_layer(
-        self,
-        canvas: BoardCanvas,
-        idxs_to_xy: Callable[[int, int, str], tuple[int, int]],
-        tag: str = "",
-    ) -> None:
-        for row_idx, row in enumerate(self.tiles):
-            for col_idx, _ in enumerate(row):
-                x, y = idxs_to_xy(col_idx, row_idx, "xy" if self.is_centered else "")
-                id_ = draw_board_tile_image(canvas, x, y, self.is_centered, tag)
-                self.tiles[row_idx][col_idx] = id_
-
-    def get_id(self, row_idx: int, col_idx: int) -> int | None:
-        return self.tiles[row_idx][col_idx]
-
-    def update_tile(
-        self, canvas: BoardCanvas, img: ImageTk.PhotoImage, row_idx: int, col_idx: int
-    ) -> None:
-        id_ = self.get_id(row_idx, col_idx)
-        if id_ is not None:
-            canvas.itemconfig(id_, image=img)
-
-    def update_all_tiles(self, canvas: BoardCanvas, img: ImageTk.PhotoImage) -> None:
-        for row in self.tiles:
-            for id_ in row:
-                if id_ is not None:
-                    canvas.itemconfig(id_, image=img)
-
-
 class BoardArtist:
     def __init__(
         self, measurements: BoardMeasurements, skin: BoardSkin, is_upside_down: bool
@@ -369,3 +276,96 @@ class BoardArtist:
         col_idx = self._col_num_to_idx(col_num)
         row_idx = self._row_num_to_idx(row_num)
         return col_idx, row_idx
+
+
+class BoardDrawingCoords:
+    def __init__(
+        self, sq_width: float, sq_height: float, board_top_left_xy: tuple[float, float]
+    ) -> None:
+        self.update_coords(sq_width, sq_height, board_top_left_xy)
+
+    def update_coords(
+        self, sq_width: float, sq_height: float, board_top_left_xy: tuple[float, float]
+    ) -> None:
+        self._sq_w = sq_width
+        self._sq_h = sq_height
+        self._board_top_left_x, self._board_top_left_y = board_top_left_xy
+
+    def idxs_to_xy(
+        self, col_idx: int, row_idx: int, centering: str = ""
+    ) -> tuple[int, int]:
+        x_offset = 0.5 * self._sq_w if "x" in centering.lower() else 0
+        y_offset = 0.5 * self._sq_h if "y" in centering.lower() else 0
+        x = self._board_top_left_x + col_idx * self._sq_w + x_offset
+        y = self._board_top_left_y + row_idx * self._sq_h + y_offset
+        return int(x), int(y)
+
+
+class TileIdStore:
+    def __init__(
+        self, num_cols: int, num_rows: int, default: int | None = None
+    ) -> None:
+        self.tiles = [[default] * num_cols for _ in range(num_rows)]
+
+    def set_id(self, row_idx: int, col_idx: int, id_: int) -> None:
+        self.tiles[row_idx][col_idx] = id_
+
+    def get_id(self, row_idx: int, col_idx: int) -> int | None:
+        return self.tiles[row_idx][col_idx]
+
+
+class BoardImageLayer:
+    def __init__(self, is_centered: bool = False) -> None:
+        self.is_centered = is_centered
+        # Stored canvas item ids for later alteration.
+        # FEN ordering. (row_idx, col_idx), zero-based
+        self.tiles: list[list[int | None]] = [[-1] * NUM_COLS for _ in range(NUM_ROWS)]
+
+    def draw_layer(
+        self,
+        canvas: BoardCanvas,
+        idxs_to_xy: Callable[[int, int, str], tuple[int, int]],
+        tag: str = "",
+    ) -> None:
+        for row_idx, row in enumerate(self.tiles):
+            for col_idx, _ in enumerate(row):
+                x, y = idxs_to_xy(col_idx, row_idx, "xy" if self.is_centered else "")
+                id_ = draw_board_tile_image(canvas, x, y, self.is_centered, tag)
+                self.tiles[row_idx][col_idx] = id_
+
+    def get_id(self, row_idx: int, col_idx: int) -> int | None:
+        return self.tiles[row_idx][col_idx]
+
+    def update_tile(
+        self, canvas: BoardCanvas, img: ImageTk.PhotoImage, row_idx: int, col_idx: int
+    ) -> None:
+        id_ = self.get_id(row_idx, col_idx)
+        if id_ is not None:
+            canvas.itemconfig(id_, image=img)
+
+    def update_all_tiles(self, canvas: BoardCanvas, img: ImageTk.PhotoImage) -> None:
+        for row in self.tiles:
+            for id_ in row:
+                if id_ is not None:
+                    canvas.itemconfig(id_, image=img)
+
+
+def draw_board_tile_image(
+    canvas: BoardCanvas, x: int, y: int, is_centered: bool, tag: str = ""
+) -> int:
+    return canvas.create_image(
+        x, y, image="", anchor="center" if is_centered else "nw", tags=tag
+    )
+
+
+def draw_board_tile_text(
+    canvas: BoardCanvas, x: int, y: int, is_centered: bool, tag: str = ""
+) -> int:
+    return canvas.create_text(
+        x,
+        y,
+        text="",
+        font=("", canvas.measurements.sq_text_size),
+        anchor="center" if is_centered else "nw",
+        tags=tag,
+    )
