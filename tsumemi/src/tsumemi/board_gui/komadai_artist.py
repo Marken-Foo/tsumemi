@@ -209,7 +209,7 @@ class KomadaiArtist:
         tags: tuple[str, ...],
     ) -> int:
         text_size = canvas.measurements.komadai_text_size
-        return canvas.create_text(  # type: ignore
+        return canvas.create_text(
             x,
             y,
             text=str(KANJI_FROM_KTYPE[ktype]),

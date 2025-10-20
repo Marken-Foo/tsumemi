@@ -17,8 +17,8 @@ from tsumemi.src.tsumemi.board_gui.komadai_artist import KomadaiArtist
 
 if TYPE_CHECKING:
     from typing import Any
+    from tsumemi.src.shogi.move import Move
     from tsumemi.src.shogi.position import Position
-    from tsumemi.src.tsumemi.game.game_model import GameStepEvent, GameUpdateEvent
     from tsumemi.src.tsumemi.move_input_handler import MoveInputHandler
 
 
@@ -101,11 +101,10 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
         self.last_move_start_sq = Square.NONE
         self.last_move_end_sq = Square.NONE
 
-    def set_and_draw_callback(self, event: GameStepEvent | GameUpdateEvent) -> None:
-        last_move = event.game.get_last_move()
+    def receive_position_and_last_move(self, pos: Position, last_move: Move) -> None:
         self.last_move_start_sq = last_move.start_sq
         self.last_move_end_sq = last_move.end_sq
-        self.set_position(event.game.get_position())
+        self.set_position(pos)
 
     def set_position(self, pos: Position) -> None:
         """Set the internal position (and of any associated input
