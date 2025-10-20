@@ -121,12 +121,13 @@ class BoardKomaTextLayer(BoardLayer):
 
 class BoardArtist:
     def __init__(self, measurements: BoardMeasurements, skin: BoardSkin) -> None:
-        self.board_rect = -1
-        self.board_tile_layer = BoardImageLayer()
-        self.highlight_layer = BoardImageLayer()
-        self.koma_image_layer = BoardImageLayer(is_centered=True)
-        self.koma_text_layer = BoardKomaTextLayer(is_centered=True)
-        self.click_layer = BoardImageLayer()
+        self.background_id: int | None = None
+        self.tile_backgrounds = BoardImageLayer()
+        self.tile_highlights = BoardImageLayer()
+        self.tile_images = BoardImageLayer(is_centered=True)
+        self.tile_texts = BoardKomaTextLayer(is_centered=True)
+        self.tile_clickboxes = BoardImageLayer()
+
         self.board_image_cache = BoardImageCache(
             measurements.sq_w, measurements.sq_h, skin
         )
@@ -135,7 +136,7 @@ class BoardArtist:
         )
 
     def draw_board(self, canvas: BoardCanvas) -> None:
-        self._draw_board_base_layer(canvas)
+        self.background_id = self._draw_board_base_layer(canvas)
         self._draw_board_tile_layer(canvas)
         self._draw_board_focus_layer(canvas)
         self._draw_koma_text_layer(canvas)
@@ -152,7 +153,8 @@ class BoardArtist:
             self._update_board_tile_images(canvas, board_image)
 
     def apply_skin(self, canvas: BoardCanvas, skin: BoardSkin) -> None:
-        canvas.itemconfig(self.board_rect, fill=skin.colour)
+        if self.background_id is not None:
+            canvas.itemconfig(self.background_id, fill=skin.colour)
         self.board_image_cache.update_skin(skin)
 
     def update_measurements(
@@ -172,7 +174,7 @@ class BoardArtist:
         row_idx: int,
         col_idx: int,
     ) -> None:
-        self.koma_image_layer.update_tile(canvas, img, row_idx, col_idx)
+        self.tile_images.update_tile(canvas, img, row_idx, col_idx)
 
     def draw_text_koma(
         self,
@@ -183,7 +185,7 @@ class BoardArtist:
         col_idx: int,
     ) -> None:
         canvas.itemconfig(
-            self.koma_text_layer.tiles[row_idx][col_idx],
+            self.tile_texts.tiles[row_idx][col_idx],
             text=text,
             angle=180 if invert else 0,
         )
@@ -226,45 +228,44 @@ class BoardArtist:
     ) -> None:
         img = self.board_image_cache.get_transparent_tile()
         if img is not None:
-            self.highlight_layer.update_tile(canvas, img, row_idx, col_idx)
+            self.tile_highlights.update_tile(canvas, img, row_idx, col_idx)
 
     def highlight_square(self, canvas: BoardCanvas, row_idx: int, col_idx: int) -> None:
         img = self.board_image_cache.get_selected_tile_highlight()
         if img is not None:
-            self.highlight_layer.update_tile(canvas, img, row_idx, col_idx)
+            self.tile_highlights.update_tile(canvas, img, row_idx, col_idx)
 
     def highlight_square_2(
         self, canvas: BoardCanvas, row_idx: int, col_idx: int
     ) -> None:
         img = self.board_image_cache.get_last_move_tile_highlight()
         if img is not None:
-            self.highlight_layer.update_tile(canvas, img, row_idx, col_idx)
+            self.tile_highlights.update_tile(canvas, img, row_idx, col_idx)
 
     def _draw_board_base_layer(self, canvas: BoardCanvas) -> int:
         x1, y1 = self._drawing_coords.idxs_to_xy(0, 0)
         x2, y2 = self._drawing_coords.idxs_to_xy(NUM_COLS, NUM_ROWS)
         id_: int = canvas.create_rectangle(x1, y1, x2, y2, fill="#ffffff")
-        self.board_rect = id_
         return id_
 
     def _draw_board_tile_layer(self, canvas: BoardCanvas) -> None:
-        self.board_tile_layer.draw_layer(
+        self.tile_backgrounds.draw_layer(
             canvas, self._drawing_coords.idxs_to_xy, tag="board_tile"
         )
 
     def _draw_board_focus_layer(self, canvas: BoardCanvas) -> None:
-        self.highlight_layer.draw_layer(
+        self.tile_highlights.draw_layer(
             canvas, self._drawing_coords.idxs_to_xy, tag="highlight_tile"
         )
         transparent_img = self.board_image_cache.get_transparent_tile()
         if transparent_img is not None:
-            self.highlight_layer.update_all_tiles(canvas, transparent_img)
+            self.tile_highlights.update_all_tiles(canvas, transparent_img)
 
     def _draw_koma_text_layer(self, canvas: BoardCanvas) -> None:
-        self.koma_text_layer.draw_layer(canvas, self._drawing_coords.idxs_to_xy)
+        self.tile_texts.draw_layer(canvas, self._drawing_coords.idxs_to_xy)
 
     def _draw_koma_image_layer(self, canvas: BoardCanvas) -> None:
-        self.koma_image_layer.draw_layer(canvas, self._drawing_coords.idxs_to_xy)
+        self.tile_images.draw_layer(canvas, self._drawing_coords.idxs_to_xy)
 
     def _draw_board_grid_lines(self, canvas: BoardCanvas) -> None:
         for i in range(NUM_COLS + 1):
@@ -293,18 +294,19 @@ class BoardArtist:
             )
 
     def _draw_click_layer(self, canvas: BoardCanvas) -> None:
-        self.click_layer.draw_layer(
+        self.tile_clickboxes.draw_layer(
             canvas, self._drawing_coords.idxs_to_xy, tag="click_tile"
         )
         transparent_img = self.board_image_cache.get_transparent_tile()
         if transparent_img is not None:
-            self.click_layer.update_all_tiles(canvas, transparent_img)
+            self.tile_clickboxes.update_all_tiles(canvas, transparent_img)
 
     def _update_board_base_colour(self, canvas: BoardCanvas) -> None:
-        base_colour = self.board_image_cache.skin.colour
-        canvas.itemconfig(self.board_rect, fill=base_colour)
+        if self.background_id is not None:
+            base_colour = self.board_image_cache.skin.colour
+            canvas.itemconfig(self.background_id, fill=base_colour)
 
     def _update_board_tile_images(
         self, canvas: BoardCanvas, img: ImageTk.PhotoImage
     ) -> None:
-        self.board_tile_layer.update_all_tiles(canvas, img)
+        self.tile_backgrounds.update_all_tiles(canvas, img)

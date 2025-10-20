@@ -323,7 +323,7 @@ class BoardCanvas(tk.Canvas, evt.IObserver):
                     self.move_input_handler.receive_square, sq=sq
                 )
                 self.tag_bind(
-                    self.board_artist.click_layer.tiles[row_idx][col_idx],
+                    self.board_artist.tile_clickboxes.tiles[row_idx][col_idx],
                     TK_SINGLE_LEFT_CLICK,
                     callback,
                 )
