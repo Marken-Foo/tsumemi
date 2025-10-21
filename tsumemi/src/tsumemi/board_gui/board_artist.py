@@ -87,6 +87,8 @@ class BoardArtist:
             canvas.itemconfig(self.background_id, fill=skin.colour)
         self.board_image_cache.update_skin(skin)
         self._update_base_layer(canvas, skin)
+        if (img := self.board_image_cache.get_board_image()) is not None:
+            self._update_tile_backgrounds(canvas, img)
 
     def update_measurements(
         self, sq_width: float, sq_height: float, board_top_left_xy: tuple[float, float]
