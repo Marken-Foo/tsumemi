@@ -61,12 +61,12 @@ class SpeedrunController(evt.IObserver):
             constructor = self.make_nav_pane_solution
             self.target.main_viewcon.set_nav_pane(constructor)
 
-    def _on_correct_solve(self, _event: evt.Event):
+    def _on_correct_solve(self, _event: evt.Event) -> None:
         if isinstance(self.current_speedrun_state, Solving):
             self.mark_correct()
             self.go_to_state("solution")
 
-    def _on_wrong_solve(self, _event: evt.Event):
+    def _on_wrong_solve(self, _event: evt.Event) -> None:
         if isinstance(self.current_speedrun_state, Solving):
             self.mark_wrong()
             self.go_to_state("solution")
