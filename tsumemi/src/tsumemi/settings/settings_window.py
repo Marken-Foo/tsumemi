@@ -5,7 +5,10 @@ import tkinter as tk
 from tkinter import ttk
 from typing import TYPE_CHECKING
 
-from tsumemi.src.tsumemi.settings.board_setting_choices import BoardSkinSelectionFrame, KomadaiSkinSelectionFrame
+from tsumemi.src.tsumemi.settings.board_setting_choices import (
+    BoardSkinSelectionFrame,
+    KomadaiSkinSelectionFrame,
+)
 from tsumemi.src.tsumemi.settings.notation_setting_choices import NotationSelectionFrame
 from tsumemi.src.tsumemi.settings.piece_setting_choices import PieceSkinSelectionFrame
 
@@ -48,7 +51,6 @@ class OptionsFrame(ttk.Frame):
         )
         self.frm_notation_choice.grid(row=0, column=0, sticky="EW")
         self.frm_notation_choice.grid_columnconfigure(0, weight=1)
-        return
 
 
 class SettingsWindow(tk.Toplevel):
@@ -63,22 +65,13 @@ class SettingsWindow(tk.Toplevel):
 
         buttons_frame = ttk.Frame(self)
         buttons_frame.grid(row=1, column=0, sticky="EW")
-        btn_okay = ttk.Button(
-            buttons_frame, text="OK", command=self.save_and_quit
-        )
+        btn_okay = ttk.Button(buttons_frame, text="OK", command=self.save_and_quit)
         btn_okay.grid(row=0, column=0)
         btn_apply = ttk.Button(buttons_frame, text="Apply", command=self.save)
         btn_apply.grid(row=0, column=1)
-        return
 
     def save(self) -> None:
-        self.controller.update_board_skin_settings()
-        self.controller.update_komadai_skin_settings()
-        self.controller.update_piece_skin_settings()
-        self.controller.update_notation_settings()
-        self.controller.write_current_settings_to_file()
-        self.controller.push_settings_to_controller()
-        return
+        self.controller.save()
 
     def save_and_quit(self) -> None:
         self.save()
